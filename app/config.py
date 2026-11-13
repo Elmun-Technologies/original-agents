@@ -13,11 +13,13 @@ DATA_DIR = ROOT / "data"  # runtime state (gitignored, docker volume)
 
 REQUIRED = {
     "settings.yaml": ["poizon_tos_reviewed", "sourcing_mode", "image_source_policy", "pricing", "customs",
-                      "sourcing"],
+                      "sourcing", "llm"],
     "pricing": ["buyout_fee_pct", "buyout_fee_min_usd", "ship_rate_per_kg_usd", "avia_months",
                 "local_delivery_usd", "volumetric_divisor", "usd_rate_buffer_pct", "round_to_uzs",
                 "quote_valid_hours", "stale_rate_max_hours", "stale_rate_extra_buffer_pct"],
     "customs": ["duty_free_limit_usd", "customs_value_includes_shipping", "schedule"],
+    "llm": ["daily_budget_usd", "max_tokens", "effort", "refusal_fallback", "prices_per_mtok",
+            "pii_allowlist"],
     "category": ["weight_kg", "package_cm", "markup", "winter", "size_type"],
 }
 
@@ -43,6 +45,7 @@ def validate(settings: dict, categories: dict) -> None:
     _require(settings, REQUIRED["settings.yaml"], "settings.yaml")
     _require(settings["pricing"], REQUIRED["pricing"], "settings.yaml:pricing")
     _require(settings["customs"], REQUIRED["customs"], "settings.yaml:customs")
+    _require(settings["llm"], REQUIRED["llm"], "settings.yaml:llm")
     for name, cat in categories.items():
         _require(cat, REQUIRED["category"], f"categories.yaml:{name}")
 

@@ -200,3 +200,21 @@ class SettingsHistory(Base):
     old_value: Mapped[str | None] = mapped_column(Text)
     new_value: Mapped[str | None] = mapped_column(Text)
     changed_by: Mapped[int | None] = mapped_column(BigInteger)
+
+
+class LlmCall(Base):
+    """One row per LLM request: tokens + cost, for the daily budget and the AI expense rollup.
+    Never stores prompt or response text."""
+    __tablename__ = "llm_calls"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    created_at: Mapped[datetime] = mapped_column(default=utcnow, index=True)
+    purpose: Mapped[str] = mapped_column(String(32))     # e.g. content, demand
+    model: Mapped[str] = mapped_column(String(64))       # model that served the request
+    input_tokens: Mapped[int]
+    output_tokens: Mapped[int]
+    cache_write_tokens: Mapped[int] = mapped_column(default=0)
+    cache_read_tokens: Mapped[int] = mapped_column(default=0)
+    cost_usd: Mapped[Decimal] = mapped_column(Numeric(10, 6))
+    stop_reason: Mapped[str | None] = mapped_column(String(32))
+    request_id: Mapped[str | None] = mapped_column(String(64))

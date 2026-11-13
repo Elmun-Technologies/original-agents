@@ -34,3 +34,19 @@ sourcing:
     men: [40, 45]
     women: [36, 40]
     unisex: [36, 45]
+
+llm:
+  # Model name is NOT here: it comes from LLM_MODEL in .env.
+  daily_budget_usd: 5               # Tashkent day; when reached, new calls stop + admin alert
+  max_tokens: 16000
+  effort: medium                    # low | medium | high | xhigh | max
+  refusal_fallback: true            # on a safety refusal, the API retries on a fallback model
+  # USD per 1M tokens, for the budget and the daily AI expense row.
+  # TODO(admin): update when Anthropic changes prices; LLM_MODEL must be listed here.
+  prices_per_mtok:
+    claude-opus-5-5:   {input: 4, output: 20, cache_write: 5, cache_read: 0.2}
+    claude-sonnet-5-5: {input: 2, output: 10, cache_write: 2.5, cache_read: 0.1}
+    claude-opus-5:     {input: 5, output: 25, cache_write: 6.25, cache_read: 0.5}
+    claude-opus-4-8:   {input: 5, output: 25, cache_write: 6.25, cache_read: 0.5}
+  # Our own public handles that may appear in prompts (not customer data), e.g. "@poizon_uz".
+  pii_allowlist: []
