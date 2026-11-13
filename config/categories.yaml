@@ -1,23 +1,27 @@
 # weight_kg: actual weight incl. packaging (admin-provided starting values).
 # package_cm: typical package L x W x H, used for volumetric weight.
 # Chargeable weight = max(actual, volumetric).
+# size_type: shoe (EU 30-50, .5 / 1/3 / 2/3) | apparel (XS..4XL or 24-60).
 # winter: true -> ships by air in pricing.avia_months.
 # TODO(admin): package sizes except sneakers are estimates — measure real parcels.
 
 sneakers:
   weight_kg: 1.5
+  size_type: shoe
   package_cm: [33, 22, 12]
   markup: 0.23
   winter: false
 
 winter_boots:
   weight_kg: 2.0
+  size_type: shoe
   package_cm: [36, 26, 14]
   markup: 0.23
   winter: true
 
 puffer:            # puxovik / qishki kurtka
   weight_kg: 1.3
+  size_type: apparel
   package_cm: [50, 40, 20]
   # TODO(admin): kargo/vositachi vakuum qadoqlashni tasdiqlashi kerak.
   # Per-order override: /neworder can mark "no vacuum" and the price is recalculated.
@@ -28,24 +32,28 @@ puffer:            # puxovik / qishki kurtka
 
 light_jacket:      # yengil kurtka / vetrovka
   weight_kg: 0.7
+  size_type: apparel
   package_cm: [35, 25, 8]
   markup: 0.25
   winter: false
 
 hoodie:            # hudi / svitshot
   weight_kg: 0.7
+  size_type: apparel
   package_cm: [35, 25, 8]
   markup: 0.25
   winter: false
 
 tshirt:
   weight_kg: 0.3
+  size_type: apparel
   package_cm: [30, 20, 4]
   markup: 0.25
   winter: false
 
 pants:
   weight_kg: 0.6
+  size_type: apparel
   package_cm: [35, 25, 6]
   markup: 0.25
   winter: false

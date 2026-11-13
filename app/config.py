@@ -10,12 +10,13 @@ CONFIG_DIR = ROOT / "config"
 DATA_DIR = ROOT / "data"  # runtime state (gitignored, docker volume)
 
 REQUIRED = {
-    "settings.yaml": ["poizon_tos_reviewed", "sourcing_mode", "image_source_policy", "pricing", "customs"],
+    "settings.yaml": ["poizon_tos_reviewed", "sourcing_mode", "image_source_policy", "pricing", "customs",
+                      "sourcing"],
     "pricing": ["buyout_fee_pct", "buyout_fee_min_usd", "ship_rate_per_kg_usd", "avia_months",
                 "local_delivery_usd", "volumetric_divisor", "usd_rate_buffer_pct", "round_to_uzs",
                 "quote_valid_hours", "stale_rate_max_hours", "stale_rate_extra_buffer_pct"],
     "customs": ["duty_free_limit_usd", "customs_value_includes_shipping", "schedule"],
-    "category": ["weight_kg", "package_cm", "markup", "winter"],
+    "category": ["weight_kg", "package_cm", "markup", "winter", "size_type"],
 }
 
 

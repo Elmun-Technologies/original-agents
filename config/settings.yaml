@@ -27,3 +27,10 @@ customs:
   schedule:                         # picked by quote date; last entry with from <= date wins
     - {from: 2000-01-01, rate: 0.30, min_per_kg_usd: 3}
     - {from: 2027-01-01, rate: 0.20, min_per_kg_usd: 2}
+
+sourcing:
+  # Shoes are skipped if no AVAILABLE size falls in this EU range (by gender).
+  popular_sizes_eu:
+    men: [40, 45]
+    women: [36, 40]
+    unisex: [36, 45]

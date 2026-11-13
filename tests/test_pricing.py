@@ -162,7 +162,7 @@ def test_real_config_all_categories():
 
 def test_config_missing_key():
     with pytest.raises(config.ConfigError, match="buyout_fee_pct"):
-        bad = copy.deepcopy(S) | {"poizon_tos_reviewed": False, "sourcing_mode": "x",
+        bad = copy.deepcopy(S) | {"poizon_tos_reviewed": False, "sourcing_mode": "x", "sourcing": {},
                                   "image_source_policy": "x"}
         del bad["pricing"]["buyout_fee_pct"]
         config.validate(bad, C)
@@ -179,14 +179,14 @@ def test_cbu_rate_ok():
     def h(req):
         assert req.url.path == "/uz/arkhiv-kursov-valyut/json/USD/2026-11-13/"
         return httpx.Response(200, json=CBU_JSON)
-    assert rates.fetch_usd_rate(date(2026, 11, 13), client(h)) == Decimal("11973.44")
+    assert rates.fetch_rate("USD", date(2026, 11, 13), client(h)) == Decimal("11973.44")
 
 
 def test_cbu_rate_errors():
     with pytest.raises(httpx.HTTPStatusError):
-        rates.fetch_usd_rate(date(2026, 11, 13), client(lambda r: httpx.Response(500)))
+        rates.fetch_rate("USD", date(2026, 11, 13), client(lambda r: httpx.Response(500)))
     with pytest.raises(ValueError):
-        rates.fetch_usd_rate(date(2026, 11, 13), client(lambda r: httpx.Response(200, json=[])))
+        rates.fetch_rate("USD", date(2026, 11, 13), client(lambda r: httpx.Response(200, json=[])))
 
 
 OK = client(lambda r: httpx.Response(200, json=CBU_JSON))
@@ -212,7 +212,7 @@ def test_usd_rate_stale_within_48h(tmp_path, hours):
     r = rate_at(NOV + timedelta(hours=hours), DOWN, f)
     assert r.value == Decimal("11973.44")
     assert r.extra_buffer_pct == Decimal("0.01")
-    assert "CBU kursi olinmadi" in r.warning
+    assert "CBU USD kursi olinmadi" in r.warning
 
 
 def test_usd_rate_too_old_raises(tmp_path):
@@ -234,3 +234,25 @@ def test_usd_rate_recovers_and_refreshes_cache(tmp_path):
     assert rate_at(later, DOWN, f).warning
     assert rate_at(later, OK, f).warning is None
     assert rates._read_cache(f).fetched_at == later
+
+
+CNY_JSON = [{"Ccy": "CNY", "Nominal": "1", "Rate": "1795.58"}]
+
+
+def test_cny_rate_and_nominal():
+    ok = client(lambda r: httpx.Response(200, json=CNY_JSON))
+    assert rates.fetch_rate("CNY", date(2026, 11, 13), ok) == Decimal("1795.58")
+    per10 = client(lambda r: httpx.Response(200, json=[{"Ccy": "CNY", "Nominal": "10", "Rate": "17955.8"}]))
+    assert rates.fetch_rate("CNY", date(2026, 11, 13), per10) == Decimal("1795.58")
+
+
+def test_cny_same_48h_rule_and_separate_cache(tmp_path):
+    ok = client(lambda r: httpx.Response(200, json=CNY_JSON))
+    f = tmp_path / "cny.json"
+    rates.rate("CNY", NOV, client=ok, cache_file=f, settings=S)
+    r = rates.rate("CNY", NOV + timedelta(hours=40), client=DOWN, cache_file=f, settings=S)
+    assert r.value == Decimal("1795.58") and r.extra_buffer_pct == Decimal("0.01")
+    assert "CBU CNY kursi olinmadi" in r.warning
+    with pytest.raises(rates.RateUnavailable, match="CNY"):
+        rates.rate("CNY", NOV + timedelta(hours=49), client=DOWN, cache_file=f, settings=S)
+    assert rates.cache_path("CNY") != rates.cache_path("USD")
