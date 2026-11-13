@@ -1,0 +1,88 @@
+# Replica filter (CLAUDE.md §2 "Faqat original"). Any hit rejects the product;
+# the matched word is written to products.rejected_reason.
+#
+# How terms match (case-insensitive, fullwidth chars normalized: "１：１" == "1:1"):
+#  - Letters: match at the START of a word, so suffixes are caught:
+#      "kopiya" matches "kopiyasi", "replik" matches "replikasi"/"replica".
+#  - Spaces and hyphens inside a term are optional: "lux copy" == "lux-copy" == "luxcopy".
+#  - Chinese: matched anywhere.
+#  - Numbers: not glued to other digits ("1:1" does not match "11:15").
+# False positives are OK (admin sees the reason); false negatives are not.
+
+# Checked in every field of every source.
+common:
+  # Uzbek / translit
+  - replik
+  - replic
+  - kopiya
+  - kopya
+  - feyk
+  - bir ga bir
+  # Russian
+  - реплик
+  - копия
+  - копии
+  - копию
+  - копией
+  - копий
+  - фейк
+  - один в один
+  # 1:1
+  - "1:1"
+  - 1 в 1
+  - 1 v 1
+  - 1 to 1
+  - 1 ga 1
+  - 1 к 1
+  # English
+  - fake
+  - lux copy
+  - top copy
+  - high copy
+  - best copy
+  - super copy
+  - quality copy
+  - mirror quality
+  - mirror grade
+  - aaa
+  - unauthorized authentic
+  - unauthorised authentic
+  - pk batch
+  - ljr batch
+  - og batch
+  - god batch
+  # Chinese replica trade terms
+  - 公司级
+  - 纯原
+  - 原单
+  - 高仿
+  - 莆田
+  - 1比1
+  - 一比一
+  - a货
+  - 超a
+  - 尾单
+  - 共享货源
+  - 顶级版
+
+# Checked everywhere EXCEPT official Poizon/Dewu text (product name + description of
+# official_sources). On Dewu "复刻" means an official retro release.
+# Still rejected anywhere if any `common` term is also present (e.g. "复刻 1:1").
+external_only:
+  - 复刻
+
+# Sources whose name/description is Poizon/Dewu's own text.
+# TODO(admin): manual_sheet is treated as official because the intermediary copies
+# name/description from Dewu. If the sheet has free-form text, remove it from here.
+official_sources:
+  - poizon_com
+  - manual_sheet
+
+# Replica supplier sites. Matched anywhere, including source_url.
+domains:
+  - gxhyapp.com
+
+# Removed from the text before checking (legit words that contain a term).
+exceptions:
+  - copyright
+  - копировальн

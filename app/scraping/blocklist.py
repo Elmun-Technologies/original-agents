@@ -1,41 +1,12 @@
-"""Replica filter (CLAUDE.md §2: "Faqat original").
-
-Any hit in name, description, seller note or source URL rejects the product.
-False positives are acceptable (admin sees the reason); false negatives are not.
-"""
+"""Replica filter (CLAUDE.md §2: "Faqat original"). Word lists: config/blocklist.yaml."""
 import re
 import unicodedata
+from dataclasses import dataclass
+from functools import lru_cache
 
-# (label shown in rejected_reason, regex on normalized text)
-_STEM = r"(?<![\w])"          # word start only: catches Uzbek/Russian suffixes (kopiyasi, реплики)
-_WORD = r"(?<![\w]){}(?![\w])"  # whole word: avoids "copyright", "fakel"
+from app import config
 
-TERMS: list[tuple[str, str]] = [
-    # Uzbek / Russian / translit
-    ("replika", _STEM + r"(replik|replic|реплик)"),
-    ("kopiya", _STEM + r"(kopi[yj]|kopya|копи[яюиейё])"),
-    ("feyk", _STEM + r"(feyk|фейк)"),
-    ("lyuks", _STEM + r"(lyuks|lux|люкс)\s*(kopi|copy|копи)"),
-    ("a-kopiya", _STEM + r"(a|а)\s*-?\s*(kopi|copy|копи)"),
-    ("один в один", r"(один\s*в\s*один|bir\s*ga\s*bir)"),
-    ("1:1", r"(?<!\d)1\s*(:|в|v|to|ga|к)\s*1(?!\d)"),
-    # English
-    ("replica", _WORD.format(r"replicas?")),
-    ("fake", _WORD.format(r"fakes?")),
-    ("mirror quality", r"mirror\s*(quality|grade)"),
-    ("aaa quality", _WORD.format(r"a{3,5}\+?") + r"\s*(quality|grade)?"),
-    ("unauthorized authentic", r"unauthori[sz]ed\s*authentic"),
-    ("top copy", r"(top|high|best|super)\s*(quality\s*)?copy"),
-    ("batch", _WORD.format(r"(pk|ljr|og|god|h12|m|s2|dg|gx)\s*batch")),
-    # Chinese replica trade terms
-    ("公司级", r"公司级"), ("纯原", r"纯原"), ("原单", r"原单"), ("复刻", r"复刻"),
-    ("高仿", r"高仿"), ("莆田", r"莆田"), ("一比一", r"(1|一)比(1|一)"), ("A货", r"a货"),
-    ("超A", r"超a"), ("尾单", r"尾单"), ("共享货源", r"共享货源"), ("顶级版本", r"顶级版"),
-]
-
-BLOCKED_DOMAINS = ("gxhyapp.com",)
-
-_COMPILED = [(label, re.compile(rx)) for label, rx in TERMS]
+OFFICIAL_FIELDS = ("name", "description")  # Poizon/Dewu's own text for official sources
 
 
 def normalize(text: str) -> str:
@@ -43,32 +14,81 @@ def normalize(text: str) -> str:
     return unicodedata.normalize("NFKC", text).casefold()
 
 
-def find_terms(text: str | None) -> list[str]:
+def term_regex(term: str) -> re.Pattern:
+    t = normalize(term).strip()
+    body = r"[\s\-]*".join(re.escape(part) for part in re.split(r"[\s\-]+", t))
+    if any("一" <= ch <= "鿿" for ch in t):
+        return re.compile(body)                       # Chinese: anywhere
+    head = r"(?<!\d)" if t[0].isdigit() else r"(?<!\w)"  # letters: word start (stem match)
+    tail = r"(?!\d)" if t[-1].isdigit() else ""
+    return re.compile(head + body + tail)
+
+
+@dataclass(frozen=True)
+class Rules:
+    common: list[tuple[str, re.Pattern]]
+    external_only: list[tuple[str, re.Pattern]]
+    domains: list[str]
+    exceptions: list[str]
+    official_sources: frozenset[str]
+
+
+def build_rules(cfg: dict) -> Rules:
+    for key in ("common", "external_only", "domains", "exceptions", "official_sources"):
+        if not isinstance(cfg.get(key), list):
+            raise config.ConfigError(f"blocklist.yaml: '{key}' must be a list")
+    terms = lambda key: [(normalize(t).strip(), term_regex(t)) for t in cfg[key]]
+    return Rules(
+        common=terms("common"),
+        external_only=terms("external_only"),
+        domains=[normalize(d).strip() for d in cfg["domains"]],
+        exceptions=sorted((normalize(e).strip() for e in cfg["exceptions"]), key=len, reverse=True),
+        official_sources=frozenset(cfg["official_sources"]),
+    )
+
+
+@lru_cache
+def rules() -> Rules:
+    return build_rules(config.load_yaml("blocklist.yaml"))
+
+
+def _clean(text: str, r: Rules) -> str:
+    t = normalize(text)
+    for e in r.exceptions:
+        t = t.replace(e, " ")
+    return t
+
+
+def find_terms(text: str | None, r: Rules | None = None, *, external: bool = True) -> list[str]:
+    """Matched terms. external=False skips external_only terms (official Poizon text)."""
     if not text:
         return []
-    t = normalize(text)
-    hits = [label for label, rx in _COMPILED if rx.search(t)]
-    hits += [d for d in BLOCKED_DOMAINS if d in t]
-    return hits
+    r = r or rules()
+    t = _clean(text, r)
+    pats = r.common + (r.external_only if external else [])
+    return [label for label, rx in pats if rx.search(t)] + [d for d in r.domains if d in t]
 
 
-def check(fields: dict[str, str | None]) -> str | None:
-    """fields: {"name": ..., "description": ..., "seller_note": ..., "source_url": ...}.
-    Returns a reason like "replika: name='kopiya'; description='纯原'" or None if clean."""
-    found = [f"{field}='{', '.join(hits)}'"
-             for field, text in fields.items() if (hits := find_terms(text))]
+def check(fields: dict[str, str | None], *, official: bool = False, r: Rules | None = None) -> str | None:
+    """fields: {"name", "description", "seller_note", "source_url"} -> reason or None.
+    official=True: external_only terms are ignored in name/description unless a common
+    term is found somewhere in the product."""
+    r = r or rules()
+    hits = {f: find_terms(v, r, external=not (official and f in OFFICIAL_FIELDS)) for f, v in fields.items()}
+    if official and any(hits.values()):  # replica already -> report official-text terms too
+        hits = {f: find_terms(v, r) for f, v in fields.items()}
+    found = [f"{f}='{', '.join(h)}'" for f, h in hits.items() if h]
     return "replika: " + "; ".join(found) if found else None
 
 
 def apply(product) -> bool:
-    """Checks a Product and marks it rejected. Returns True if it is clean."""
+    """Checks a Product, sets rejected_reason/is_active. Returns True if clean."""
     reason = check({
         "name": " ".join(filter(None, [product.brand, product.model_name, product.colorway])),
         "description": product.description,
         "seller_note": product.seller_note,
         "source_url": product.source_url,
-    })
-    if reason:
-        product.rejected_reason = reason
-        product.is_active = False
+    }, official=product.source in rules().official_sources)
+    product.rejected_reason = reason
+    product.is_active = reason is None
     return reason is None

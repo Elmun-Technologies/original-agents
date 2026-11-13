@@ -29,7 +29,7 @@ def _require(d: dict, keys: list[str], where: str) -> None:
         raise ConfigError(f"{where}: missing keys {missing}")
 
 
-def _load(name: str) -> dict:
+def load_yaml(name: str) -> dict:
     path = CONFIG_DIR / name
     if not path.exists():
         raise ConfigError(f"config file not found: {path}")
@@ -46,7 +46,7 @@ def validate(settings: dict, categories: dict) -> None:
 
 @lru_cache
 def settings() -> dict:
-    s, c = _load("settings.yaml"), _load("categories.yaml")
+    s, c = load_yaml("settings.yaml"), load_yaml("categories.yaml")
     validate(s, c)
     return s
 
@@ -54,7 +54,7 @@ def settings() -> dict:
 @lru_cache
 def categories() -> dict:
     settings()  # validates both files
-    return _load("categories.yaml")
+    return load_yaml("categories.yaml")
 
 
 def env(name: str, default: str | None = None) -> str:
