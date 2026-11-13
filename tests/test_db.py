@@ -29,7 +29,7 @@ def test_migration_up_down_and_no_drift(tmp_path):
 def seed(s: Session):
     p = Product(source="manual_sheet", brand="New Balance", model_name="530",
                 style_code="MR530SG", category="sneakers",
-                sizes=[ProductSize(size_eu="42", price_usd=Decimal("95.00"))])
+                sizes=[ProductSize(size_eu="42", source_price=Decimal("489.00"), source_currency="CNY")])
     s.add(p)
     s.flush()
     q = Quote(product_id=p.id, size="42", landed_cost_usd=Decimal("110.25"),
@@ -100,9 +100,48 @@ def test_unique_sku_per_source(db):
 
 def test_sizes_cascade_on_product_delete(db):
     p = Product(source="manual_sheet", brand="NB", model_name="x", style_code="X1",
-                category="sneakers", sizes=[ProductSize(size_eu="41", price_usd=1)])
+                category="sneakers", sizes=[ProductSize(size_eu="41", source_price=1, source_currency="USD")])
     db.add(p)
     db.commit()
     db.delete(p)
     db.commit()
     assert db.query(ProductSize).count() == 0
+
+
+def test_migration_0003_keeps_old_usd_price(tmp_path):
+    from sqlalchemy import text
+    url = f"sqlite:///{tmp_path / 'app.db'}"
+    cfg = alembic_cfg(url)
+    command.upgrade(cfg, "0002")
+    eng = make_engine(url)
+    with eng.begin() as c:
+        c.execute(text("INSERT INTO products (id, source, brand, model_name, style_code, category, images,"
+                       " first_seen_at, last_checked_at, is_active) VALUES (1, 'manual_sheet', 'NB', '530',"
+                       " 'X', 'sneakers', '[]', '2026-11-01', '2026-11-01', 1)"))
+        c.execute(text("INSERT INTO product_sizes (product_id, size_eu, price_usd, available, checked_at)"
+                       " VALUES (1, '42', 73.30, 1, '2026-11-01')"))
+    command.upgrade(cfg, "head")
+    with eng.connect() as c:
+        assert c.execute(text("SELECT source_price, source_currency FROM product_sizes")).one() == (73.3, "USD")
+        assert c.execute(text("SELECT origin FROM products")).scalar() == "other"
+    command.downgrade(cfg, "0002")
+    with eng.connect() as c:
+        assert c.execute(text("SELECT price_usd FROM product_sizes")).scalar() == 73.3
+
+
+@pytest.mark.parametrize("make", [
+    lambda: ProductSize(size_eu="43", source_price=10, source_currency="EUR"),
+    lambda: ProductSize(size_eu="43", source_price=0, source_currency="USD"),
+])
+def test_size_price_checks(db, make):
+    p, _, _ = seed(db)
+    p.sizes.append(make())
+    with pytest.raises(IntegrityError):
+        db.flush()
+
+
+def test_origin_check(db):
+    db.add(Product(source="manual_sheet", brand="NB", model_name="x", style_code="O1",
+                   category="sneakers", origin="taobao"))
+    with pytest.raises(IntegrityError):
+        db.flush()

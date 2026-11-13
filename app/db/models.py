@@ -26,6 +26,8 @@ BUYOUT_STATUSES = ("pending", "bought")
 SHIPPING_STATUSES = ("pending", "in_china_warehouse", "shipped", "in_tashkent", "delivered")
 LEAD_STATUSES = ("new", "ordered", "lost")
 EXPENSE_TYPES = ("ads", "ai", "server", "manager", "other")
+CURRENCIES = ("USD", "CNY")
+ORIGINS = ("dewu", "poizon_com", "other")
 
 
 class Base(DeclarativeBase):
@@ -42,10 +44,13 @@ class Base(DeclarativeBase):
 
 class Product(Base):
     __tablename__ = "products"
-    __table_args__ = (UniqueConstraint("source", "style_code"),)
+    __table_args__ = (UniqueConstraint("source", "style_code"), one_of("origin", ORIGINS))
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    source: Mapped[str] = mapped_column(String(32))  # poizon_com | manual_sheet
+    source: Mapped[str] = mapped_column(String(32))  # how it got here: poizon_com | manual_sheet
+    # where the name/description text comes from; dewu/poizon_com text is "official"
+    # for the blocklist (复刻 = official retro). See config/blocklist.yaml.
+    origin: Mapped[str] = mapped_column(String(16), default="other", server_default="other")
     source_url: Mapped[str | None] = mapped_column(String(1000))
     brand: Mapped[str] = mapped_column(String(100))
     model_name: Mapped[str] = mapped_column(String(300))
@@ -67,13 +72,17 @@ class Product(Base):
 
 class ProductSize(Base):
     __tablename__ = "product_sizes"
-    __table_args__ = (UniqueConstraint("product_id", "size_eu"),)
+    __table_args__ = (UniqueConstraint("product_id", "size_eu"),
+                      one_of("source_currency", CURRENCIES),
+                      CheckConstraint("source_price > 0", name="source_price_positive"))
 
     id: Mapped[int] = mapped_column(primary_key=True)
     product_id: Mapped[int] = mapped_column(ForeignKey("products.id", ondelete="CASCADE"))
     size_eu: Mapped[str] = mapped_column(String(16))  # "42.5", or "M" for apparel
     size_us: Mapped[str | None] = mapped_column(String(16))
-    price_usd: Mapped[Decimal] = mapped_column(USD)
+    # Price as listed at the source. Converted to USD at quote time with the current rate.
+    source_price: Mapped[Decimal] = mapped_column(Numeric(12, 2))
+    source_currency: Mapped[str] = mapped_column(String(3))
     available: Mapped[bool] = mapped_column(default=True)
     checked_at: Mapped[datetime] = mapped_column(default=utcnow)
 

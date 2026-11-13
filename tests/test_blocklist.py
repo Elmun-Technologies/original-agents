@@ -148,7 +148,7 @@ def test_apply_rejects_and_records_reason(field, value, where):
 
 
 def test_apply_official_fuke_passes():
-    p = mk(source="poizon_com", model_name="Air Jordan 1 复刻版", description="经典复刻")
+    p = mk(origin="dewu", model_name="Air Jordan 1 复刻版", description="经典复刻")
     assert blocklist.apply(p) is True and p.rejected_reason is None
 
 

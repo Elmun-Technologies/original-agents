@@ -1,8 +1,8 @@
 """Sourcing, manual_sheet mode (CLAUDE.md §6.2 "Muqobil rejim").
 
 Admin / intermediary fills a CSV or Google Sheet (one row = one size). This imports it into
-products + product_sizes, converting CNY -> USD via CBU, applying the replica blocklist and
-the popular-sizes filter. Bad rows are not imported; the report says which row and why.
+products + product_sizes, keeping the price as listed (CNY or USD; converted to USD at quote
+time with the current CBU rate), applying the replica blocklist and the popular-sizes filter. Bad rows are not imported; the report says which row and why.
 
 CLI:  uv run --env-file .env python -m app.agents.sourcing <file.csv | https://...csv-export>
 Template: data/samples/manual_sheet_sample.csv
@@ -13,9 +13,7 @@ import logging
 import re
 import sys
 import time
-from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import datetime
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 
@@ -24,15 +22,14 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app import config
-from app.db.models import Product, ProductSize, utcnow
-from app.pricing import rates
-from app.pricing.calculator import TZ
+from app.db.models import CURRENCIES, ORIGINS, Product, ProductSize, utcnow
 from app.scraping import blocklist
 
 SOURCE = "manual_sheet"
 COLUMNS = ("brand", "model_name", "style_code", "category", "gender", "colorway", "size_eu",
            "price", "currency", "available", "source_url", "image_urls", "description", "seller_note")
-CURRENCIES = ("CNY", "USD")
+OPTIONAL_COLUMNS = ("origin",)  # dewu | poizon_com | other (default). Only dewu/poizon_com
+                                # name+description count as official text for the blocklist.
 SHOE_SIZE = re.compile(r"^(\d{2})(\.5| 1/3| 2/3)?$")
 APPAREL_SIZES = {"XXS", "XS", "S", "M", "L", "XL", "XXL", "XXXL", "2XL", "3XL", "4XL"}
 YES = {"", "1", "true", "yes", "ha", "bor", "+"}
@@ -41,7 +38,7 @@ GENDERS = {"": "unisex", "unisex": "unisex", "u": "unisex",
            "men": "men", "male": "men", "m": "men", "erkak": "men",
            "women": "women", "female": "women", "w": "women", "ayol": "women"}
 PRODUCT_FIELDS = ("brand", "model_name", "category", "gender", "colorway", "source_url",
-                  "description", "seller_note")
+                  "description", "seller_note", "origin")
 
 log = logging.getLogger(__name__)
 
@@ -57,7 +54,6 @@ class ImportReport:
     rejected: list[tuple[str, str]] = field(default_factory=list)  # (style_code, reason)
     skipped: list[tuple[str, str]] = field(default_factory=list)   # (style_code, reason)
     row_errors: list[tuple[int, str]] = field(default_factory=list)  # (sheet row no, reason)
-    warnings: list[str] = field(default_factory=list)
 
     def text(self) -> str:
         lines = [f"Yuklash natijasi: {len(self.created)} yangi, {len(self.updated)} yangilandi, "
@@ -67,7 +63,6 @@ class ImportReport:
             ("Rad etildi (replika):", [f"{sc}: {r}" for sc, r in self.rejected]),
             ("O'tkazib yuborildi:", [f"{sc}: {r}" for sc, r in self.skipped]),
             ("Xato qatorlar (yuklanmadi):", [f"{n}-qator: {r}" for n, r in self.row_errors]),
-            ("Ogohlantirish:", self.warnings),
         ]
         for title, items in sections:
             if items:
@@ -111,7 +106,7 @@ def valid_size(size: str, size_type: str) -> bool:
 
 def parse_row(row: dict, cats: dict) -> dict | str:
     """Returns a clean row dict, or an error message (Uzbek, for the admin)."""
-    r = {k: (row.get(k) or "").strip() for k in COLUMNS}
+    r = {k: (row.get(k) or "").strip() for k in COLUMNS + OPTIONAL_COLUMNS}
     for k in ("brand", "model_name", "style_code"):
         if not r[k]:
             return f"{k} bo'sh"
@@ -136,6 +131,9 @@ def parse_row(row: dict, cats: dict) -> dict | str:
     r["currency"] = r["currency"].upper()
     if r["currency"] not in CURRENCIES:
         return f"valyuta noto'g'ri: '{r['currency']}' (CNY yoki USD)"
+    r["origin"] = r["origin"].casefold() or "other"
+    if r["origin"] not in ORIGINS:
+        return f"origin noto'g'ri: '{r['origin']}' ({' / '.join(ORIGINS)})"
     avail = r["available"].casefold()
     if avail not in YES | NO:
         return f"available noto'g'ri: '{r['available']}' (ha/yo'q)"
@@ -156,17 +154,8 @@ def has_popular_size(sizes: dict[str, dict], gender: str, ranges: dict) -> bool:
                for size, s in sizes.items())
 
 
-def import_sheet(
-    session: Session,
-    source: str,
-    *,
-    now: datetime | None = None,
-    get_rate: Callable[[str, datetime], rates.Rate] | None = None,
-    client: httpx.Client | None = None,
-) -> ImportReport:
+def import_sheet(session: Session, source: str, *, client: httpx.Client | None = None) -> ImportReport:
     """Imports into the session (flushes, does not commit)."""
-    now = now or datetime.now(TZ)
-    get_rate = get_rate or (lambda ccy, when: rates.rate(ccy, when))
     cats = config.categories()
     ranges = config.settings()["sourcing"]["popular_sizes_eu"]
     report = ImportReport()
@@ -179,9 +168,9 @@ def import_sheet(
             report.row_errors.append((n, r))
             continue
         g = groups.setdefault(r["style_code"], {"fields": {k: r[k] for k in PRODUCT_FIELDS},
-                                                "images": r["images"], "sizes": {}, "rows": []})
-        if any(g["fields"][k] != r[k] for k in ("brand", "model_name", "category")):
-            report.row_errors.append((n, f"{r['style_code']}: brand/model/kategoriya oldingi qatordan farq qiladi"))
+                                                "images": r["images"], "sizes": {}})
+        if any(g["fields"][k] != r[k] for k in ("brand", "model_name", "category", "origin")):
+            report.row_errors.append((n, f"{r['style_code']}: brand/model/kategoriya/origin oldingi qatordan farq qiladi"))
             continue
         if r["size_eu"] in g["sizes"]:
             report.row_errors.append((n, f"{r['style_code']}: o'lcham {r['size_eu']} takrorlangan"))
@@ -192,28 +181,9 @@ def import_sheet(
             if img not in g["images"]:
                 g["images"].append(img)
 
-    # 2. Rates (only if needed). Dewu prices are in CNY.
-    usd_per = {"USD": Decimal(1)}
-    if any(s["currency"] == "CNY" for g in groups.values() for s in g["sizes"].values()):
-        try:
-            cny, usd = get_rate("CNY", now), get_rate("USD", now)
-            usd_per["CNY"] = cny.value * (1 + cny.extra_buffer_pct) / usd.value
-            report.warnings += [w for w in (cny.warning, usd.warning) if w]
-        except rates.RateUnavailable as e:
-            report.warnings.append(str(e))
-
-    # 3. Upsert products.
+    # 2. Upsert products.
     for sc, g in groups.items():
-        sizes = {}
-        for size, s in g["sizes"].items():
-            if s["currency"] not in usd_per:
-                report.row_errors.append((s["row"], "CNY kursi yo'q, narx USD'ga o'tkazilmadi"))
-                continue
-            sizes[size] = {"price_usd": round(s["price"] * usd_per[s["currency"]], 2),
-                           "available": s["available"]}
-        if not sizes:
-            continue
-
+        sizes = g["sizes"]
         p = session.scalar(select(Product).where(Product.source == SOURCE, Product.style_code == sc))
         is_new = p is None
         if is_new:
@@ -227,7 +197,8 @@ def import_sheet(
         existing = {s.size_eu: s for s in p.sizes}
         for size, s in sizes.items():
             ps = existing.get(size) or ProductSize(size_eu=size)
-            ps.price_usd, ps.available, ps.checked_at = s["price_usd"], s["available"], utcnow()
+            ps.source_price, ps.source_currency = s["price"], s["currency"]
+            ps.available, ps.checked_at = s["available"], utcnow()
             if size not in existing:
                 p.sizes.append(ps)
         for size, ps in existing.items():  # not in this sheet -> no longer offered

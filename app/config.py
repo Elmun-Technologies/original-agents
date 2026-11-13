@@ -2,9 +2,11 @@
 import os
 from functools import lru_cache
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import yaml
 
+TZ = ZoneInfo("Asia/Tashkent")  # business time: dates, months, customs schedule
 ROOT = Path(__file__).resolve().parent.parent
 CONFIG_DIR = ROOT / "config"
 DATA_DIR = ROOT / "data"  # runtime state (gitignored, docker volume)

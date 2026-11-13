@@ -256,3 +256,53 @@ def test_cny_same_48h_rule_and_separate_cache(tmp_path):
     with pytest.raises(rates.RateUnavailable, match="CNY"):
         rates.rate("CNY", NOV + timedelta(hours=49), client=DOWN, cache_file=f, settings=S)
     assert rates.cache_path("CNY") != rates.cache_path("USD")
+
+
+# --- quote at quote time from the source price ---
+from app.pricing.calculator import price_change, quote_from_source  # noqa: E402
+
+FX = {"USD": rates.Rate(Decimal("12000"), NOV), "CNY": rates.Rate(Decimal("1800"), NOV)}
+
+
+def qs(price, ccy, fx=FX, **kw):
+    return quote_from_source(price, ccy, "sneakers", fx, now=NOV, settings=S, categories=C, **kw)
+
+
+def test_quote_from_cny_source():
+    r = qs(800, "CNY")  # 800 * 1800 / 12000 = $120
+    assert r.source_price_usd == Decimal("120")
+    assert r.sell_price_uzs == q(120).sell_price_uzs
+    b = r.breakdown
+    assert (b["source_price"], b["source_currency"]) == (800.0, "CNY")
+    assert b["fx"] == {"USD": {"uzs": 12000.0, "date": NOV.isoformat(), "stale": False},
+                       "CNY": {"uzs": 1800.0, "date": NOV.isoformat(), "stale": False}}
+    assert b["sell_price_uzs"] == r.sell_price_uzs
+
+
+def test_quote_from_usd_source_needs_only_usd():
+    r = qs(120, "USD", fx={"USD": FX["USD"]})
+    assert r.sell_price_uzs == q(120).sell_price_uzs and list(r.breakdown["fx"]) == ["USD"]
+
+
+def test_quote_stale_rates_buffer_and_warnings():
+    stale_cny = rates.Rate(Decimal("1800"), NOV, Decimal("0.01"), "CBU CNY kursi olinmadi.")
+    stale_usd = rates.Rate(Decimal("12000"), NOV, Decimal("0.01"), "CBU USD kursi olinmadi.")
+    r = qs(800, "CNY", fx={"USD": stale_usd, "CNY": stale_cny})
+    assert r.source_price_usd == Decimal("121.2")          # CNY conversion +1%
+    assert r.usd_rate == Decimal("12300.00")                # USD buffer 1.5% + 1%
+    assert r.breakdown["fx"]["CNY"]["stale"] is True
+    assert r.warnings == ["CBU USD kursi olinmadi.", "CBU CNY kursi olinmadi."]
+
+
+def test_price_change_separates_source_and_fx():
+    base = qs(800, "CNY").breakdown
+    src = qs(880, "CNY").breakdown                          # source +10%, same rates
+    ch = price_change(base, src)
+    assert ch["source"] == pytest.approx(0.10) and ch["fx"] == 0 and ch["total"] > 0.05
+
+    fx2 = {"USD": FX["USD"], "CNY": rates.Rate(Decimal("1890"), NOV)}  # CNY/UZS +5%
+    ch = price_change(base, qs(800, "CNY", fx=fx2).breakdown)
+    assert ch["source"] == 0 and ch["fx"] == pytest.approx(0.05) and ch["total"] > 0
+
+    ch = price_change(base, qs(120, "USD").breakdown)        # currency switched
+    assert ch["source"] is None and ch["fx"] is None

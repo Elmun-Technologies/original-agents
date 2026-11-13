@@ -14,7 +14,7 @@ if context.is_offline_mode():
     with context.begin_transaction():
         context.run_migrations()
 else:
-    with make_engine(url).connect() as conn:
+    with make_engine(url, foreign_keys=False).connect() as conn:
         context.configure(connection=conn, **OPTS)
         with context.begin_transaction():
             context.run_migrations()

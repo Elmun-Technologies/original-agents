@@ -1,7 +1,7 @@
-brand,model_name,style_code,category,gender,colorway,size_eu,price,currency,available,source_url,image_urls,description,seller_note
-New Balance,530,MR530SG,sneakers,unisex,White Silver Navy,41,489,CNY,ha,https://www.poizon.com/product/new-balance-530-mr530sg,https://example.com/mr530sg-1.jpg|https://example.com/mr530sg-2.jpg,Retro running silhouette with ABZORB midsole,
-New Balance,530,MR530SG,sneakers,unisex,White Silver Navy,42.5,509,CNY,ha,https://www.poizon.com/product/new-balance-530-mr530sg,https://example.com/mr530sg-1.jpg,Retro running silhouette with ABZORB midsole,
-Air Jordan,Air Jordan 1 Retro High OG 复刻版,DZ5485-612,sneakers,men,Lost & Found,43,1299,CNY,ha,https://www.poizon.com/product/air-jordan-1-dz5485-612,https://example.com/dz5485-1.jpg,经典复刻 Chicago 配色,
-The North Face,1996 Retro Nuptse Jacket,NF0A3C8D,puffer,unisex,Black,M,1599,CNY,ha,https://www.poizon.com/product/tnf-nuptse-nf0a3c8d,https://example.com/nf0a3c8d-1.jpg,700-fill goose down,
-Nike,Dunk Low Retro,DD1391-100,sneakers,men,Panda,42,95,USD,ha,,https://example.com/dd1391-1.jpg,,"1:1 sifat, arzon"
-Adidas,Yeezy Boost 350 V2,HQ4540,sneakers,unisex,Onyx,42,1100,CNY,ha,,https://example.com/hq4540-1.jpg,纯原 版本,
+brand,model_name,style_code,category,gender,colorway,size_eu,price,currency,available,source_url,image_urls,description,seller_note,origin
+New Balance,530,MR530SG,sneakers,unisex,White Silver Navy,41,489,CNY,ha,https://www.poizon.com/product/new-balance-530-mr530sg,https://example.com/mr530sg-1.jpg|https://example.com/mr530sg-2.jpg,Retro running silhouette with ABZORB midsole,,dewu
+New Balance,530,MR530SG,sneakers,unisex,White Silver Navy,42.5,509,CNY,ha,https://www.poizon.com/product/new-balance-530-mr530sg,https://example.com/mr530sg-1.jpg,Retro running silhouette with ABZORB midsole,,dewu
+Air Jordan,Air Jordan 1 Retro High OG 复刻版,DZ5485-612,sneakers,men,Lost & Found,43,1299,CNY,ha,https://www.poizon.com/product/air-jordan-1-dz5485-612,https://example.com/dz5485-1.jpg,经典复刻 Chicago 配色,,dewu
+The North Face,1996 Retro Nuptse Jacket,NF0A3C8D,puffer,unisex,Black,M,1599,CNY,ha,https://www.poizon.com/product/tnf-nuptse-nf0a3c8d,https://example.com/nf0a3c8d-1.jpg,700-fill goose down,,poizon_com
+Nike,Dunk Low Retro,DD1391-100,sneakers,men,Panda,42,95,USD,ha,,https://example.com/dd1391-1.jpg,,"1:1 sifat, arzon",other
+Adidas,Yeezy Boost 350 V2,HQ4540,sneakers,unisex,Onyx,42,1100,CNY,ha,,https://example.com/hq4540-1.jpg,纯原 版本,,other

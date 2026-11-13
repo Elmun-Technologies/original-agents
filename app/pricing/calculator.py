@@ -1,13 +1,13 @@
 """Price formula (CLAUDE.md §6.3). Pure code, no LLM, no I/O. All numbers come from config."""
+import dataclasses
 import math
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from decimal import Decimal
-from zoneinfo import ZoneInfo
 
 from app import config
-
-TZ = ZoneInfo("Asia/Tashkent")
+from app.config import TZ
+from app.pricing.rates import Rate
 
 
 def D(x) -> Decimal:
@@ -133,6 +133,44 @@ def calculate(
             "cbu_rate": r2(D(cbu_rate)),
             "usd_rate": r2(usd_rate),
             "profit_uzs": int(sell - landed * usd_rate),
+            "sell_price_uzs": sell,
         },
         warnings=warnings,
     )
+
+
+def quote_from_source(source_price, source_currency: str, category: str, fx: dict[str, Rate],
+                      **kw) -> Quote:
+    """Quote from the price as listed at the source (USD or CNY), converted with the
+    current CBU rates in `fx` (must contain "USD", and the source currency).
+    A stale rate's extra buffer applies to its own conversion."""
+    usd = fx["USD"]
+    price = D(source_price)
+    if source_currency == "USD":
+        price_usd = price
+    else:
+        r = fx[source_currency]
+        price_usd = price * r.value * (1 + r.extra_buffer_pct) / usd.value
+    q = calculate(price_usd, category, usd.value, extra_buffer_pct=usd.extra_buffer_pct, **kw)
+    used = {c: fx[c] for c in dict.fromkeys(("USD", source_currency))}
+    q.breakdown.update(
+        source_price=float(price),
+        source_currency=source_currency,
+        fx={c: {"uzs": float(r.value), "date": r.fetched_at.isoformat(), "stale": r.warning is not None}
+            for c, r in used.items()},
+    )
+    return dataclasses.replace(q, warnings=q.warnings + [r.warning for r in used.values() if r.warning])
+
+
+def price_change(old: dict, new: dict) -> dict:
+    """Compares two quote breakdowns (from quote_from_source). Fractions, e.g. 0.06 = +6%.
+    total: sell price; source: price at the source (same currency); fx: CBU rate of the
+    source currency in UZS. source/fx are None if the source currency changed."""
+    pct = lambda a, b: float(D(b) / D(a) - 1)
+    ccy = new["source_currency"]
+    same = old.get("source_currency") == ccy
+    return {
+        "total": pct(old["sell_price_uzs"], new["sell_price_uzs"]),
+        "source": pct(old["source_price"], new["source_price"]) if same else None,
+        "fx": pct(old["fx"][ccy]["uzs"], new["fx"][ccy]["uzs"]) if same else None,
+    }

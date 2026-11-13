@@ -88,7 +88,7 @@ def apply(product) -> bool:
         "description": product.description,
         "seller_note": product.seller_note,
         "source_url": product.source_url,
-    }, official=product.source in rules().official_sources)
+    }, official=product.origin in rules().official_sources)
     product.rejected_reason = reason
     product.is_active = reason is None
     return reason is None

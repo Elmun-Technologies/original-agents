@@ -16,7 +16,7 @@ from pathlib import Path
 import httpx
 
 from app import config
-from app.pricing.calculator import TZ
+from app.config import TZ
 
 CBU_URL = "https://cbu.uz/uz/arkhiv-kursov-valyut/json/{ccy}/{day}/"
 log = logging.getLogger(__name__)

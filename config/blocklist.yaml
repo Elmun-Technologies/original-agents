@@ -66,17 +66,16 @@ common:
   - 顶级版
 
 # Checked everywhere EXCEPT official Poizon/Dewu text (product name + description of
-# official_sources). On Dewu "复刻" means an official retro release.
+# products whose origin is in official_sources). On Dewu "复刻" means an official retro release.
 # Still rejected anywhere if any `common` term is also present (e.g. "复刻 1:1").
 external_only:
   - 复刻
 
-# Sources whose name/description is Poizon/Dewu's own text.
-# TODO(admin): manual_sheet is treated as official because the intermediary copies
-# name/description from Dewu. If the sheet has free-form text, remove it from here.
+# Product origins (products.origin) whose name/description is Poizon/Dewu's own text.
+# manual_sheet rows set it per row via the optional "origin" column (default: other).
 official_sources:
+  - dewu
   - poizon_com
-  - manual_sheet
 
 # Replica supplier sites. Matched anywhere, including source_url.
 domains:

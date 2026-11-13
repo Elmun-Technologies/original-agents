@@ -18,7 +18,7 @@ Ish tili: **o'zbek (lotin)**, ikkinchi til rus. Kod, o'zgaruvchi nomlari va komm
 ## 2. O'zgarmas qoidalar (hech qachon buzilmaydi)
 
 - **Faqat original.** Manba faqat Poizon/Dewu. Replika, "A-kopiya", "1:1", "lyuks kopiya", "公司级", "纯原", "原单", "复刻" kabi so'zlar uchragan har qanday manba yoki tovar avtomatik rad etiladi. 共享货源 / gxhyapp.com va shunga o'xshash replika manbalari ishlatilmaydi. Ro'yxat: `config/blocklist.yaml`.
-  - **Istisno — 复刻:** Poizon/Dewu'ning o'z mahsulot nomi va rasmiy tavsifida 复刻 rasmiy "retro" relizni bildiradi va rad etish sababi emas. Sotuvchi izohi va boshqa manbalarda rad etiladi. 复刻 boshqa replika so'zi bilan birga kelsa (masalan "复刻 1:1", "复刻 纯原") — har qanday manbada rad etiladi.
+  - **Istisno — 复刻:** Poizon/Dewu'ning o'z mahsulot nomi va rasmiy tavsifida (`products.origin` = `dewu` / `poizon_com`; manual_sheet'da har qatorning `origin` ustuni, default `other`) 复刻 rasmiy "retro" relizni bildiradi va rad etish sababi emas. Sotuvchi izohi va boshqa manbalarda rad etiladi. 复刻 boshqa replika so'zi bilan birga kelsa (masalan "复刻 1:1", "复刻 纯原") — har qanday manbada rad etiladi.
 - **Biz rasmiy diler emasmiz.** Postlarda "Nike rasmiy do'koni" kabi da'volar yo'q. To'g'ri ibora: "Poizon orqali, haqiqiyligi tekshirilgan original".
 - **Rasmni AI bilan o'zgartirmaymiz.** Tovarning rangi, shakli, logotipi AI bilan "chiroyli" qilinmaydi. AI faqat fon, ramka, narx yozuvi, kompozitsiya uchun. Mijoz rasmda ko'rgan narsani oladi.
 - **Halol shartlar.** Yetkazish muddati, "qaytarish yo'q" sharti, narxning amal qilish muddati har bir postda va har bir suhbatda aniq aytiladi. Soxta "faqat 2 ta qoldi", soxta sharhlar yo'q.

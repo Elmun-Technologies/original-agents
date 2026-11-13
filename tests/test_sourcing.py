@@ -1,6 +1,5 @@
 import csv
 import io
-from datetime import datetime
 from decimal import Decimal
 
 import httpx
@@ -11,25 +10,13 @@ from app import config
 from app.agents import sourcing
 from app.agents.sourcing import SheetError, import_sheet
 from app.db.models import Product
-from app.pricing import rates
-from app.pricing.calculator import TZ
 
-NOW = datetime(2026, 11, 14, 10, tzinfo=TZ)
-CNY, USD = Decimal("1795.58"), Decimal("11973.44")
 SAMPLE = str(config.ROOT / "data/samples/manual_sheet_sample.csv")
-HEADER = ",".join(sourcing.COLUMNS)
+HEADER = ",".join(sourcing.COLUMNS + ("origin",))
 
 
-def fresh(ccy, now):
-    return rates.Rate({"CNY": CNY, "USD": USD}[ccy], now)
-
-
-def cny_usd(cny):
-    return round(Decimal(cny) * CNY / USD, 2)
-
-
-def run(db, source, get_rate=fresh, **kw):
-    return import_sheet(db, source, now=NOW, get_rate=get_rate, **kw)
+def run(db, source, **kw):
+    return import_sheet(db, source, **kw)
 
 
 def csv_file(tmp_path, *rows, header=HEADER):
@@ -39,10 +26,12 @@ def csv_file(tmp_path, *rows, header=HEADER):
 
 
 def row(style="MR530SG", size="42", price="489", currency="CNY", category="sneakers",
-        gender="unisex", available="ha", brand="New Balance", model="530", note="", desc=""):
+        gender="unisex", available="ha", brand="New Balance", model="530", note="", desc="",
+        origin="dewu"):
     buf = io.StringIO()
     csv.writer(buf, lineterminator="").writerow(
-        [brand, model, style, category, gender, "White", size, price, currency, available, "", "", desc, note])
+        [brand, model, style, category, gender, "White", size, price, currency, available, "", "",
+         desc, note, origin])
     return buf.getvalue()
 
 
@@ -56,19 +45,21 @@ def test_sample_csv(db):
     assert [sc for sc, _ in rep.rejected] == ["DD1391-100", "HQ4540"]
     assert dict(rep.rejected)["DD1391-100"] == "replika: seller_note='1:1'"
     assert dict(rep.rejected)["HQ4540"] == "replika: description='纯原'"
-    assert rep.row_errors == [] and rep.skipped == [] and rep.warnings == []
+    assert rep.row_errors == [] and rep.skipped == []
 
     nb = product(db, "MR530SG")
-    assert {s.size_eu: s.price_usd for s in nb.sizes} == {"41": cny_usd(489), "42.5": cny_usd(509)}
+    # stored as listed at the source; USD is computed at quote time
+    assert {s.size_eu: (s.source_price, s.source_currency) for s in nb.sizes} == {
+        "41": (Decimal("489.00"), "CNY"), "42.5": (Decimal("509.00"), "CNY")}
     assert nb.images == ["https://example.com/mr530sg-1.jpg", "https://example.com/mr530sg-2.jpg"]
-    assert nb.is_active and nb.source == "manual_sheet"
+    assert nb.is_active and nb.source == "manual_sheet" and nb.origin == "dewu"
 
-    aj = product(db, "DZ5485-612")  # official 复刻 in name/description: kept
+    aj = product(db, "DZ5485-612")  # official (dewu) 复刻 in name/description: kept
     assert aj.is_active and aj.rejected_reason is None
-    assert product(db, "NF0A3C8D").sizes[0].size_eu == "M"
+    assert product(db, "NF0A3C8D").origin == "poizon_com"
 
     dunk = product(db, "DD1391-100")  # rejected products are stored, inactive, with reason
-    assert not dunk.is_active and dunk.sizes[0].price_usd == Decimal("95.00")
+    assert not dunk.is_active and dunk.sizes[0].source_currency == "USD"
     assert "Rad etildi" in rep.text() and "DD1391-100" in rep.text()
 
 
@@ -84,6 +75,7 @@ def test_sample_csv(db):
     (row(currency="EUR"), "valyuta noto'g'ri"),
     (row(available="maybe"), "available noto'g'ri"),
     (row(gender="kids"), "gender noto'g'ri"),
+    (row(origin="taobao"), "origin noto'g'ri"),
     (row(style=""), "style_code bo'sh"),
 ])
 def test_bad_rows_reported_not_imported(db, tmp_path, bad_row, msg):
@@ -110,14 +102,34 @@ def test_apparel_sizes(db, tmp_path, size, ok):
 
 
 def test_duplicate_size_and_conflicting_rows(db, tmp_path):
-    rep = run(db, csv_file(tmp_path, row(size="42"), row(size="42"), row(size="43", model="550")))
-    assert [n for n, _ in rep.row_errors] == [3, 4]
-    assert "takrorlangan" in rep.row_errors[0][1] and "farq qiladi" in rep.row_errors[1][1]
+    rep = run(db, csv_file(tmp_path, row(size="42"), row(size="42"), row(size="43", model="550"),
+                           row(size="44", origin="other")))
+    assert [n for n, _ in rep.row_errors] == [3, 4, 5]
+    assert "takrorlangan" in rep.row_errors[0][1]
+    assert all("farq qiladi" in r for _, r in rep.row_errors[1:])
 
 
 def test_missing_columns(tmp_path):
     with pytest.raises(SheetError, match="currency"):
         sourcing.read_rows(csv_file(tmp_path, header=HEADER.replace(",currency", "")))
+
+
+def test_origin_column_is_optional(db, tmp_path):
+    header = ",".join(sourcing.COLUMNS)
+    rep = run(db, csv_file(tmp_path, row().rsplit(",", 1)[0], header=header))
+    assert rep.created == ["MR530SG"] and product(db, "MR530SG").origin == "other"
+
+
+@pytest.mark.parametrize("origin,model,kept", [
+    ("dewu", "Air Jordan 1 复刻版", True),
+    ("poizon_com", "Air Jordan 1 复刻版", True),
+    ("other", "Air Jordan 1 复刻版", False),       # not official text
+    ("", "Air Jordan 1 复刻版", False),            # default other
+    ("dewu", "Air Jordan 1 复刻 1:1", False),     # 复刻 + replica term
+])
+def test_origin_decides_official_text(db, tmp_path, origin, model, kept):
+    rep = run(db, csv_file(tmp_path, row(model=model, origin=origin)))
+    assert bool(rep.created) == kept and bool(rep.rejected) != kept
 
 
 def test_missing_file():
@@ -144,7 +156,7 @@ def test_reimport_updates(db, tmp_path):
     rep = run(db, csv_file(tmp_path, row(size="41", price="520", currency="USD")))
     assert rep.updated == ["MR530SG"] and rep.created == []
     sizes = {s.size_eu: s for s in product(db, "MR530SG").sizes}
-    assert sizes["41"].price_usd == Decimal("520.00")
+    assert (sizes["41"].source_price, sizes["41"].source_currency) == (Decimal("520.00"), "USD")
     assert sizes["42"].available is False  # dropped from sheet
 
 
@@ -154,33 +166,6 @@ def test_reimport_clean_after_reject(db, tmp_path):
     run(db, csv_file(tmp_path, row()))
     p = product(db, "MR530SG")
     assert p.is_active and p.rejected_reason is None
-
-
-def test_cny_rate_unavailable_usd_rows_still_import(db, tmp_path):
-    def down(ccy, now):
-        raise rates.RateUnavailable("CBU CNY kursi olinmadi va oxirgi kurs yo'q. Narx hisoblanmaydi.")
-    rep = run(db, csv_file(tmp_path, row(style="CNY-1"), row(style="USD-1", currency="USD", price="100")),
-              get_rate=down)
-    assert rep.created == ["USD-1"]
-    assert rep.row_errors == [(2, "CNY kursi yo'q, narx USD'ga o'tkazilmadi")]
-    assert any("CNY kursi olinmadi" in w for w in rep.warnings)
-
-
-def test_stale_cny_rate_adds_buffer_and_warning(db, tmp_path):
-    def stale(ccy, now):
-        if ccy == "CNY":
-            return rates.Rate(CNY, now, Decimal("0.01"), "CBU CNY kursi olinmadi. 30 soat oldingi kurs")
-        return fresh(ccy, now)
-    rep = run(db, csv_file(tmp_path, row(price="1000")), get_rate=stale)
-    expected = round(Decimal(1000) * CNY * Decimal("1.01") / USD, 2)
-    assert product(db, "MR530SG").sizes[0].price_usd == expected
-    assert rep.warnings == ["CBU CNY kursi olinmadi. 30 soat oldingi kurs"]
-
-
-def test_usd_only_sheet_does_not_fetch_rates(db, tmp_path):
-    def boom(ccy, now):
-        raise AssertionError("rates must not be fetched")
-    assert run(db, csv_file(tmp_path, row(currency="USD", price="100")), get_rate=boom).created
 
 
 def test_google_sheet_url(db):
