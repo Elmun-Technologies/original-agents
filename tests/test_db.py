@@ -145,3 +145,20 @@ def test_origin_check(db):
                    category="sneakers", origin="taobao"))
     with pytest.raises(IntegrityError):
         db.flush()
+
+
+def test_datetimes_stored_as_utc_and_read_back_aware(db):
+    from datetime import datetime, timezone
+    from app.config import TZ
+    from app.db.models import LlmCall
+    local = datetime(2026, 11, 15, 10, 0, tzinfo=TZ)          # 05:00 UTC
+    db.add(LlmCall(purpose="x", model="m", input_tokens=0, output_tokens=0, cost_usd=0, created_at=local))
+    db.commit()
+    db.expire_all()                                            # force a real read from SQLite
+    got = db.query(LlmCall).one().created_at
+    assert got == local and got.tzinfo is not None and got.utcoffset().total_seconds() == 0
+    assert db.query(LlmCall).filter(LlmCall.created_at < datetime(2026, 11, 15, 5, 30, tzinfo=timezone.utc)).count() == 1
+    db.add(LlmCall(purpose="x", model="m", input_tokens=0, output_tokens=0, cost_usd=0,
+                   created_at=datetime(2026, 11, 15, 10, 0)))  # naive: rejected
+    with pytest.raises(Exception, match="naive"):
+        db.flush()

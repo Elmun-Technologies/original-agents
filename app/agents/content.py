@@ -10,13 +10,14 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app import config, llm
 from app.config import TZ
 from app.db.models import Post, Product, Quote
 from app.media.render import CardData, render_card, render_story
-from app.pricing.calculator import quote_from_source
+from app.pricing.calculator import quote_from_source, stock_quote
 from app.pricing.rates import Rate
 from app.scraping import blocklist
 from app.uz import format_uzs, uz
@@ -84,7 +85,8 @@ def hashtags(product: Product, cat: dict, base: list[str]) -> list[str]:
 
 
 def build_caption(product: Product, cat: dict, body: str, price_uzs: int, price_from: bool,
-                  sizes: list[str], delivery_days: str, s: dict) -> str:
+                  sizes: list[str], delivery: str, s: dict) -> str:
+    """delivery: e.g. "Yetkazish: 20–30 kun" or "Mavjud · 1 kunda yetkazamiz"."""
     c = s["content"]
     title = f"{product.brand} {display_model(product)}" + (f" — {product.colorway}" if product.colorway else "")
     price = format_uzs(price_uzs) + (" dan (eng arzon oʻlcham)" if price_from else "")
@@ -95,7 +97,7 @@ def build_caption(product: Product, cat: dict, body: str, price_uzs: int, price_
         "",
         f"💰 Narx: {price} · {s['pricing']['quote_valid_hours']} soat amal qiladi",
         f"📏 Oʻlchamlar: {', '.join(sizes)}",
-        f"🚚 Yetkazish: {delivery_days} kun",
+        f"🚚 {delivery}",
         "⚠️ Buyurtma qilingan tovar oʻlcham sababli qaytarilmaydi — oʻlchamingizni yozing, tanlashda yordam beramiz.",
         "✅ Original: Poizon orqali haqiqiyligi tekshirilgan.",
         f"👉 {uz(c['cta'])}",
@@ -114,63 +116,136 @@ def product_facts(product: Product, cat: dict) -> str:
     }, ensure_ascii=False, indent=1)
 
 
-def own_photos(product: Product, photos_dir: Path, limit: int) -> list[Path]:
-    d = photos_dir / re.sub(r"[^\w.-]", "_", product.style_code)
-    return sorted(p for p in d.glob("*") if p.suffix.lower() in PHOTO_EXT)[:limit] if d.is_dir() else []
+def photo_dir(product: Product) -> Path:
+    return config.ROOT / config.settings()["content"]["photos_dir"] / re.sub(r"[^\w.-]", "_", product.style_code)
 
 
-def create_draft(session: Session, product: Product, llm_client, fx: dict[str, Rate], *,
-                 now: datetime | None = None, out_root: Path | None = None) -> Draft:
-    """Builds quotes for available sizes, the caption and the images; adds a draft Post.
-    Flushes, does not commit. Raises ContentError if anything is not publishable."""
-    s, cats = config.settings(), config.categories()
-    c = s["content"]
-    now = now or datetime.now(TZ)
-    if not product.is_active:
-        raise ContentError(f"{product.style_code}: mahsulot faol emas ({product.rejected_reason})")
-    cat = cats[product.category]
-    sizes = sorted((ps for ps in product.sizes if ps.available), key=lambda ps: size_key(ps.size_eu))
-    if not sizes:
-        raise ContentError(f"{product.style_code}: mavjud oʻlcham yoʻq")
+def own_photos(product: Product, limit: int | None = None) -> list[Path]:
+    # TODO(admin): image_source_policy=source_images (download Poizon images) is not built;
+    # own_photos_only is the only mode until the image-rights question is settled.
+    d = photo_dir(product)
+    photos = sorted(p for p in d.glob("*") if p.suffix.lower() in PHOTO_EXT) if d.is_dir() else []
+    return photos[:limit] if limit else photos
 
+
+def make_quotes(product: Product, fx: dict[str, Rate], now: datetime, stock: bool) -> tuple[list[Quote], list[str]]:
+    """Fresh quotes (not yet added to the session). stock=True: only sizes in our stock."""
     notes: list[str] = []
-    quotes = []
+    quotes: list[Quote] = []
+    sizes = sorted(product.sizes, key=lambda ps: size_key(ps.size_eu))
     for ps in sizes:
-        q = quote_from_source(ps.source_price, ps.source_currency, product.category, fx, now=now)
-        notes += [w for w in q.warnings if w not in notes]
+        if stock:
+            if ps.stock_qty <= 0:
+                continue
+            if not ps.stock_cost_uzs:
+                notes.append(f"{product.style_code} {ps.size_eu}: tannarx yoʻq — /stockcost {product.style_code} <summa> {ps.size_eu}")
+                continue
+            q = stock_quote(ps.stock_cost_uzs, fx["USD"].value, now=now)
+        else:
+            if not ps.available:
+                continue
+            q = quote_from_source(ps.source_price, ps.source_currency, product.category, fx, now=now)
+            notes += [w for w in q.warnings if w not in notes]
         quotes.append(Quote(product_id=product.id, size=ps.size_eu, landed_cost_usd=q.landed_cost_usd,
                             sell_price_uzs=q.sell_price_uzs, usd_rate=q.usd_rate,
-                            valid_until=q.valid_until, breakdown=q.breakdown))
+                            valid_until=q.valid_until, breakdown=q.breakdown, created_at=now))
+    if not quotes:
+        raise ContentError(f"{product.style_code}: {'omborda narxlanadigan' if stock else 'mavjud'} oʻlcham yoʻq"
+                           + (f" ({'; '.join(notes)})" if notes else ""))
+    return quotes, notes
+
+
+def delivery_text(quotes: list[Quote], s: dict) -> str:
+    if quotes[0].breakdown.get("stock"):
+        return s["stock"]["delivery_text"]
+    return f"Yetkazish: {s['content']['delivery_days'][quotes[0].breakdown['shipping_mode']]} kun"
+
+
+def assemble(session: Session, post: Post, product: Product, quotes: list[Quote], body: str,
+             out_root: Path | None = None) -> list[str]:
+    """Caption + images for post from quotes and body; links the quotes to the post.
+    Raises ContentError (nothing changed) if the caption is too long."""
+    s, cat = config.settings(), config.categories()[product.category]
+    c = s["content"]
     prices = {q.sell_price_uzs for q in quotes}
     price, price_from = min(prices), len(prices) > 1
-    delivery = c["delivery_days"][quotes[0].breakdown["shipping_mode"]]
-    size_labels = [q.size for q in quotes]
-
-    body = uz(llm_client.complete("content", PROMPT.read_text(encoding="utf-8"), product_facts(product, cat), now=now))
-    problems = check_body(body, c["max_body_chars"], s["llm"]["pii_allowlist"])
-    if problems:
-        raise ContentError(f"{product.style_code}: LLM matni rad etildi: {'; '.join(problems)}")
-    caption = build_caption(product, cat, body, price, price_from, size_labels, delivery, s)
+    sizes = [q.size for q in quotes]
+    delivery = delivery_text(quotes, s)
+    caption = build_caption(product, cat, body, price, price_from, sizes, delivery, s)
     if len(caption) > c["caption_max_chars"]:
         raise ContentError(f"{product.style_code}: post matni {len(caption)} belgi > {c['caption_max_chars']}")
-
+    if post.id is None:
+        session.add(post)
+        session.flush()
+    for q in quotes:
+        q.post_id = post.id
     session.add_all(quotes)
-    post = Post(product_id=product.id, status="draft", caption_uz=caption)
-    session.add(post)
-    session.flush()
+    post.caption_uz, post.body_uz = caption, body
 
-    # TODO(admin): image_source_policy=source_images (download Poizon images) is not built yet;
-    # both policies use admin photos from photos_dir until the rights question is settled.
-    photos = own_photos(product, config.ROOT / c["photos_dir"], c["cards_max"])
+    notes = []
+    photos = own_photos(product, c["cards_max"])
     if not photos:
-        notes.append(f"Rasm kerak: {product.brand} {product.model_name} ({product.style_code}) — "
-                     f"{c['photos_dir']}/{product.style_code}/ ga surat yuklang.")
+        notes.append(f"Rasm kerak: {product.brand} {display_model(product)} — SKU {product.style_code}. "
+                     f"Botga surat (yaxshisi fayl sifatida) yuboring, izohga SKU yozing.")
     card = CardData(brand=product.brand, model=" ".join(filter(None, [display_model(product), product.colorway])),
-                    price_uzs=price, price_from=price_from, sizes=size_labels, badge=c["badge"],
-                    delivery=f"Yetkazish: {delivery} kun", cta=c["cta"])
+                    price_uzs=price, price_from=price_from, sizes=sizes, badge=c["badge"],
+                    delivery=delivery, cta=c["cta"])
     out = (out_root or config.DATA_DIR / "posts") / str(post.id)
+    for old in out.glob("*.png") if out.is_dir() else []:
+        old.unlink()
     paths = [render_card(card, ph, out / f"card_{i + 1}.png") for i, ph in enumerate(photos or [None])]
     paths.append(render_story(card, photos[0] if photos else None, out / "story.png"))
     post.image_paths = [str(p) for p in paths]
     session.flush()
+    return notes
+
+
+def validate_body(body: str, s: dict, sku: str) -> str:
+    body = uz(body.strip())
+    problems = check_body(body, s["content"]["max_body_chars"], s["llm"]["pii_allowlist"])
+    if problems:
+        raise ContentError(f"{sku}: matn rad etildi: {'; '.join(problems)}")
+    return body
+
+
+def create_draft(session: Session, product: Product, llm_client, fx: dict[str, Rate], *,
+                 now: datetime | None = None, out_root: Path | None = None, stock: bool = False) -> Draft:
+    """Quotes + LLM body + caption + images -> a draft Post. Flushes, does not commit.
+    Raises ContentError (nothing written) if anything is not publishable."""
+    s = config.settings()
+    now = now or datetime.now(TZ)
+    if not product.is_active and not stock:
+        raise ContentError(f"{product.style_code}: mahsulot faol emas ({product.rejected_reason})")
+    if product.rejected_reason and product.rejected_reason.startswith("replika"):
+        raise ContentError(f"{product.style_code}: {product.rejected_reason}")
+    cat = config.categories()[product.category]
+    quotes, notes = make_quotes(product, fx, now, stock)
+    raw = llm_client.complete("content", PROMPT.read_text(encoding="utf-8"), product_facts(product, cat), now=now)
+    try:
+        body = validate_body(raw, s, product.style_code)
+    except ContentError as e:
+        raise ContentError(str(e).replace("matn rad etildi", "LLM matni rad etildi")) from None
+    post = Post(product_id=product.id, status="draft", is_stock=stock, created_at=now)
+    notes += assemble(session, post, product, quotes, body, out_root)
     return Draft(post=post, quotes=quotes, notes=notes)
+
+
+def post_quotes(session: Session, post: Post) -> list[Quote]:
+    """Latest quote per size for this post."""
+    latest: dict[str, Quote] = {}
+    for q in session.scalars(select(Quote).where(Quote.post_id == post.id).order_by(Quote.id)):
+        latest[q.size] = q
+    return sorted(latest.values(), key=lambda q: size_key(q.size))
+
+
+def refresh_post(session: Session, post: Post, fx: dict[str, Rate], *, now: datetime | None = None,
+                 body: str | None = None, out_root: Path | None = None) -> tuple[list[Quote], list[Quote], list[str]]:
+    """New quotes (current rates), caption and images; optionally a new body (admin edit).
+    Returns (old_quotes, new_quotes, notes)."""
+    now = now or datetime.now(TZ)
+    product = session.get(Product, post.product_id)
+    old = post_quotes(session, post)
+    new, notes = make_quotes(product, fx, now, post.is_stock)
+    body = validate_body(body, config.settings(), product.style_code) if body is not None else post.body_uz
+    notes += assemble(session, post, product, new, body, out_root)
+    return old, new, notes

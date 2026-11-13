@@ -134,6 +134,8 @@ def calculate(
             "usd_rate": r2(usd_rate),
             "profit_uzs": int(sell - landed * usd_rate),
             "sell_price_uzs": sell,
+            "customs_value_usd": r2(value),   # for the per-recipient monthly $200 limit
+            "weight_kg": r2(weight),
         },
         warnings=warnings,
     )
@@ -174,3 +176,29 @@ def price_change(old: dict, new: dict) -> dict:
         "source": pct(old["source_price"], new["source_price"]) if same else None,
         "fx": pct(old["fx"][ccy]["uzs"], new["fx"][ccy]["uzs"]) if same else None,
     }
+
+
+def stock_quote(stock_cost_uzs: int, usd_rate, *, now: datetime | None = None,
+                settings: dict | None = None) -> Quote:
+    """Item already in our Tashkent stock: no buyout, shipping or customs left to pay.
+    Price = what the unit really cost us x (1 + stock.markup), rounded like other prices."""
+    s = settings or config.settings()
+    p = s["pricing"]
+    now = now or datetime.now(TZ)
+    cost = D(stock_cost_uzs)
+    if cost <= 0:
+        raise ValueError("stock cost must be positive (set it with /stockcost)")
+    markup = D(s["stock"]["markup"])
+    step = int(p["round_to_uzs"])
+    sell = math.ceil(cost * (1 + markup) / step) * step
+    rate = D(usd_rate)
+    return Quote(
+        category="", source_price_usd=Decimal(0), landed_cost_usd=round(cost / rate, 2),
+        sell_price_uzs=sell, usd_rate=round(rate, 2),
+        valid_until=now + timedelta(hours=p["quote_valid_hours"]),
+        customs_value_usd=Decimal(0), weight_kg=Decimal(0),
+        breakdown={"stock": True, "stock_cost_uzs": int(cost), "stock_markup": float(markup),
+                   "sell_price_uzs": sell, "profit_uzs": int(sell - cost),
+                   "customs_value_usd": 0.0, "weight_kg": 0.0},
+        warnings=[],
+    )

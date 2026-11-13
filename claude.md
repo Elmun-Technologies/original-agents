@@ -171,7 +171,10 @@ sell_price_uzs          = ceil_to(landed_cost_usd * (1 + markup[category]) * usd
 - Har kuni 10:00 da 3–8 ta yangi `draft` post adminga Telegram botda yuboriladi: rasmlar + matn + narx tafsiloti (tannarx, ustama, foyda) + tugmalar: **✅ Tasdiqlash / ✏️ Tahrirlash / ❌ Rad etish / 🔄 Narxni yangilash**.
 - Tasdiqlangan post belgilangan vaqtlarda (12:00, 19:00, 21:00 — sozlanadi) Telegram kanalga chiqadi.
 - Instagram uchun: tasdiqlangan post rasmlari va matni adminga alohida "Instagram paket" sifatida yuboriladi (admin qo'lda joylaydi). Keyingi bosqichda Meta Graph API orqali avtomatik nashr — faqat admin buni yoqsa.
-- Admin bot buyruqlari: `/today`, `/orders`, `/trend <matn>`, `/rate`, `/pause`, `/resume`, `/report`, `/expense <summa> <turi> <izoh>`.
+- Admin bot buyruqlari: `/today`, `/orders`, `/trend <matn>`, `/rate`, `/pause`, `/resume`, `/report`, `/expense <summa> <turi> <izoh>`, `/drafts` (hozir draft), `/neworder <post_id> <oʻlcham> <ism> <telefon|@username> [ext=<USD>] [novac]`, `/lead <post_id> [oʻlcham]`, `/stockcost <SKU> <summa> [oʻlcham]`.
+- Suratlar: admin botga SKU izohi bilan yuboradi (fayl sifatida — sifat saqlanadi), bir SKUga 10 tagacha; suratsiz post tasdiqlanmaydi.
+- Draft tartibi: ombordagi tovar → `/trend`ga mos → posti yoʻq eng yangi; kuniga bir brenddan ≤2, bir modeldan ≤1.
+- Ombor: qoldiq va tannarx **oʻlcham boʻyicha** (`product_sizes.stock_qty`, `stock_cost_uzs`); narx = tannarx × (1 + `stock.markup`); postda "Mavjud · 1 kunda yetkazamiz". Tannarx buyurtma "📦 Omborga" qilinganda uning landed cost'idan olinadi (oʻrtacha), `/stockcost` bilan tuzatiladi.
 - Tasdiqlashdan oldin narx qayta tekshiriladi: manbadagi narx 5% dan ko'p o'zgargan bo'lsa — post qayta hisoblanadi va admin ogohlantiriladi.
 
 ### 6.6 Sotuv agenti — Chatplace (`agents/sales_api.py` + `prompts/sales_agent.md`)

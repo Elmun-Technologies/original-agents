@@ -5,7 +5,16 @@ from app.db.models import Base
 
 # URL: set by caller (tests) via config.set_main_option, else DATABASE_URL env.
 url = context.config.get_main_option("sqlalchemy.url") or None
-OPTS = dict(target_metadata=Base.metadata, render_as_batch=True, compare_type=True)
+
+
+def render_item(type_, obj, autogen_context):
+    # UTCDateTime is a Python-side wrapper; the column itself is a plain timestamptz.
+    if type_ == "type" and obj.__class__.__name__ == "UTCDateTime":
+        return "sa.DateTime(timezone=True)"
+    return False
+
+
+OPTS = dict(target_metadata=Base.metadata, render_as_batch=True, compare_type=True, render_item=render_item)
 
 
 if context.is_offline_mode():

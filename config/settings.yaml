@@ -69,3 +69,18 @@ content:
   caption_max_chars: 1024           # Telegram photo caption limit
   photos_dir: data/photos           # own photos: data/photos/<style_code>/*.jpg|png|webp
   cards_max: 5
+
+stock:
+  markup: 0.30                      # stock in Tashkent, delivered at once -> priced higher
+  delivery_text: "Mavjud · 1 kunda yetkazamiz"
+
+publishing:
+  daily_drafts: {min: 3, max: 8}
+  draft_time: "10:00"
+  publish_times: ["12:00", "19:00", "21:00"]
+  price_change_alert_pct: 0.05      # recheck before approve/publish
+  per_brand_daily_max: 2            # drafts per day, keeps the channel varied
+  per_model_daily_max: 1
+  stock_repost_after_days: 14       # stock items may be posted again after this
+  trend_days: 30                    # /trend notes older than this are ignored
+  photos_max_per_sku: 10
