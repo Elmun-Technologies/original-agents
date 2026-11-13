@@ -15,12 +15,14 @@ pricing:
   local_delivery_usd: 2             # Tashkent
   volumetric_divisor: 6000          # cargo: L*W*H cm / divisor = volumetric kg
   usd_rate_buffer_pct: 0.015
+  stale_rate_max_hours: 48          # CBU down: reuse last good rate up to this age
+  stale_rate_extra_buffer_pct: 0.01 # ...with this extra buffer on top
   round_to_uzs: 10000
   quote_valid_hours: 24
 
 customs:
   # TODO(admin): confirm all customs rules below with a customs broker.
-  duty_free_limit_usd: 200          # per recipient per calendar month
+  duty_free_limit_usd: 200          # per recipient (phone) per calendar month, Tashkent time
   customs_value_includes_shipping: false
   schedule:                         # picked by quote date; last entry with from <= date wins
     - {from: 2000-01-01, rate: 0.30, min_per_kg_usd: 3}

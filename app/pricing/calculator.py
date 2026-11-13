@@ -28,8 +28,9 @@ class Quote:
     warnings: list[str]
 
 
-def chargeable_weight(cat: dict, divisor) -> Decimal:
-    dims = cat["vacuum_package_cm"] if cat.get("vacuum_packing") else cat["package_cm"]
+def chargeable_weight(cat: dict, divisor, vacuum_packing: bool | None = None) -> Decimal:
+    vacuum = cat.get("vacuum_packing") if vacuum_packing is None else vacuum_packing
+    dims = cat["vacuum_package_cm"] if vacuum and "vacuum_package_cm" in cat else cat["package_cm"]
     volumetric = D(dims[0]) * D(dims[1]) * D(dims[2]) / D(divisor)
     return max(D(cat["weight_kg"]), volumetric)
 
@@ -46,7 +47,7 @@ def customs_rule(schedule: list[dict], on: date) -> dict:
 
 
 def customs_duty(value_usd: Decimal, weight_kg: Decimal, limit_usd, rule: dict) -> Decimal:
-    # TODO(admin): confirm with broker — duty on excess over limit, min per kg of actual weight.
+    # Duty on the excess over the limit; per-kg minimum uses actual (not volumetric) weight.
     if value_usd <= D(limit_usd):
         return Decimal(0)
     return max(D(rule["rate"]) * (value_usd - D(limit_usd)), D(rule["min_per_kg_usd"]) * weight_kg)
@@ -60,12 +61,16 @@ def calculate(
     now: datetime | None = None,
     prior_month_value_usd=0,
     prior_month_weight_kg=0,
+    extra_buffer_pct=0,
+    vacuum_packing: bool | None = None,
     settings: dict | None = None,
     categories: dict | None = None,
 ) -> Quote:
-    """prior_month_*: customs value / actual weight of this recipient's other orders this
+    """prior_month_*: customs value / actual weight of this recipient's other parcels this
     calendar month. The $200 limit is per recipient per month, so this item pays the
-    *additional* duty the combined parcel triggers."""
+    *additional* duty the combined parcel triggers.
+    extra_buffer_pct: added on top of usd_rate_buffer_pct (stale CBU rate).
+    vacuum_packing: per-order override of the category default."""
     s = settings or config.settings()
     cats = categories or config.categories()
     if category not in cats:
@@ -79,7 +84,7 @@ def calculate(
     buyout_fee = max(price * D(p["buyout_fee_pct"]), D(p["buyout_fee_min_usd"]))
 
     mode = shipping_mode(cat, now.month, p["avia_months"])
-    ch_weight = chargeable_weight(cat, p["volumetric_divisor"])
+    ch_weight = chargeable_weight(cat, p["volumetric_divisor"], vacuum_packing)
     intl_shipping = ch_weight * D(p["ship_rate_per_kg_usd"][mode])
     shipping = intl_shipping + D(p["local_delivery_usd"])
 
@@ -99,7 +104,7 @@ def calculate(
         )
 
     landed = price + buyout_fee + shipping + customs
-    usd_rate = D(cbu_rate) * (1 + D(p["usd_rate_buffer_pct"]))
+    usd_rate = D(cbu_rate) * (1 + D(p["usd_rate_buffer_pct"]) + D(extra_buffer_pct))
     raw_uzs = landed * (1 + D(cat["markup"])) * usd_rate
     step = int(p["round_to_uzs"])
     sell = math.ceil(raw_uzs / step) * step
@@ -119,6 +124,7 @@ def calculate(
             "buyout_fee_usd": r2(buyout_fee),
             "shipping_mode": mode,
             "chargeable_weight_kg": r2(ch_weight),
+            "vacuum_packing": bool(cat.get("vacuum_packing") if vacuum_packing is None else vacuum_packing),
             "shipping_usd": r2(shipping),
             "customs_usd": r2(customs),
             "customs_rate": float(rule["rate"]),

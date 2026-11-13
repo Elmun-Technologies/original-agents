@@ -19,7 +19,9 @@ winter_boots:
 puffer:            # puxovik / qishki kurtka
   weight_kg: 1.3
   package_cm: [50, 40, 20]
-  vacuum_packing: false            # true -> use vacuum_package_cm instead
+  # TODO(admin): kargo/vositachi vakuum qadoqlashni tasdiqlashi kerak.
+  # Per-order override: /neworder can mark "no vacuum" and the price is recalculated.
+  vacuum_packing: true             # true -> use vacuum_package_cm instead
   vacuum_package_cm: [40, 30, 8]
   markup: 0.25
   winter: true

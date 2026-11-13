@@ -1,5 +1,5 @@
 import copy
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 
 import httpx
@@ -16,6 +16,7 @@ S = {
         "ship_rate_per_kg_usd": {"auto": 5.5, "avia": 9.2}, "avia_months": [11, 12, 1],
         "local_delivery_usd": 2, "volumetric_divisor": 6000, "usd_rate_buffer_pct": 0.015,
         "round_to_uzs": 10000, "quote_valid_hours": 24,
+        "stale_rate_max_hours": 48, "stale_rate_extra_buffer_pct": 0.01,
     },
     "customs": {
         "duty_free_limit_usd": 200, "customs_value_includes_shipping": False,
@@ -105,6 +106,23 @@ def test_volumetric_and_vacuum_and_avia():
     assert q(150, cat="puffer", now=june).breakdown["shipping_mode"] == "auto"
 
 
+def test_vacuum_per_order_override():
+    c = copy.deepcopy(C)
+    c["puffer"]["vacuum_packing"] = True
+    with_vac = q(150, cat="puffer", c=c)
+    no_vac = q(150, cat="puffer", c=c, vacuum_packing=False)
+    assert with_vac.breakdown["chargeable_weight_kg"] == 1.6
+    assert no_vac.breakdown["chargeable_weight_kg"] == 6.67
+    assert no_vac.breakdown["vacuum_packing"] is False
+    assert no_vac.sell_price_uzs > with_vac.sell_price_uzs
+    # sneakers have no vacuum size: override is ignored, not a crash
+    assert q(100, vacuum_packing=True).breakdown["chargeable_weight_kg"] == 1.5
+
+
+def test_extra_buffer_for_stale_rate():
+    assert q(100, extra_buffer_pct=0.01).usd_rate == Decimal("12300.00")  # 12000 * 1.025
+
+
 def test_monthly_aggregation_crosses_limit():
     r = q(100, prior_month_value_usd=150, prior_month_weight_kg=1.5)
     # combined 250: max(0.3*50, 3*3.0)=15, prior alone 0 -> this item pays 15
@@ -169,3 +187,50 @@ def test_cbu_rate_errors():
         rates.fetch_usd_rate(date(2026, 11, 13), client(lambda r: httpx.Response(500)))
     with pytest.raises(ValueError):
         rates.fetch_usd_rate(date(2026, 11, 13), client(lambda r: httpx.Response(200, json=[])))
+
+
+OK = client(lambda r: httpx.Response(200, json=CBU_JSON))
+DOWN = client(lambda r: httpx.Response(503))
+
+
+def rate_at(now, c, f):
+    return rates.usd_rate(now, client=c, cache_file=f, settings=S)
+
+
+def test_usd_rate_fetches_once_per_day(tmp_path):
+    f = tmp_path / "rate.json"
+    r = rate_at(NOV, OK, f)
+    assert r.value == Decimal("11973.44") and r.warning is None and r.extra_buffer_pct == 0
+    # same day: served from file, network not touched (DOWN would fail)
+    assert rate_at(NOV.replace(hour=18), DOWN, f).warning is None
+
+
+@pytest.mark.parametrize("hours", [24, 47, 48])
+def test_usd_rate_stale_within_48h(tmp_path, hours):
+    f = tmp_path / "rate.json"
+    rate_at(NOV, OK, f)
+    r = rate_at(NOV + timedelta(hours=hours), DOWN, f)
+    assert r.value == Decimal("11973.44")
+    assert r.extra_buffer_pct == Decimal("0.01")
+    assert "CBU kursi olinmadi" in r.warning
+
+
+def test_usd_rate_too_old_raises(tmp_path):
+    f = tmp_path / "rate.json"
+    rate_at(NOV, OK, f)
+    with pytest.raises(rates.RateUnavailable, match="49 soat"):
+        rate_at(NOV + timedelta(hours=49), DOWN, f)
+
+
+def test_usd_rate_no_cache_raises(tmp_path):
+    with pytest.raises(rates.RateUnavailable, match="yo'q"):
+        rate_at(NOV, DOWN, tmp_path / "rate.json")
+
+
+def test_usd_rate_recovers_and_refreshes_cache(tmp_path):
+    f = tmp_path / "rate.json"
+    rate_at(NOV, OK, f)
+    later = NOV + timedelta(hours=30)
+    assert rate_at(later, DOWN, f).warning
+    assert rate_at(later, OK, f).warning is None
+    assert rates._read_cache(f).fetched_at == later

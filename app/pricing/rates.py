@@ -1,14 +1,37 @@
-"""Central Bank of Uzbekistan (cbu.uz) USD rate, fetched at most once per day per process."""
+"""Central Bank of Uzbekistan (cbu.uz) USD rate.
+
+Fetched at most once per day; last good rate is persisted to a file so it survives restarts.
+If CBU is down, the last good rate is reused for up to `stale_rate_max_hours` with an extra
+buffer and a warning for the admin. Older than that -> RateUnavailable (no quoting).
+"""
+import json
 import logging
 import time
-from datetime import date
+from dataclasses import dataclass
+from datetime import date, datetime, timedelta
 from decimal import Decimal
-from functools import lru_cache
+from pathlib import Path
 
 import httpx
 
+from app import config
+from app.pricing.calculator import TZ
+
 CBU_URL = "https://cbu.uz/uz/arkhiv-kursov-valyut/json/USD/{day}/"
+CACHE_FILE = config.DATA_DIR / "cbu_rate.json"
 log = logging.getLogger(__name__)
+
+
+class RateUnavailable(Exception):
+    pass
+
+
+@dataclass(frozen=True)
+class Rate:
+    value: Decimal
+    fetched_at: datetime
+    extra_buffer_pct: Decimal = Decimal(0)
+    warning: str | None = None  # caller forwards to admin
 
 
 def fetch_usd_rate(day: date, client: httpx.Client | None = None) -> Decimal:
@@ -33,7 +56,47 @@ def fetch_usd_rate(day: date, client: httpx.Client | None = None) -> Decimal:
     raise ValueError(f"USD rate not found in CBU response for {day}")
 
 
-@lru_cache(maxsize=8)
-def usd_rate(day: date) -> Decimal:
-    """Cached per day. Errors are not cached, so a failed fetch is retried on next call."""
-    return fetch_usd_rate(day)
+def _read_cache(path: Path) -> Rate | None:
+    try:
+        d = json.loads(path.read_text())
+        return Rate(Decimal(d["value"]), datetime.fromisoformat(d["fetched_at"]))
+    except (OSError, ValueError, KeyError):
+        return None
+
+
+def _write_cache(path: Path, rate: Rate) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(".tmp")
+    tmp.write_text(json.dumps({"value": str(rate.value), "fetched_at": rate.fetched_at.isoformat()}))
+    tmp.replace(path)
+
+
+def usd_rate(
+    now: datetime | None = None,
+    *,
+    client: httpx.Client | None = None,
+    cache_file: Path = CACHE_FILE,
+    settings: dict | None = None,
+) -> Rate:
+    p = (settings or config.settings())["pricing"]
+    now = now or datetime.now(TZ)
+    cached = _read_cache(cache_file)
+    if cached and cached.fetched_at.astimezone(TZ).date() == now.astimezone(TZ).date():
+        return cached
+    try:
+        fresh = Rate(fetch_usd_rate(now.astimezone(TZ).date(), client), now)
+    except (httpx.HTTPError, ValueError, KeyError) as e:
+        log.warning("CBU rate fetch failed: %r", e)
+        age = now - cached.fetched_at if cached else None
+        if age is None or age > timedelta(hours=p["stale_rate_max_hours"]):
+            raise RateUnavailable(
+                "CBU kursi olinmadi va oxirgi kurs "
+                + ("yo'q" if age is None else f"{age.total_seconds() / 3600:.0f} soat eski")
+                + ". Narx hisoblanmaydi."
+            ) from e
+        extra = Decimal(str(p["stale_rate_extra_buffer_pct"]))
+        return Rate(cached.value, cached.fetched_at, extra,
+                    f"CBU kursi olinmadi. {age.total_seconds() / 3600:.0f} soat oldingi kurs "
+                    f"({cached.value}) ishlatilmoqda, bufer +{extra * 100:.0f}%.")
+    _write_cache(cache_file, fresh)
+    return fresh
