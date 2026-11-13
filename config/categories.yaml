@@ -2,10 +2,13 @@
 # package_cm: typical package L x W x H, used for volumetric weight.
 # Chargeable weight = max(actual, volumetric).
 # size_type: shoe (EU 30-50, .5 / 1/3 / 2/3) | apparel (XS..4XL or 24-60).
+# label_uz / hashtag: shown in posts.
 # winter: true -> ships by air in pricing.avia_months.
 # TODO(admin): package sizes except sneakers are estimates — measure real parcels.
 
 sneakers:
+  label_uz: "Krossovka"
+  hashtag: "#krossovka"
   weight_kg: 1.5
   size_type: shoe
   package_cm: [33, 22, 12]
@@ -13,6 +16,8 @@ sneakers:
   winter: false
 
 winter_boots:
+  label_uz: "Qishki botinka"
+  hashtag: "#qishkibotinka"
   weight_kg: 2.0
   size_type: shoe
   package_cm: [36, 26, 14]
@@ -20,6 +25,8 @@ winter_boots:
   winter: true
 
 puffer:            # puxovik / qishki kurtka
+  label_uz: "Puxovik"
+  hashtag: "#puxovik"
   weight_kg: 1.3
   size_type: apparel
   package_cm: [50, 40, 20]
@@ -31,6 +38,8 @@ puffer:            # puxovik / qishki kurtka
   winter: true
 
 light_jacket:      # yengil kurtka / vetrovka
+  label_uz: "Yengil kurtka"
+  hashtag: "#kurtka"
   weight_kg: 0.7
   size_type: apparel
   package_cm: [35, 25, 8]
@@ -38,6 +47,8 @@ light_jacket:      # yengil kurtka / vetrovka
   winter: false
 
 hoodie:            # hudi / svitshot
+  label_uz: "Hudi"
+  hashtag: "#hudi"
   weight_kg: 0.7
   size_type: apparel
   package_cm: [35, 25, 8]
@@ -45,6 +56,8 @@ hoodie:            # hudi / svitshot
   winter: false
 
 tshirt:
+  label_uz: "Futbolka"
+  hashtag: "#futbolka"
   weight_kg: 0.3
   size_type: apparel
   package_cm: [30, 20, 4]
@@ -52,6 +65,8 @@ tshirt:
   winter: false
 
 pants:
+  label_uz: "Shim"
+  hashtag: "#shim"
   weight_kg: 0.6
   size_type: apparel
   package_cm: [35, 25, 6]

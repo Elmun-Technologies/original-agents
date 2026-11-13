@@ -59,3 +59,13 @@ llm:
     claude-opus-4-8:   {input: 5, output: 25, cache_write: 6.25, cache_read: 0.5}
   # Our own public handles that may appear in prompts (not customer data), e.g. "@poizon_uz".
   pii_allowlist: []
+
+content:
+  badge: "Original · Poizon tekshiruvi"
+  delivery_days: {auto: "20–30", avia: "7–12"}   # shown in posts, by shipping mode
+  cta: "Buyurtma uchun Instagram DM yoki Telegram botimizga yozing."
+  hashtags: ["#original", "#poizon", "#toshkent", "#uzbekistan"]   # + category + brand, max 8
+  max_body_chars: 450               # LLM-written part
+  caption_max_chars: 1024           # Telegram photo caption limit
+  photos_dir: data/photos           # own photos: data/photos/<style_code>/*.jpg|png|webp
+  cards_max: 5
