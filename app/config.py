@@ -18,8 +18,8 @@ REQUIRED = {
                 "local_delivery_usd", "volumetric_divisor", "usd_rate_buffer_pct", "round_to_uzs",
                 "quote_valid_hours", "stale_rate_max_hours", "stale_rate_extra_buffer_pct"],
     "customs": ["duty_free_limit_usd", "customs_value_includes_shipping", "schedule"],
-    "llm": ["daily_budget_usd", "max_tokens", "effort", "refusal_fallback", "prices_per_mtok",
-            "pii_allowlist"],
+    "llm": ["models", "daily_budget_usd", "max_tokens", "effort", "refusal_fallback",
+            "no_fallback_models", "customer_data_purposes", "prices_per_mtok", "pii_allowlist"],
     "category": ["weight_kg", "package_cm", "markup", "winter", "size_type"],
 }
 

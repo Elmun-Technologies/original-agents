@@ -12,8 +12,12 @@ from app.db.models import Expense, LlmCall, Order, Product, ProductSize, Quote, 
 
 NOW = datetime(2026, 11, 14, 12, tzinfo=TZ)
 CFG = {"llm": {
+    "models": {"content": "claude-sonnet-5-5", "sales": None, "fast": "claude-haiku-5-5"},
     "daily_budget_usd": 5, "max_tokens": 16000, "effort": "medium", "refusal_fallback": True,
+    "no_fallback_models": ["claude-haiku-5-5"], "customer_data_purposes": ["sales"],
     "prices_per_mtok": {"claude-opus-5-5": {"input": 4, "output": 20, "cache_write": 5, "cache_read": 0.2},
+                        "claude-sonnet-5-5": {"input": 2, "output": 10, "cache_write": 2.5, "cache_read": 0.1},
+                        "claude-haiku-5-5": {"input": 0.1, "output": 0.5, "cache_write": 0.125, "cache_read": 0.01},
                         "claude-opus-4-8": {"input": 5, "output": 25, "cache_write": 6.25, "cache_read": 0.5}},
     "pii_allowlist": ["@poizon_uz"],
 }}
@@ -57,7 +61,7 @@ def make(factory, client, alerts=None):
 
 def test_request_shape_caching_effort_fallback(env, factory):
     c = FakeClient(response("Post matni"))
-    out = make(factory, c).complete("content", "STABLE SYSTEM PROMPT", "Nike Dunk Low, EU 42", now=NOW)
+    out = make(factory, c).complete("sales", "STABLE SYSTEM PROMPT", "Nike Dunk Low, EU 42", now=NOW)
     assert out == "Post matni"
     kw = c.calls[0]
     assert kw["model"] == "claude-opus-5-5"   # from env
@@ -72,14 +76,14 @@ def test_request_shape_caching_effort_fallback(env, factory):
 def test_model_must_come_from_env(monkeypatch, factory):
     monkeypatch.delenv("LLM_MODEL", raising=False)
     with pytest.raises(config.ConfigError, match="LLM_MODEL"):
-        make(factory, FakeClient()).complete("content", "s", "u", now=NOW)
+        make(factory, FakeClient()).complete("sales", "s", "u", now=NOW)
 
 
 def test_unpriced_model_refused_before_call(monkeypatch, factory):
     monkeypatch.setenv("LLM_MODEL", "claude-mystery-9")
     c = FakeClient()
     with pytest.raises(config.ConfigError, match="no price"):
-        make(factory, c).complete("content", "s", "u", now=NOW)
+        make(factory, c).complete("sales", "s", "u", now=NOW)
     assert c.calls == []
 
 
@@ -215,9 +219,35 @@ def test_guard_blocks_call_with_customer_data_from_db(env, factory, db, caplog):
     seed_order(db, "Dilnoza Karimova", "+998901234567")
     c = FakeClient(response())
     with pytest.raises(llm.PiiError) as e:
-        make(factory, c).complete("demand", "s", "Eng faol mijoz: Dilnoza Karimova", now=NOW)
+        make(factory, c).complete("sales", "s", "Eng faol mijoz: Dilnoza Karimova", now=NOW)
     assert c.calls == []                                   # nothing sent
     assert "Dilnoza" not in str(e.value) and "Dilnoza" not in caplog.text  # value never logged
     with pytest.raises(llm.PiiError, match="telefon"):
-        make(factory, c).complete("demand", "s", "Raqam: 90 123 45 67", now=NOW)
+        make(factory, c).complete("content", "s", "Raqam: 90 123 45 67", now=NOW)  # format check everywhere
     assert c.calls == []
+
+
+def test_name_check_only_for_customer_data_purposes(env, factory, db):
+    seed_order(db, "Jordan", "+998901234567")  # a customer whose name is also a brand
+    c = FakeClient(response("Post"), response("Javob"))
+    client = make(factory, c)
+    assert client.complete("content", "s", "Air Jordan 1 Retro High OG", now=NOW) == "Post"
+    with pytest.raises(llm.PiiError, match="ism"):
+        client.complete("sales", "s", "Mijoz Jordan so'radi", now=NOW)
+    assert len(c.calls) == 1
+
+
+def test_model_per_purpose(env, factory, db):
+    c = FakeClient(response(model="claude-sonnet-5-5"), response(), response(model="claude-haiku-5-5"))
+    client = make(factory, c)
+    client.complete("content", "s", "u", now=NOW)
+    client.complete("sales", "s", "u", now=NOW)      # empty -> LLM_MODEL
+    client.complete("fast", "s", "u", now=NOW)
+    assert [k["model"] for k in c.calls] == ["claude-sonnet-5-5", "claude-opus-5-5", "claude-haiku-5-5"]
+    assert "fallbacks" in c.calls[0] and "fallbacks" not in c.calls[2]   # haiku: no server fallback
+    assert db.scalars(select(LlmCall.model)).all() == ["claude-sonnet-5-5", "claude-opus-5-5", "claude-haiku-5-5"]
+
+
+def test_real_settings_content_uses_sonnet(env):
+    assert llm.Llm(lambda: None).model_for("content") == "claude-sonnet-5-5"
+    assert llm.Llm(lambda: None).model_for("demand") == "claude-opus-5-5"   # from env

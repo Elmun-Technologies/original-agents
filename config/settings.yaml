@@ -36,16 +36,25 @@ sourcing:
     unisex: [36, 45]
 
 llm:
-  # Model name is NOT here: it comes from LLM_MODEL in .env.
+  # Model per task. Empty -> LLM_MODEL from .env (the default for everything else).
+  models:
+    content: claude-sonnet-5-5      # Opus only if admin switches it here
+    sales:
+    demand:
   daily_budget_usd: 5               # Tashkent day; when reached, new calls stop + admin alert
   max_tokens: 16000
   effort: medium                    # low | medium | high | xhigh | max
   refusal_fallback: true            # on a safety refusal, the API retries on a fallback model
+  no_fallback_models: [claude-haiku-5-5]  # no server-side fallback on these
+  # Purposes whose prompts may contain customer data: also checked against every customer
+  # name/contact in the DB. Others get only format checks (phone, email, @username, address).
+  customer_data_purposes: [sales]
   # USD per 1M tokens, for the budget and the daily AI expense row.
   # TODO(admin): update when Anthropic changes prices; LLM_MODEL must be listed here.
   prices_per_mtok:
     claude-opus-5-5:   {input: 4, output: 20, cache_write: 5, cache_read: 0.2}
     claude-sonnet-5-5: {input: 2, output: 10, cache_write: 2.5, cache_read: 0.1}
+    claude-haiku-5-5:  {input: 0.1, output: 0.5, cache_write: 0.125, cache_read: 0.01}  # prompts <=100K tokens
     claude-opus-5:     {input: 5, output: 25, cache_write: 6.25, cache_read: 0.5}
     claude-opus-4-8:   {input: 5, output: 25, cache_write: 6.25, cache_read: 0.5}
   # Our own public handles that may appear in prompts (not customer data), e.g. "@poizon_uz".

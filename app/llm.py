@@ -1,7 +1,9 @@
 """Single entry point for every LLM call (CLAUDE.md §10).
 
-- Model: LLM_MODEL env var (never hard-coded).
+- Model: settings.yaml llm.models[purpose], else LLM_MODEL env var (never hard-coded).
 - PII guard: customer phone / name / address / email / @username never leave the process.
+  Format checks run on every call; the DB customer-name check only for
+  llm.customer_data_purposes (e.g. sales), so product text like "Jordan" is not blocked.
 - Daily budget (settings.yaml llm.daily_budget_usd, Tashkent day): when reached, calls stop
   and the admin is alerted once per day.
 - Prompt caching: the stable system prompt carries cache_control; per-call data goes in the
@@ -142,6 +144,9 @@ class Llm:
             self._client = anthropic.Anthropic()
         return self._client
 
+    def model_for(self, purpose: str) -> str:
+        return (self.cfg["models"] or {}).get(purpose) or config.env("LLM_MODEL")
+
     def _alert_once(self, day: date, msg: str) -> None:
         if day not in self._alerted_days:
             self._alerted_days.add(day)
@@ -150,7 +155,7 @@ class Llm:
     def complete(self, purpose: str, system: str, user: str, *, now: datetime | None = None,
                  max_tokens: int | None = None, effort: str | None = None) -> str:
         """system: stable instructions (cached). user: per-call data. Returns response text."""
-        model = config.env("LLM_MODEL")
+        model = self.model_for(purpose)
         prices = self.cfg["prices_per_mtok"]
         if model not in prices:
             raise config.ConfigError(f"LLM_MODEL={model} has no price in settings.yaml llm.prices_per_mtok")
@@ -158,7 +163,8 @@ class Llm:
         budget = Decimal(str(self.cfg["daily_budget_usd"]))
 
         with self.session_factory() as s:
-            kinds = find_pii(system + "\n" + user, known_customer_pii(s), self.cfg["pii_allowlist"])
+            known = known_customer_pii(s) if purpose in self.cfg["customer_data_purposes"] else ()
+            kinds = find_pii(system + "\n" + user, known, self.cfg["pii_allowlist"])
             if kinds:
                 log.error("LLM call blocked (%s): PII kinds %s", purpose, kinds)
                 raise PiiError(f"LLM so'roviga shaxsiy ma'lumot tushgan ({', '.join(kinds)}). So'rov yuborilmadi.")
@@ -168,7 +174,7 @@ class Llm:
                 raise LlmBudgetExceeded(msg)
 
         kw = {}
-        if self.cfg["refusal_fallback"]:
+        if self.cfg["refusal_fallback"] and model not in self.cfg["no_fallback_models"]:
             kw = {"betas": [FALLBACK_BETA], "fallbacks": "default"}
         resp = self.client.beta.messages.create(
             model=model,
