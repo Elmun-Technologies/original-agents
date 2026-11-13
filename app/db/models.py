@@ -53,6 +53,8 @@ class Product(Base):
     category: Mapped[str] = mapped_column(String(32))    # key in categories.yaml
     gender: Mapped[str | None] = mapped_column(String(16))
     colorway: Mapped[str | None] = mapped_column(String(200))
+    description: Mapped[str | None] = mapped_column(Text)   # source text; content agent's only fact base
+    seller_note: Mapped[str | None] = mapped_column(Text)   # note from source/intermediary sheet
     images: Mapped[list] = mapped_column(JSON, default=list)
     first_seen_at: Mapped[datetime] = mapped_column(default=utcnow)
     last_checked_at: Mapped[datetime] = mapped_column(default=utcnow)
