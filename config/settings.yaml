@@ -1,0 +1,27 @@
+# All business numbers live here. Code must not hard-code them.
+
+# Safety switches (see CLAUDE.md §2, §6.2, §6.4)
+poizon_tos_reviewed: false          # scraper refuses to run until admin sets true
+sourcing_mode: manual_sheet         # manual_sheet | poizon_com
+image_source_policy: own_photos_only  # own_photos_only | source_images
+
+pricing:
+  buyout_fee_pct: 0.05
+  buyout_fee_min_usd: 3
+  ship_rate_per_kg_usd:
+    auto: 5.5
+    avia: 9.2
+  avia_months: [11, 12, 1]          # winter categories ship by air in these months
+  local_delivery_usd: 2             # Tashkent
+  volumetric_divisor: 6000          # cargo: L*W*H cm / divisor = volumetric kg
+  usd_rate_buffer_pct: 0.015
+  round_to_uzs: 10000
+  quote_valid_hours: 24
+
+customs:
+  # TODO(admin): confirm all customs rules below with a customs broker.
+  duty_free_limit_usd: 200          # per recipient per calendar month
+  customs_value_includes_shipping: false
+  schedule:                         # picked by quote date; last entry with from <= date wins
+    - {from: 2000-01-01, rate: 0.30, min_per_kg_usd: 3}
+    - {from: 2027-01-01, rate: 0.20, min_per_kg_usd: 2}
