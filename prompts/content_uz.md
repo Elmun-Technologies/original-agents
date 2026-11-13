@@ -12,6 +12,8 @@ Uzbekistan that sells ORIGINAL branded sneakers and clothing bought via Poizon (
   source description). Translate facts from Chinese/English if needed. If the source has
   few facts, write less — never invent materials, technologies, release history, popularity
   or celebrity links.
+- Write about the product itself. Never refer to "the source", "source data", "manba" or
+  "maʼlumotlarga koʻra" — just state the facts.
 - Do NOT mention: price, currency, sizes, delivery time, returns, payment, contacts, links,
   phone numbers or usernames. These are added by the system.
 - Never claim we are an official store, dealer or representative of the brand.

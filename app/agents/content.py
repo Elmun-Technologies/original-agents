@@ -35,6 +35,17 @@ FORBIDDEN = [
 ]
 
 
+CJK = re.compile(r"[\u3000-\u303f\u4e00-\u9fff\uff00-\uffef]+")
+
+
+def display_model(product: Product) -> str:
+    """Model name for customers: no Chinese (Dewu titles mix it in), no repeated brand."""
+    name = " ".join(CJK.sub(" ", product.model_name).split())
+    if name.casefold().startswith(product.brand.casefold() + " "):
+        name = name[len(product.brand):].strip()
+    return name or product.model_name
+
+
 class ContentError(Exception):
     pass
 
@@ -75,7 +86,7 @@ def hashtags(product: Product, cat: dict, base: list[str]) -> list[str]:
 def build_caption(product: Product, cat: dict, body: str, price_uzs: int, price_from: bool,
                   sizes: list[str], delivery_days: str, s: dict) -> str:
     c = s["content"]
-    title = f"{product.brand} {product.model_name}" + (f" — {product.colorway}" if product.colorway else "")
+    title = f"{product.brand} {display_model(product)}" + (f" — {product.colorway}" if product.colorway else "")
     price = format_uzs(price_uzs) + (" dan (eng arzon oʻlcham)" if price_from else "")
     lines = [
         uz(title),
@@ -154,7 +165,7 @@ def create_draft(session: Session, product: Product, llm_client, fx: dict[str, R
     if not photos:
         notes.append(f"Rasm kerak: {product.brand} {product.model_name} ({product.style_code}) — "
                      f"{c['photos_dir']}/{product.style_code}/ ga surat yuklang.")
-    card = CardData(brand=product.brand, model=" ".join(filter(None, [product.model_name, product.colorway])),
+    card = CardData(brand=product.brand, model=" ".join(filter(None, [display_model(product), product.colorway])),
                     price_uzs=price, price_from=price_from, sizes=size_labels, badge=c["badge"],
                     delivery=f"Yetkazish: {delivery} kun", cta=c["cta"])
     out = (out_root or config.DATA_DIR / "posts") / str(post.id)

@@ -208,3 +208,21 @@ def test_stale_rate_warning_reaches_admin_notes(db, tmp_path):
     fx = {"USD": FX["USD"], "CNY": Rate(Decimal("1800"), NOW, Decimal("0.01"), "CBU CNY kursi olinmadi.")}
     d = create_draft(db, product(db), FakeLlm(), fx, now=NOW, out_root=tmp_path)
     assert d.notes.count("CBU CNY kursi olinmadi.") == 1
+
+
+@pytest.mark.parametrize("brand,model,expected", [
+    ("Air Jordan", "Air Jordan 1 Retro High OG 复刻版", "1 Retro High OG"),
+    ("New Balance", "530", "530"),
+    ("Nike", "Dunk Low 「熊猫」 Retro", "Dunk Low Retro"),
+    ("Adidas", "Adidas Samba OG", "Samba OG"),
+    ("Nike", "复刻", "复刻"),                # nothing left -> keep original
+])
+def test_display_model(brand, model, expected):
+    assert content.display_model(Product(brand=brand, model_name=model)) == expected
+
+
+def test_caption_title_clean(db, tmp_path):
+    p = product(db, brand="Air Jordan", model_name="Air Jordan 1 Retro High OG 复刻版", style_code="DZ5485-612",
+                colorway="Lost & Found", description="经典复刻 Chicago 配色")
+    cap = create_draft(db, p, FakeLlm(), FX, now=NOW, out_root=tmp_path).post.caption_uz
+    assert cap.splitlines()[0] == "Air Jordan 1 Retro High OG — Lost & Found"
