@@ -306,7 +306,8 @@ def order_text(session: Session, o: Order) -> str:
             f"{p.brand} {p.model_name} · {p.style_code} · {o.size}\n"
             f"Mijoz: {o.customer_name}, {o.customer_contact}\n"
             f"Narx: {format_uzs(o.sell_price_uzs)}\n"
-            f"Holat: {state}" + (f"\nIzoh: {o.notes}" if o.notes else ""))
+            f"Holat: {state}" + (f"\nIzoh: {o.notes}" if o.notes else "")
+            + (f"\n⚠️ Muammo: {o.problem}" if o.problem else ""))
     if o.buy_cost_uzs is not None:
         text += (f"\nXarid: ¥{o.buy_price_cny:g}, tannarx {format_uzs(o.buy_cost_uzs)}, "
                  f"foyda {format_uzs(o.sell_price_uzs - o.buy_cost_uzs)}")
@@ -314,6 +315,24 @@ def order_text(session: Session, o: Order) -> str:
         text += (f"\n⚠️ Xariddan oldin ilovada joriy narxni tekshiring. Sotib olgach: "
                  f"/buyprice {o.id} <yuan>")
     return text
+
+
+PROBLEM_KINDS = {"oʻlcham": "oʻlcham", "o'lcham": "oʻlcham", "olcham": "oʻlcham", "kechikish": "kechikish",
+                 "nuqson": "nuqson", "boshqa": "boshqa"}
+
+
+def set_problem(session: Session, args: str | None) -> str:
+    """/problem <order_id> <oʻlcham|kechikish|nuqson|boshqa> [izoh] (CLAUDE.md §7.6). Decision stays with the admin."""
+    t = (args or "").split(maxsplit=2)
+    kind = PROBLEM_KINDS.get(t[1].casefold()) if len(t) > 1 else None
+    if len(t) < 2 or not t[0].isdigit() or kind is None:
+        raise OrderError("Format: /problem <buyurtma_id> <oʻlcham|kechikish|nuqson|boshqa> [izoh]")
+    o = session.get(Order, int(t[0]))
+    if o is None:
+        raise OrderError(f"Buyurtma #{t[0]} topilmadi.")
+    o.problem = f"{kind}: {t[2]}" if len(t) > 2 else kind
+    session.flush()
+    return order_text(session, o)
 
 
 def set_buy_price(session: Session, args: str | None, fx: dict[str, Rate] | None, now: datetime) -> str:

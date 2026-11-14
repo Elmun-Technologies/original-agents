@@ -15,7 +15,7 @@ from aiogram import Bot, Dispatcher, F, Router
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from aiogram.filters import Command, CommandObject
-from aiogram.types import (CallbackQuery, FSInputFile, InlineKeyboardButton, InlineKeyboardMarkup,
+from aiogram.types import (BufferedInputFile, CallbackQuery, FSInputFile, InlineKeyboardButton, InlineKeyboardMarkup,
                            InputMediaDocument, InputMediaPhoto, Message)
 import pillow_heif
 from PIL import Image
@@ -29,6 +29,7 @@ from app.config import TZ
 from app.db.models import Order, Post, Product
 from app.llm import Llm, spent_usd
 from app.pricing import rates
+from app.reports import weekly
 from app.uz import format_uzs
 
 log = logging.getLogger(__name__)
@@ -45,6 +46,8 @@ HELP = """Buyruqlar:
 /lead <post_id> [oʻlcham] — DMda narx soʻrashdi
 /stockcost <SKU> <summa> [oʻlcham]
 /buyprice <buyurtma_id> <yuan> — haqiqiy xarid narxi, foyda qayta hisoblanadi
+/problem <buyurtma_id> <oʻlcham|kechikish|nuqson|boshqa> [izoh]
+/report — shu hafta hisoboti + Excel; /report otgan — oʻtgan hafta
 /trend <matn>
 /rate — CBU kurslari
 /expense <summa> <reklama|ai|server|menejer|boshqa> <izoh>
@@ -279,6 +282,30 @@ async def job_summary(ctx: Ctx, tg: Tg) -> None:
     await tg.admins(await asyncio.to_thread(lambda: summary_text(ctx)))
 
 
+def report_files(ctx: Ctx, previous: bool) -> tuple[str, bytes, str]:
+    """(text, xlsx bytes, file name) for this week so far or last full week."""
+    at = now()
+    start, end = (weekly.last_week if previous else weekly.this_week)(at)
+    fx, _ = fx_now(at)
+    usd = fx["USD"].value if fx else None
+    with ctx.factory() as s:
+        if usd is None:  # no CBU rate: AI spend is not rolled up, everything else still works
+            from decimal import Decimal
+            usd = Decimal(0)
+        rep = weekly.build(s, start, end, usd)
+        s.commit()
+        name = f"hisobot_{start:%Y%m%d}_{end:%Y%m%d}.xlsx"
+        path = weekly.excel(rep, config.DATA_DIR / "reports" / name)
+        return weekly.text(rep), path.read_bytes(), name
+
+
+async def job_weekly(ctx: Ctx, tg: Tg) -> None:
+    text, data, name = await asyncio.to_thread(report_files, ctx, True)
+    await tg.admins(text)
+    for admin in ctx.admin_ids:
+        await tg.bot.send_document(admin, BufferedInputFile(data, name))
+
+
 def summary_text(ctx: Ctx) -> str:
     with ctx.factory() as s:
         return publisher.daily_summary(s, now())
@@ -335,6 +362,10 @@ def schedule(ctx: Ctx, tg: Tg) -> AsyncIOScheduler:
     for i, hhmm in enumerate(sc["publish_times"]):
         sched.add_job(job_publish, at(hhmm), args=(ctx, tg), id=f"publish{i}", misfire_grace_time=1800)
     sched.add_job(job_summary, at(sc["summary_time"]), args=(ctx, tg), id="summary", misfire_grace_time=3600)
+    day, hhmm = sc["weekly_report"].split()
+    h, m = hhmm.split(":")
+    sched.add_job(job_weekly, CronTrigger(day_of_week=day, hour=int(h), minute=int(m), timezone=TZ),
+                  args=(ctx, tg), id="weekly", misfire_grace_time=6 * 3600)
     return sched
 
 
@@ -649,6 +680,17 @@ def create_router(ctx: Ctx, tg: Tg) -> Router:
         _, msg = await db(lambda s: screens.save(s, data, paths, url))
         log.info("screens saved: %s", screens.style_code(data))
         await call.message.answer(msg)
+
+    @r.message(Command("problem"))
+    async def problem(m: Message, command: CommandObject):
+        await safe(m, lambda s: orders.set_problem(s, command.args))
+
+    @r.message(Command("report"))
+    async def report(m: Message, command: CommandObject):
+        previous = (command.args or "").strip().casefold().startswith(("otgan", "oʻtgan", "o'tgan"))
+        text, data, name = await asyncio.to_thread(report_files, ctx, previous)
+        await m.answer(text)
+        await m.answer_document(BufferedInputFile(data, name))
 
     @r.message(Command("buyprice"))
     async def buyprice(m: Message, command: CommandObject):

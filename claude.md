@@ -218,7 +218,7 @@ Chatplace'ning hujjatlarini o'qing va integratsiyani uning rasmiy usulida qiling
 ---
 
 ## 8. Haftalik hisobot (`reports/weekly.py`)
-Har dushanba 09:00 da adminga, oddiy tilda, atamalarsiz:
+Har dushanba 09:00 da adminga (o'tgan hafta; `/report` — shu hafta, `/report otgan` — o'tgan hafta), matn + Excel (mijoz ismi/telefonisiz), oddiy tilda, atamalarsiz:
 - **Tushum** (so'm), **xarajatlar** turlari bo'yicha (tovar+yetkazish+bojxona, reklama, AI, server, menejer, boshqa), **sof qoldiq**.
 - Buyurtmalar soni, bekor qilinganlar, o'lcham muammolari soni.
 - Eng ko'p so'ralgan 5 ta model.

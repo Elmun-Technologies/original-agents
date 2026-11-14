@@ -19,6 +19,7 @@ schedule:                           # Asia/Tashkent
   draft_time: "09:00"               # rank + price + images + drafts + auto check
   publish_times: ["12:00", "19:00", "21:00"]
   summary_time: "21:30"             # one daily message to the admin
+  weekly_report: "mon 09:00"        # last week's report + Excel (CLAUDE.md §8)
 
 images:                             # image_source_policy=source_images downloads
   max_bytes: 15000000
@@ -110,3 +111,10 @@ publishing:
   stock_repost_after_days: 14       # stock items may be posted again after this
   trend_days: 30                    # /trend notes older than this are ignored
   photos_max_per_sku: 10
+
+trial:                              # CLAUDE.md §9 trial criteria, shown with ✅/❌ in the weekly report
+  start: 2026-11-14
+  days: 30
+  paid_orders_min: 30
+  ads_per_order_max_uzs: 150000
+  size_problem_max_pct: 0.05

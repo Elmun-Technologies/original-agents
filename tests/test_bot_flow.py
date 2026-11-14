@@ -196,7 +196,7 @@ def test_schedule_times(env):
     _, _, _, ctx = env
     sched = admin_bot.schedule(ctx, None)
     jobs = {j.id: str(j.trigger) for j in sched.get_jobs()}
-    assert set(jobs) == {"import", "drafts", "publish0", "publish1", "publish2", "summary"}
+    assert set(jobs) == {"import", "drafts", "publish0", "publish1", "publish2", "summary", "weekly"}
     assert "hour='9', minute='0'" in jobs["drafts"] and "hour='21', minute='30'" in jobs["summary"]
 
 
@@ -296,3 +296,10 @@ def test_buyprice_recalculates_profit(env, db, tmp_path):
     assert "Foyda:" in env[2].texts()[-1] and "rejada" in env[2].texts()[-1]
     send(env, "/buyprice x")
     assert env[2].texts()[-1].startswith("❌")
+
+
+def test_report_sends_text_and_excel(env):
+    from aiogram.methods import SendDocument
+    send(env, "/report")
+    assert "Tushum" in env[2].texts()[-1]
+    assert isinstance(env[2].sent[-1], SendDocument)

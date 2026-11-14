@@ -13,9 +13,10 @@ DATA_DIR = ROOT / "data"  # runtime state (gitignored, docker volume)
 
 REQUIRED = {
     "settings.yaml": ["poizon_scraping_enabled", "sourcing_mode", "image_source_policy", "auto_publish", "sheet_url",
-                      "schedule", "images", "ranking", "pricing", "customs", "sourcing", "llm", "content", "stock",
+                      "schedule", "images", "ranking", "trial", "pricing", "customs", "sourcing", "llm", "content", "stock",
                       "publishing"],
-    "schedule": ["import_time", "draft_time", "publish_times", "summary_time"],
+    "schedule": ["import_time", "draft_time", "publish_times", "summary_time", "weekly_report"],
+    "trial": ["start", "days", "paid_orders_min", "ads_per_order_max_uzs", "size_problem_max_pct"],
     "images": ["max_bytes", "pause_seconds", "timeout_seconds"],
     "ranking": ["weights", "price_range_usd", "sold_cap", "winter_months"],
     "pricing": ["buyout_fee_pct", "buyout_fee_min_usd", "ship_rate_per_kg_usd", "avia_months",
@@ -58,7 +59,7 @@ def validate(settings: dict, categories: dict) -> None:
     _require(settings["llm"], REQUIRED["llm"], "settings.yaml:llm")
     _require(settings["content"], REQUIRED["content"], "settings.yaml:content")
     _require(settings["stock"], REQUIRED["stock"], "settings.yaml:stock")
-    for key in ("publishing", "schedule", "images", "ranking"):
+    for key in ("publishing", "schedule", "images", "ranking", "trial"):
         _require(settings[key], REQUIRED[key], f"settings.yaml:{key}")
     if settings["image_source_policy"] not in ("source_images", "own_photos_only"):
         raise ConfigError(f"image_source_policy: {settings['image_source_policy']!r}")
