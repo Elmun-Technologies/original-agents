@@ -15,6 +15,7 @@ from aiogram import Bot, Dispatcher, F, Router
 from aiogram.filters import Command, CommandObject
 from aiogram.types import (CallbackQuery, FSInputFile, InlineKeyboardButton, InlineKeyboardMarkup,
                            InputMediaDocument, InputMediaPhoto, Message)
+import pillow_heif
 from PIL import Image
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, sessionmaker
@@ -29,10 +30,13 @@ from app.pricing import rates
 from app.uz import format_uzs
 
 log = logging.getLogger(__name__)
+pillow_heif.register_heif_opener()  # iPhone photos sent as files are HEIC
+PHOTO_EXTS = (".jpg", ".jpeg", ".png", ".webp", ".heic", ".heif")
 
 HELP = """Buyruqlar:
 /today — bugungi holat
 /drafts — hozir draft tayyorlash
+/publish — navbatdagi postni hozir nashr qilish
 /orders — ochiq buyurtmalar
 /neworder <post_id> <oʻlcham> <ism> <telefon|@username> [ext=<USD>] [novac]
 /lead <post_id> [oʻlcham] — DMda narx soʻrashdi
@@ -152,14 +156,23 @@ def photo_target(s: Session, sku: str, ext: str, unique: str) -> tuple[Path | No
     return d / f"{datetime.now(timezone.utc):%Y%m%d%H%M%S}_{unique}{ext}", ""
 
 
-def check_image(path: Path) -> bool:
+def check_image(path: Path) -> Path | None:
+    """Verifies the file is an image; HEIC is converted to JPEG (renderer/Telegram need it).
+    Returns the final path, or None (file deleted) if it is not a readable image."""
     try:
         with Image.open(path) as im:
             im.verify()
-        return True
-    except Exception:
+        if path.suffix.lower() in (".heic", ".heif"):
+            with Image.open(path) as im:
+                jpg = path.with_suffix(".jpg")
+                im.convert("RGB").save(jpg, "JPEG", quality=95)
+            path.unlink()
+            return jpg
+        return path
+    except Exception as e:
+        log.info("photo rejected, not an image: %s (%r)", path.name, e)
         path.unlink(missing_ok=True)
-        return False
+        return None
 
 
 # --- Telegram sending ----------------------------------------------------------------
@@ -217,7 +230,8 @@ async def job_daily_drafts(ctx: Ctx, tg: Tg) -> None:
     await tg.flush_alerts()
 
 
-async def job_publish(ctx: Ctx, tg: Tg) -> None:
+async def job_publish(ctx: Ctx, tg: Tg) -> bool:
+    """Publishes the next approved post. Returns False if there was nothing to publish."""
     def prepare():
         at = now()
         with ctx.factory() as s:
@@ -234,7 +248,7 @@ async def job_publish(ctx: Ctx, tg: Tg) -> None:
     if error:
         await tg.admins("⚠️ " + error)
     if view is None:
-        return
+        return error is not None
     cards = view.images[:-1]  # the story image is for Instagram only
     if config.dry_run() or not ctx.channel_id:
         await tg.admins(f"[DRY_RUN] Kanalga shu chiqardi (post #{view.id}):")
@@ -251,6 +265,7 @@ async def job_publish(ctx: Ctx, tg: Tg) -> None:
     await asyncio.to_thread(done)
     if notes:
         await tg.admins("\n".join("• " + n for n in notes))
+    return True
 
 
 # --- handlers ------------------------------------------------------------------------
@@ -302,6 +317,11 @@ def create_router(ctx: Ctx, tg: Tg) -> Router:
     async def drafts(m: Message):
         await m.answer("⏳ Draftlar tayyorlanmoqda…")
         await job_daily_drafts(ctx, tg)
+
+    @r.message(Command("publish"))
+    async def publish(m: Message):
+        if not await job_publish(ctx, tg):
+            await m.answer("Nashr navbati boʻsh (yoki pauza yoqilgan).")
 
     @r.message(Command("trend"))
     async def trend(m: Message, command: CommandObject):
@@ -445,7 +465,14 @@ def create_router(ctx: Ctx, tg: Tg) -> Router:
             await m.answer("Faqat rasm fayllari (JPG/PNG/WEBP) qabul qilinadi.")
             return
         sku = resolve_sku(m.caption, m.media_group_id, ctx.album_sku)
+        for _ in range(15):  # album items are handled in parallel; wait for the captioned one
+            if sku or not m.media_group_id:
+                break
+            await asyncio.sleep(0.2)
+            sku = ctx.album_sku.get(m.media_group_id)
+        kind = f"document {m.document.mime_type}" if m.document else "photo"
         if not sku:
+            log.info("photo rejected: no SKU (%s, album=%s)", kind, bool(m.media_group_id))
             await m.answer("Izohga SKU yozing (masalan: MR530SG).")
             return
         if m.document:  # sent as a file: original quality
@@ -453,17 +480,25 @@ def create_router(ctx: Ctx, tg: Tg) -> Router:
             ext = Path(m.document.file_name or "").suffix.lower() or "." + m.document.mime_type.split("/")[-1]
         else:           # compressed by Telegram: take the largest size
             file_id, unique, ext = m.photo[-1].file_id, m.photo[-1].file_unique_id, ".jpg"
-        if ext not in (".jpg", ".jpeg", ".png", ".webp"):
-            await m.answer(f"{ext} format qabul qilinmaydi — JPG/PNG/WEBP yuboring.")
+        if ext not in PHOTO_EXTS:
+            log.info("photo rejected: format %s (%s) sku=%s", ext, kind, sku)
+            await m.answer(f"{ext} format qabul qilinmaydi — JPG/PNG/WEBP/HEIC yuboring.")
             return
         target, error = await db(lambda s: photo_target(s, sku, ext, unique))
         if error:
+            log.info("photo rejected: %s", error)
             await m.answer(f"❌ {error}")
             return
-        await m.bot.download(file_id, destination=target)
-        if not await asyncio.to_thread(check_image, target):
-            await m.answer("❌ Fayl rasm sifatida ochilmadi. JPG/PNG/WEBP yuboring.")
+        try:
+            await m.bot.download(file_id, destination=target)
+        except Exception as e:  # e.g. Bot API limit: files over 20 MB can't be downloaded
+            log.warning("photo download failed sku=%s: %r", sku, e)
+            await m.answer("❌ Rasm yuklab olinmadi (Telegram bot 20 MB dan katta faylni ololmaydi).")
             return
+        if await asyncio.to_thread(check_image, target) is None:
+            await m.answer("❌ Fayl rasm sifatida ochilmadi. JPG/PNG/WEBP/HEIC yuboring.")
+            return
+        log.info("photo saved sku=%s (%s)", sku, kind)
         count = await db(lambda s: len(own_photos(s.scalar(select(Product).where(Product.style_code == sku)))))
         await m.answer(f"✓ {sku}: surat saqlandi ({count}/{config.settings()['publishing']['photos_max_per_sku']})"
                        + ("" if m.document else ". Maslahat: sifat uchun fayl sifatida yuboring."))

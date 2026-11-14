@@ -1,8 +1,10 @@
 # All business numbers live here. Code must not hard-code them.
 
 # Safety switches (see CLAUDE.md §2, §6.2, §6.4)
-poizon_tos_reviewed: false          # scraper refuses to run until admin sets true
-sourcing_mode: manual_sheet         # manual_sheet | poizon_com
+# Poizon Terms of Use 20.1 (o, p, r) forbid robots and unauthorized programs. The poizon.com
+# scraper is NOT built and poizon_com mode is refused until Poizon gives written permission.
+poizon_written_permission: false
+sourcing_mode: manual_sheet         # manual_sheet | poizon_com (needs written permission)
 image_source_policy: own_photos_only  # own_photos_only | source_images
 
 pricing:
@@ -66,6 +68,7 @@ content:
   cta: "Buyurtma uchun Instagram DM yoki Telegram botimizga yozing."
   hashtags: ["#original", "#poizon", "#toshkent", "#uzbekistan"]   # + category + brand, max 8
   max_body_chars: 450               # LLM-written part
+  llm_retries: 2                    # rejected LLM text (English, notes, filters) -> ask again
   caption_max_chars: 1024           # Telegram photo caption limit
   photos_dir: data/photos           # own photos: data/photos/<style_code>/*.jpg|png|webp
   cards_max: 5

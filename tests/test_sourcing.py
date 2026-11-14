@@ -176,3 +176,13 @@ def test_google_sheet_url(db):
     bad = httpx.Client(transport=httpx.MockTransport(lambda r: httpx.Response(403)))
     with pytest.raises(SheetError, match="403"):
         run(db, "https://docs.google.com/x", client=bad)
+
+
+def test_poizon_mode_refused_without_written_permission(db, monkeypatch):
+    s = config.settings()
+    monkeypatch.setitem(s, "sourcing_mode", "poizon_com")
+    with pytest.raises(SheetError, match="yozma ruxsat"):
+        run(db, SAMPLE)
+    monkeypatch.setitem(s, "poizon_written_permission", "yes")       # only literal true counts
+    with pytest.raises(SheetError, match="yozma ruxsat"):
+        sourcing.check_sourcing_mode(s)

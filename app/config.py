@@ -12,7 +12,7 @@ CONFIG_DIR = ROOT / "config"
 DATA_DIR = ROOT / "data"  # runtime state (gitignored, docker volume)
 
 REQUIRED = {
-    "settings.yaml": ["poizon_tos_reviewed", "sourcing_mode", "image_source_policy", "pricing", "customs",
+    "settings.yaml": ["poizon_written_permission", "sourcing_mode", "image_source_policy", "pricing", "customs",
                       "sourcing", "llm", "content", "stock", "publishing"],
     "pricing": ["buyout_fee_pct", "buyout_fee_min_usd", "ship_rate_per_kg_usd", "avia_months",
                 "local_delivery_usd", "volumetric_divisor", "usd_rate_buffer_pct", "round_to_uzs",
@@ -20,7 +20,7 @@ REQUIRED = {
     "customs": ["duty_free_limit_usd", "customs_value_includes_shipping", "schedule"],
     "llm": ["models", "daily_budget_usd", "max_tokens", "effort", "refusal_fallback",
             "no_fallback_models", "customer_data_purposes", "prices_per_mtok", "pii_allowlist"],
-    "content": ["badge", "delivery_days", "cta", "hashtags", "max_body_chars", "caption_max_chars",
+    "content": ["badge", "delivery_days", "cta", "hashtags", "max_body_chars", "llm_retries", "caption_max_chars",
                 "photos_dir", "cards_max"],
     "stock": ["markup", "delivery_text"],
     "publishing": ["daily_drafts", "draft_time", "publish_times", "price_change_alert_pct",

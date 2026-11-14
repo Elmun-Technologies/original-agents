@@ -162,7 +162,7 @@ def test_real_config_all_categories():
 
 def test_config_missing_key():
     with pytest.raises(config.ConfigError, match="buyout_fee_pct"):
-        bad = copy.deepcopy(S) | {"poizon_tos_reviewed": False, "sourcing_mode": "x", "sourcing": {}, "llm": {}, "content": {}, "stock": {}, "publishing": {},
+        bad = copy.deepcopy(S) | {"poizon_written_permission": False, "sourcing_mode": "x", "sourcing": {}, "llm": {}, "content": {}, "stock": {}, "publishing": {},
                                   "image_source_policy": "x"}
         del bad["pricing"]["buyout_fee_pct"]
         config.validate(bad, C)

@@ -226,3 +226,51 @@ def test_caption_title_clean(db, tmp_path):
                 colorway="Lost & Found", description="经典复刻 Chicago 配色")
     cap = create_draft(db, p, FakeLlm(), FX, now=NOW, out_root=tmp_path).post.caption_uz
     assert cap.splitlines()[0] == "Air Jordan 1 Retro High OG — Lost & Found"
+
+
+TNF_REAL = ("The North Face 1996 Retro Nuptse — qora rangdagi unisex puxovik. Ichida 700-fill goʻz patidan "
+            "tayyorlangan pux ishlatilgan.\n\nWait, \"goʻz pati\" is wrong. Corrected text:\n\n"
+            "The North Face 1996 Retro Nuptse — qora rangdagi unisex puxovik. Ichida 700-fill gʻoz puxi ishlatilgan.")
+
+
+@pytest.mark.parametrize("text,problem", [
+    (TNF_REAL, "inglizcha"),
+    (TNF_REAL, "izoh/tuzatish"),
+    (TNF_REAL, "xatboshi"),
+    ("Bu model is made from soft leather and suede.", "inglizcha"),
+    ("Qulay model. Note: original quality.", "izoh"),
+    ("Удобная модель для города.", "kirill"),
+    ("Qulay model 经典 uslubda.", "xitoycha"),
+])
+def test_language_problems(text, problem):
+    assert any(problem in p for p in check_body(text, 2000))
+
+
+def test_product_name_words_are_not_english_text():
+    own = content.own_words(Product(brand="Off-White", model_name="The 10 Made in Italy", colorway="Black and Red"))
+    text = "Off-White The 10 Made in Italy — Black and Red rangidagi qulay krossovka."
+    assert check_body(text, 450, own_words=own) == []
+    assert any("inglizcha" in p for p in check_body(text, 450))   # without own words it would be flagged
+
+
+class SeqLlm:
+    def __init__(self, *answers):
+        self.answers, self.calls = list(answers), []
+
+    def complete(self, purpose, system, user, **kw):
+        self.calls.append(user)
+        return self.answers.pop(0)
+
+
+def test_rejected_llm_text_is_retried_with_reason(db, tmp_path):
+    llm = SeqLlm(TNF_REAL, BODY)
+    d = create_draft(db, product(db), llm, FX, now=NOW, out_root=tmp_path)
+    assert len(llm.calls) == 2 and "previous answer was rejected" in llm.calls[1]
+    assert "inglizcha" in llm.calls[1] and d.post.body_uz == uz(BODY)
+
+
+def test_gives_up_after_retries(db, tmp_path):
+    llm = SeqLlm(TNF_REAL, TNF_REAL, TNF_REAL)
+    with pytest.raises(ContentError, match="LLM matni rad etildi: .*inglizcha"):
+        create_draft(db, product(db), llm, FX, now=NOW, out_root=tmp_path)
+    assert len(llm.calls) == 3 and db.query(Post).count() == 0

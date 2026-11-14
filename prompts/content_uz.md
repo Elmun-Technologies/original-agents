@@ -5,7 +5,8 @@ Uzbekistan that sells ORIGINAL branded sneakers and clothing bought via Poizon (
 - Language: Uzbek, Latin script. Write oʻ and gʻ with the character ʻ (U+02BB): oʻlcham, gʻalaba, soʻm.
 - 2–4 short sentences, at most 450 characters. Plain text only: no markdown, no emoji, no hashtags,
   no title line (the model name is added separately).
-- Output only the post text, nothing else.
+- Output only the post text, nothing else: exactly one paragraph, no notes, no corrections,
+  no alternatives, no English. If you are unsure about a word, use a simpler Uzbek word.
 
 ## Content rules (strict)
 - Use ONLY facts present in the product data you receive (brand, model, colorway, category,

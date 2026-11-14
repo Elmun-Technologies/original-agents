@@ -43,7 +43,17 @@ def test_check_image(tmp_path):
     good, bad = tmp_path / "a.jpg", tmp_path / "b.jpg"
     Image.new("RGB", (10, 10)).save(good)
     bad.write_bytes(b"not an image")
-    assert admin_bot.check_image(good) and not admin_bot.check_image(bad) and not bad.exists()
+    assert admin_bot.check_image(good) == good and admin_bot.check_image(bad) is None and not bad.exists()
+
+
+def test_heic_converted_to_jpeg(tmp_path):
+    import pillow_heif
+    heic = tmp_path / "iphone.heic"
+    pillow_heif.from_pillow(Image.new("RGB", (40, 30), (200, 10, 10))).save(heic)
+    out = admin_bot.check_image(heic)
+    assert out == tmp_path / "iphone.jpg" and not heic.exists()
+    with Image.open(out) as im:
+        assert im.format == "JPEG" and im.size == (40, 30)
 
 
 def test_today_text(db, tmp_path):

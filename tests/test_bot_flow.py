@@ -3,6 +3,7 @@ import asyncio
 from datetime import datetime, timezone
 
 import pytest
+from PIL import Image
 from aiogram import Bot, Dispatcher
 from aiogram.client.session.base import BaseSession
 from aiogram.methods import EditMessageReplyMarkup, EditMessageText, SendMediaGroup, SendMessage
@@ -137,3 +138,55 @@ def test_approve_without_photo_is_blocked(env, db, tmp_path):
     press(env, f"post:approve:{post.id}")
     db.refresh(post)
     assert post.status == "draft" and any("surat yoʻq" in t for t in env[2].texts())
+
+
+def test_publish_dry_run_goes_to_admin(env, db, tmp_path, monkeypatch):
+    from app import config
+    from tests.helpers import add_photos
+    root = tmp_path / "photos"
+    monkeypatch.setitem(config.settings()["content"], "photos_dir", str(root))
+    monkeypatch.setenv("DRY_RUN", "true")
+    send(env, "/publish")
+    assert "navbati boʻsh" in env[2].texts()[-1]
+    p = make_product(db)
+    post = create_draft(db, p, FakeLlm(), FX, now=NOW, out_root=tmp_path).post
+    db.commit()
+    add_photos(root, p.style_code)
+    press(env, f"post:approve:{post.id}")
+    db.refresh(post)
+    assert post.status == "approved"
+    send(env, "/publish")
+    db.refresh(post)
+    assert post.status == "published"
+    groups = [m for m in env[2].sent if isinstance(m, SendMediaGroup)]
+    assert all(str(g.chat_id) == str(ADMIN) for g in groups)          # DRY_RUN: never the channel
+    assert any("[DRY_RUN]" in t for t in env[2].texts())
+
+
+def test_album_items_wait_for_captioned_one(env, db, tmp_path, monkeypatch):
+    """Album photos arrive in parallel; the captionless one must wait for the SKU, not fail."""
+    from aiogram.types import PhotoSize
+    from app import config
+    monkeypatch.setitem(config.settings()["content"], "photos_dir", str(tmp_path / "photos"))
+    make_product(db)
+    db.commit()
+    saved = []
+
+    async def fake_download(self, file, destination=None, **kw):
+        Image.new("RGB", (20, 20)).save(destination)
+        saved.append(destination)
+    monkeypatch.setattr(Bot, "download", fake_download)
+
+    def photo(caption, uid):
+        return Message(message_id=uid, date=datetime.now(timezone.utc), chat=Chat(id=ADMIN, type="private"),
+                       from_user=User(id=ADMIN, is_bot=False, first_name="A"), media_group_id="g1", caption=caption,
+                       photo=[PhotoSize(file_id=f"f{uid}", file_unique_id=f"u{uid}", width=20, height=20)])
+    dp, bot, session, _ = env
+
+    async def both():  # captionless item first, captioned one 0.3 s later
+        async def late():
+            await asyncio.sleep(0.3)
+            await dp.feed_update(bot, Update(update_id=11, message=photo("MR530SG", 2)))
+        await asyncio.gather(dp.feed_update(bot, Update(update_id=10, message=photo(None, 1))), late())
+    asyncio.run(both())
+    assert len(saved) == 2 and not any("Izohga SKU" in t for t in session.texts())

@@ -154,8 +154,18 @@ def has_popular_size(sizes: dict[str, dict], gender: str, ranges: dict) -> bool:
                for size, s in sizes.items())
 
 
+def check_sourcing_mode(settings: dict) -> None:
+    """poizon_com mode needs Poizon's written permission (ToU 20.1 o, p, r forbid robots)."""
+    if settings["sourcing_mode"] == "poizon_com" and settings["poizon_written_permission"] is not True:
+        raise SheetError("sourcing_mode=poizon_com: Poizon'dan yozma ruxsat yoʻq (poizon_written_permission). "
+                         "Mahsulotlar faqat manual_sheet orqali yuklanadi.")
+    if settings["sourcing_mode"] not in ("manual_sheet", "poizon_com"):
+        raise SheetError(f"sourcing_mode notoʻgʻri: {settings['sourcing_mode']}")
+
+
 def import_sheet(session: Session, source: str, *, client: httpx.Client | None = None) -> ImportReport:
     """Imports into the session (flushes, does not commit)."""
+    check_sourcing_mode(config.settings())
     cats = config.categories()
     ranges = config.settings()["sourcing"]["popular_sizes_eu"]
     report = ImportReport()

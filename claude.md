@@ -125,7 +125,7 @@ tests/
 - Tezlik: bitta oqim, so'rovlar orasida 5–10 soniya tasodifiy pauza, kuniga ko'pi bilan ~500 sahifa. Javoblar 12 soat keshlanadi.
 - Aniq User-Agent qo'ying (loyiha nomi + aloqa email `.env` dan).
 - 403/429/captcha → darhol to'xtash, adminga xabar. Chetlab o'tishga urinmang (proxy aylantirish, captcha yechish va h.k. — **yo'q**).
-- Ishga tushirishdan oldin admin poizon.com'ning Terms of Use sahifasini o'qib, avtomatik kirishga ruxsat borligini tasdiqlashi kerak — `settings.yaml` da `poizon_tos_reviewed: true` bo'lmaguncha scraper ishlamaydi.
+- **Scraper oʻchirilgan va qurilmagan.** Poizon Terms of Use 20.1 (o, p, r) robot, spider va ruxsatsiz dasturlar bilan kirishni taqiqlaydi. `poizon_client.py` faqat Poizon'dan **yozma ruxsat** olingandan keyin quriladi va yoqiladi (`settings.yaml`: `poizon_written_permission: true`). Ungacha `sourcing_mode: poizon_com` kod tomonidan rad etiladi; mahsulotlar faqat `manual_sheet` (CSV / Google Sheet) orqali keladi. Avtomatik rejimda ham Poizon/Dewu saytlari va CDN'idan hech narsa yuklab olinmaydi.
 
 **Har bir mahsulotdan oladigan narsalar:** nom, brend, style code (SKU), rang, kategoriya, har bir o'lcham bo'yicha narx (USD) va mavjudligi, rasm URL'lari, sahifa URL'i.
 
@@ -224,7 +224,7 @@ Har dushanba 09:00 da adminga, oddiy tilda, atamalarsiz:
 
 **Bosqich 0 — Sinov (MVP, 1–2 hafta qurish, 4–6 hafta sinov):**
 - Narx moduli + testlar
-- Manba: `manual_sheet` rejimi (birinchi), keyin poizon.com klienti (ToS tekshiruvidan keyin)
+- Manba: `manual_sheet` rejimi (birinchi), poizon.com klienti faqat Poizon'dan yozma ruxsat olinganda (ToU 20.1 o, p, r)
 - Kontent (rasm shablon + matn)
 - Admin bot + Telegram kanalga nashr
 - Buyurtmalar botda qo'lda

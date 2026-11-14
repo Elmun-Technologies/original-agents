@@ -5,6 +5,7 @@ honest and exact — price, sizes, delivery time, 24h validity, no-return-for-si
 call to action, hashtags — is added by code, so the model cannot get it wrong.
 """
 import json
+import logging
 import re
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -23,6 +24,7 @@ from app.scraping import blocklist
 from app.uz import format_uzs, uz
 
 PROMPT = config.ROOT / "prompts" / "content_uz.md"
+log = logging.getLogger(__name__)
 APPAREL_ORDER = ["XXS", "XS", "S", "M", "L", "XL", "XXL", "2XL", "XXXL", "3XL", "4XL"]
 PHOTO_EXT = (".jpg", ".jpeg", ".png", ".webp")
 
@@ -47,6 +49,30 @@ def display_model(product: Product) -> str:
     return name or product.model_name
 
 
+# Uzbek Latin only: English function words are a reliable signal (brand/model names rarely
+# contain them; words from the product's own name are excluded before counting).
+ENGLISH = {"the", "and", "with", "from", "for", "this", "that", "these", "is", "are", "was", "were", "of",
+           "to", "in", "on", "it", "its", "by", "as", "be", "or", "your", "you", "which", "here", "text",
+           "corrected", "wait", "note", "sorry", "version", "translation", "made", "has", "have"}
+META = re.compile(r"(?i)\b(wait|corrected|correction|here is|here's|translation|tuzatilgan matn)\b|\b(note|izoh)\s*:")
+
+
+def language_problems(text: str, own_words: set[str]) -> list[str]:
+    problems = []
+    if re.search(r"[\u0400-\u04ff]", text):
+        problems.append("kirill harflari (faqat oʻzbek lotin)")
+    if CJK.search(text):
+        problems.append("xitoycha belgilar")
+    words = [w for w in re.findall(r"[a-z']+", text.casefold()) if w not in own_words]
+    if sum(w in ENGLISH for w in words) >= 2:
+        problems.append("inglizcha matn")
+    if META.search(text):
+        problems.append("izoh/tuzatish matni")
+    if re.search(r"\n\s*\n", text.strip()):
+        problems.append("bir nechta xatboshi/variant")
+    return problems
+
+
 class ContentError(Exception):
     pass
 
@@ -67,8 +93,9 @@ def size_key(size: str):
         return (2, 0, size)
 
 
-def check_body(text: str, max_chars: int, allowlist=()) -> list[str]:
+def check_body(text: str, max_chars: int, allowlist=(), own_words: set[str] = frozenset()) -> list[str]:
     problems = [f"replika soʻzi: {', '.join(t)}" for t in [blocklist.find_terms(text)] if t]
+    problems += language_problems(text, own_words)
     problems += [name for name, rx in FORBIDDEN if rx.search(text)]
     problems += [f"shaxsiy maʼlumot: {', '.join(k)}" for k in [llm.find_pii(text, allowlist=allowlist)] if k]
     if len(text) > max_chars:
@@ -200,12 +227,34 @@ def assemble(session: Session, post: Post, product: Product, quotes: list[Quote]
     return notes
 
 
-def validate_body(body: str, s: dict, sku: str) -> str:
+def own_words(product: Product) -> set[str]:
+    text = " ".join(filter(None, [product.brand, product.model_name, product.colorway]))
+    return set(re.findall(r"[a-z']+", text.casefold()))
+
+
+def validate_body(body: str, s: dict, product: Product) -> str:
     body = uz(body.strip())
-    problems = check_body(body, s["content"]["max_body_chars"], s["llm"]["pii_allowlist"])
+    problems = check_body(body, s["content"]["max_body_chars"], s["llm"]["pii_allowlist"], own_words(product))
     if problems:
-        raise ContentError(f"{sku}: matn rad etildi: {'; '.join(problems)}")
+        raise ContentError(f"{product.style_code}: matn rad etildi: {'; '.join(problems)}")
     return body
+
+
+def write_body(llm_client, product: Product, cat: dict, s: dict, now: datetime) -> str:
+    """LLM body; on a rejected answer asks again with the reasons (content.llm_retries times)."""
+    facts = product_facts(product, cat)
+    prompt = PROMPT.read_text(encoding="utf-8")
+    error = None
+    for _ in range(1 + s["content"]["llm_retries"]):
+        user = facts if error is None else (
+            f"{facts}\n\nYour previous answer was rejected: {error}. Write it again: one paragraph, "
+            "Uzbek Latin only, no notes or corrections.")
+        try:
+            return validate_body(llm_client.complete("content", prompt, user, now=now), s, product)
+        except ContentError as e:
+            error = str(e).split("matn rad etildi: ", 1)[-1]
+            log.info("content retry for %s: %s", product.style_code, error)
+    raise ContentError(f"{product.style_code}: LLM matni rad etildi: {error}")
 
 
 def create_draft(session: Session, product: Product, llm_client, fx: dict[str, Rate], *,
@@ -220,11 +269,7 @@ def create_draft(session: Session, product: Product, llm_client, fx: dict[str, R
         raise ContentError(f"{product.style_code}: {product.rejected_reason}")
     cat = config.categories()[product.category]
     quotes, notes = make_quotes(product, fx, now, stock)
-    raw = llm_client.complete("content", PROMPT.read_text(encoding="utf-8"), product_facts(product, cat), now=now)
-    try:
-        body = validate_body(raw, s, product.style_code)
-    except ContentError as e:
-        raise ContentError(str(e).replace("matn rad etildi", "LLM matni rad etildi")) from None
+    body = write_body(llm_client, product, cat, s, now)
     post = Post(product_id=product.id, status="draft", is_stock=stock, created_at=now)
     notes += assemble(session, post, product, quotes, body, out_root)
     return Draft(post=post, quotes=quotes, notes=notes)
@@ -246,6 +291,6 @@ def refresh_post(session: Session, post: Post, fx: dict[str, Rate], *, now: date
     product = session.get(Product, post.product_id)
     old = post_quotes(session, post)
     new, notes = make_quotes(product, fx, now, post.is_stock)
-    body = validate_body(body, config.settings(), product.style_code) if body is not None else post.body_uz
+    body = validate_body(body, config.settings(), product) if body is not None else post.body_uz
     notes += assemble(session, post, product, new, body, out_root)
     return old, new, notes
