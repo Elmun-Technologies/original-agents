@@ -3,7 +3,7 @@
 import Link from 'next/link'
 
 import { fmt, sum } from '@/lib/format'
-import { href, t, type Lang } from '@/lib/i18n'
+import { href, t, tn, type Lang } from '@/lib/i18n'
 import { Icon } from './icons'
 import { useShop, type CardProduct } from './shop'
 
@@ -15,7 +15,7 @@ export function ProductCard({ p, lang, compact = false }: { p: CardProduct; lang
   const title = `${p.brand} ${p.name}`
   // Design: "★ 4,9 · 214 sharh · 55 ml". Without verified reviews the line keeps its place with type · volume.
   const meta = (p.reviews
-    ? [`${String(p.rating?.toFixed(1)).replace('.', ',')} · ${p.reviews} ${t(lang, 'sharh')}`, p.vol]
+    ? [`${String(p.rating?.toFixed(1)).replace('.', ',')} · ${tn(lang, '[N] sharh', p.reviews)}`, p.vol]
     : [p.type || t(lang, 'Yangi mahsulot'), p.vol]).filter(Boolean)
   if (compact) return (
     <div className="pc" style={{ padding: '8px' }}>

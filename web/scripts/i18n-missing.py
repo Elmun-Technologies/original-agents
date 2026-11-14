@@ -4,7 +4,7 @@ import glob, json, re
 ru = {}
 for f in glob.glob("src/i18n/ru*.json"):
     ru.update(json.load(open(f, encoding="utf-8")))
-pat = re.compile(r"""\b(?:tr|t\(lang,)\s*\(?\s*(['"])((?:(?!\1).)+)\1""")
+pat = re.compile(r"""\b(?:tr|tn|t\(lang,|tn\(lang,)\s*\(?\s*(['"])((?:(?!\1).)+)\1""")
 missing = {}
 for f in glob.glob("src/**/*.tsx", recursive=True) + glob.glob("src/**/*.ts", recursive=True):
     for m in pat.finditer(open(f, encoding="utf-8").read()):

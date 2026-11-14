@@ -9,7 +9,7 @@ import { Categories, Guarantees, Journal, Segments, SeoFaq, TelegramCta } from '
 import { Icon } from '@/components/icons'
 import { getStore, homeCards, payload } from '@/lib/catalog'
 import { fmt } from '@/lib/format'
-import { href, isLang, t } from '@/lib/i18n'
+import { href, isLang, t, tn as tnL } from '@/lib/i18n'
 import type { Media } from '@/payload-types'
 
 export default async function Home({ params }: { params: Promise<{ lang: string }> }) {
@@ -17,6 +17,7 @@ export default async function Home({ params }: { params: Promise<{ lang: string 
   if (!isLang(lang)) return null
   const tr = (s: string) => t(lang, s)
   const L = (p: string) => href(lang, p)
+  const tn = (s: string, ...n: (string | number)[]) => tnL(lang, s, ...n)
   const p = await payload()
   const [store, cards, banners, brands] = await Promise.all([
     getStore(),
@@ -37,8 +38,8 @@ export default async function Home({ params }: { params: Promise<{ lang: string 
 
   const faq: [string, string][] = [
     [tr('Mahsulotlar haqiqatan originalmi?'), tr('Ha. Rasmiy distribyutordan olamiz, har partiyaning hujjati bor. Mahsulot sahifasida partiya raqami va yaroqlilik muddati yozilgan — xohlasangiz, sertifikat nusxasini Telegramda yuboramiz.')],
-    [tr('Qachon yetkazasizlar?'), tr('Toshkent boʻylab [N] kunda, viloyatlarga [N] kunda. Buyurtma yoʻlga chiqqanda Telegram bot xabar beradi.').replace('[N]', String(store.tashkentDays)).replace('[N]', String(store.regionDays))],
-    [tr('Mos kelmasa, qaytarsa boʻladimi?'), tr('Ochilmagan mahsulotni [N] kun ichida qaytarishingiz mumkin. Ochilgan boʻlsa ham yozing — birga yechim topamiz.').replace('[N]', String(store.returnDays))],
+    [tr('Qachon yetkazasizlar?'), tn('Toshkent boʻylab [N] kunda, viloyatlarga [N] kunda. Buyurtma yoʻlga chiqqanda Telegram bot xabar beradi.', store.tashkentDays, store.regionDays)],
+    [tr('Mos kelmasa, qaytarsa boʻladimi?'), tn('Ochilmagan mahsulotni [N] kun ichida qaytarishingiz mumkin. Ochilgan boʻlsa ham yozing — birga yechim topamiz.', store.returnDays)],
     [tr('Qanday toʻlayman?'), tr('Click, Payme, Uzcard yoki Humo kartasi bilan — saytda yoki botda.')],
   ]
   const faqLd = {
@@ -51,7 +52,7 @@ export default async function Home({ params }: { params: Promise<{ lang: string 
       <MobileHome lang={lang} slides={slides} hits={cards.slice(0, 4)} cutoff={store.orderCutoff} />
       <div className="d-only">
         <Hero lang={lang} slides={slides} giftFrom={giftFrom ? fmt(giftFrom) : '599 000'} />
-        <Guarantees tr={tr} store={store} />
+        <Guarantees tr={tr} tn={tn} store={store} />
         <Categories tr={tr} L={L} />
         <Chooser lang={lang} products={cards} />
         <Hits lang={lang} products={cards} />
@@ -70,7 +71,7 @@ export default async function Home({ params }: { params: Promise<{ lang: string 
         </section>
       )}
       {/* «Xaridorlar nima deydi» appears once there are verified reviews (stage 2) — no placeholder reviews. */}
-      <Journal tr={tr} L={L} />
+      <Journal tr={tr} tn={tn} L={L} />
       <TelegramCta tr={tr} L={L} />
       <SeoFaq tr={tr} faq={<Faq items={faq} />} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqLd) }} />

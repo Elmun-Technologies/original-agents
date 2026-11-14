@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
 
 import { fmt } from '@/lib/format'
-import { href, t, type Lang } from '@/lib/i18n'
+import { href, t, tn, type Lang } from '@/lib/i18n'
 import { Icon } from './icons'
 import { useShop } from './shop'
 
@@ -78,7 +78,7 @@ export function Header({ lang, store, active = '' }: { lang: Lang; store: StoreI
       <div className="ann" style={{ background: '#2A211E', color: '#FBFAF7', fontSize: '13px' }}>
         <div className="wrap" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', minHeight: '38px', flexWrap: 'wrap' }}>
           <span style={{ display: 'inline-flex', gap: '8px', alignItems: 'center' }}>
-            <Icon name="truck" size={16} /> {tr('Toshkent boʻylab [N] kunda ·').replace('[N]', String(store.tashkentDays))}{' '}
+            <Icon name="truck" size={16} /> {tn(lang, 'Toshkent boʻylab [N] kunda ·', store.tashkentDays)}{' '}
             <b style={{ fontWeight: 600 }}>{tr('[300 000] soʻmdan yetkazish bepul').replace('[300 000]', fmt(store.freeDeliveryFrom))}</b>
           </span>
           <span className="hide-m" style={{ display: 'inline-flex', gap: '18px', alignItems: 'center', color: '#D9CFC9' }}>

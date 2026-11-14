@@ -3,7 +3,7 @@ import Link from 'next/link'
 
 type P = { tr: (s: string) => string; L: (p: string) => string }
 
-export function Guarantees({ tr, store }: { tr: P['tr']; store: { tashkentDays: number; returnDays: number } }) {
+export function Guarantees({ tr, tn, store }: { tr: P['tr']; tn: (s: string, ...n: (string | number)[]) => string; store: { tashkentDays: number; returnDays: number } }) {
   return (
 <section className="wrap" style={{marginTop: '12px'}} aria-label={tr("Kafolatlar")}>
   <div className="card" style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', padding: '6px'}}>
@@ -15,7 +15,7 @@ export function Guarantees({ tr, store }: { tr: P['tr']; store: { tashkentDays: 
     
       <div style={{display: 'flex', gap: '12px', alignItems: 'center', padding: '14px 18px'}}>
         <span style={{width: '42px', height: '42px', borderRadius: '50%', background: '#F2D6D0', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flex: 'none'}}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 6h11v10H3zM14 10h4l3 3v3h-7z"></path></svg></span>
-        <span style={{display: 'flex', flexDirection: 'column', gap: '2px'}}><b style={{fontSize: '14px', fontWeight: '600'}}>{tr("Tez yetkazish")}</b><span className="muted" style={{fontSize: '13px'}}>{tr("Toshkent boʻylab [N] kunda").replace("[N]", String(store.tashkentDays))}</span></span>
+        <span style={{display: 'flex', flexDirection: 'column', gap: '2px'}}><b style={{fontSize: '14px', fontWeight: '600'}}>{tr("Tez yetkazish")}</b><span className="muted" style={{fontSize: '13px'}}>{tn("Toshkent boʻylab [N] kunda", store.tashkentDays)}</span></span>
       </div>
     
       <div style={{display: 'flex', gap: '12px', alignItems: 'center', padding: '14px 18px'}}>
@@ -25,7 +25,7 @@ export function Guarantees({ tr, store }: { tr: P['tr']; store: { tashkentDays: 
     
       <div style={{display: 'flex', gap: '12px', alignItems: 'center', padding: '14px 18px'}}>
         <span style={{width: '42px', height: '42px', borderRadius: '50%', background: '#F2D6D0', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flex: 'none'}}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.3-5.6M4 4v4h4"></path></svg></span>
-        <span style={{display: 'flex', flexDirection: 'column', gap: '2px'}}><b style={{fontSize: '14px', fontWeight: '600'}}>{tr("Qaytarish oson")}</b><span className="muted" style={{fontSize: '13px'}}>{tr("[N] kun ichida, savolsiz").replace("[N]", String(store.returnDays))}</span></span>
+        <span style={{display: 'flex', flexDirection: 'column', gap: '2px'}}><b style={{fontSize: '14px', fontWeight: '600'}}>{tr("Qaytarish oson")}</b><span className="muted" style={{fontSize: '13px'}}>{tn("[N] kun ichida, savolsiz", store.returnDays)}</span></span>
       </div>
     
   </div>
@@ -128,24 +128,24 @@ export function Segments({ tr, L }: P) {
   )
 }
 
-export function Journal({ tr, L }: P) {
+export function Journal({ tr, tn, L }: P & { tn: (s: string, ...n: (string | number)[]) => string }) {
   return (
 <section className="wrap" style={{marginTop: '40px'}} aria-labelledby="j-h">
   <div className="sec-h"><h2 id="j-h" className="h h2" style={{fontSize: '40px'}}>{tr("Oldin oʻqing,")} <span className="serif">{tr("keyin oling")}</span></h2><Link href={L("/jurnal")} className="pill line">{tr("Jurnal")} <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></Link></div>
   <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '12px'}}>
     
       <Link href={L("/jurnal/spf-qishda")} className="card zoom" style={{textDecoration: 'none', display: 'flex', flexDirection: 'column'}}>
-        <span style={{display: 'block', aspectRatio: '16/10', overflow: 'hidden', position: 'relative'}}><img className="ph" src="/img/face-leaf.jpg" alt="" style={{objectPosition: '50% 30%'}} /><span className="chip glass" style={{position: 'absolute', top: '12px', left: '12px'}}>{tr("Qoʻllanma · 4 daqiqa")}</span></span>
+        <span style={{display: 'block', aspectRatio: '16/10', overflow: 'hidden', position: 'relative'}}><img className="ph" src="/img/face-leaf.jpg" alt="" style={{objectPosition: '50% 30%'}} /><span className="chip glass" style={{position: 'absolute', top: '12px', left: '12px'}}>{tn("Qoʻllanma · [N] daqiqa", 4)}</span></span>
         <span style={{padding: '18px 20px 22px', display: 'flex', flexDirection: 'column', gap: '8px'}}><b style={{font: "600 20px/1.2 'Inter Tight', sans-serif", letterSpacing: '-0.02em'}}>{tr("Teri turingizni 2 daqiqada qanday aniqlash mumkin")}</b><span className="muted" style={{fontSize: '14px', lineHeight: '1.5'}}>{tr("Oddiy salfetka testi va 3 ta savol. Keyin nimani olish aniq boʻladi.")}</span></span>
       </Link>
     
       <Link href={L("/jurnal/koreyscha-parvarish")} className="card zoom" style={{textDecoration: 'none', display: 'flex', flexDirection: 'column'}}>
-        <span style={{display: 'block', aspectRatio: '16/10', overflow: 'hidden', position: 'relative'}}><img className="ph" src="/img/spf-arm.jpg" alt="" style={{objectPosition: '50% 50%'}} /><span className="chip glass" style={{position: 'absolute', top: '12px', left: '12px'}}>{tr("SPF · 3 daqiqa")}</span></span>
+        <span style={{display: 'block', aspectRatio: '16/10', overflow: 'hidden', position: 'relative'}}><img className="ph" src="/img/spf-arm.jpg" alt="" style={{objectPosition: '50% 50%'}} /><span className="chip glass" style={{position: 'absolute', top: '12px', left: '12px'}}>{tn("SPF · [N] daqiqa", 3)}</span></span>
         <span style={{padding: '18px 20px 22px', display: 'flex', flexDirection: 'column', gap: '8px'}}><b style={{font: "600 20px/1.2 'Inter Tight', sans-serif", letterSpacing: '-0.02em'}}>{tr("SPF qishda ham kerakmi? Qisqa javob — ha")}</b><span className="muted" style={{fontSize: '14px', lineHeight: '1.5'}}>{tr("Nima uchun, qaysi tekstura qulay va qancha surtish kerak.")}</span></span>
       </Link>
     
       <Link href={L("/jurnal/teri-turi")} className="card zoom" style={{textDecoration: 'none', display: 'flex', flexDirection: 'column'}}>
-        <span style={{display: 'block', aspectRatio: '16/10', overflow: 'hidden', position: 'relative'}}><img className="ph" src="/img/gel-jar-hands.jpg" alt="" style={{objectPosition: '50% 50%'}} /><span className="chip glass" style={{position: 'absolute', top: '12px', left: '12px'}}>{tr("Rutina · 5 daqiqa")}</span></span>
+        <span style={{display: 'block', aspectRatio: '16/10', overflow: 'hidden', position: 'relative'}}><img className="ph" src="/img/gel-jar-hands.jpg" alt="" style={{objectPosition: '50% 50%'}} /><span className="chip glass" style={{position: 'absolute', top: '12px', left: '12px'}}>{tn("Rutina · [N] daqiqa", 5)}</span></span>
         <span style={{padding: '18px 20px 22px', display: 'flex', flexDirection: 'column', gap: '8px'}}><b style={{font: "600 20px/1.2 'Inter Tight', sans-serif", letterSpacing: '-0.02em'}}>{tr("Koreyscha parvarish: 10 qadam shartmi?")}</b><span className="muted" style={{fontSize: '14px', lineHeight: '1.5'}}>{tr("Yoʻq. Boshlash uchun 3 qadam yetarli — qaysilari, tushuntiramiz.")}</span></span>
       </Link>
     
