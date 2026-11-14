@@ -1,0 +1,72 @@
+# Production: bot + scheduler (one service), Postgres, nightly backup.
+# Coolify: Docker Compose build pack; fill the ${...} variables in its Environment Variables tab.
+# Local:   cp .env.example .env (fill it), then  docker compose up -d --build
+services:
+  bot:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+psycopg://poizon:${POSTGRES_PASSWORD}@db:5432/poizon
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      LLM_MODEL: ${LLM_MODEL:-claude-opus-5-5}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      TELEGRAM_ADMIN_IDS: ${TELEGRAM_ADMIN_IDS}
+      TELEGRAM_CHANNEL_ID: ${TELEGRAM_CHANNEL_ID}
+      SCRAPER_CONTACT_EMAIL: ${SCRAPER_CONTACT_EMAIL:-}
+      CHATPLACE_API_TOKEN: ${CHATPLACE_API_TOKEN:-}
+      DRY_RUN: ${DRY_RUN:-true}
+      BOT_HOLD: ${BOT_HOLD:-false}
+      INSTANCE: server
+    volumes:
+      - app_data:/app/data            # photos, rendered posts, screenshots, reports, rate cache
+    healthcheck:                      # the scheduler touches data/heartbeat every minute
+      test: ["CMD", "python", "-c", "import os,sys,time; sys.exit(time.time() - os.path.getmtime('/app/data/heartbeat') > 180)"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
+
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: poizon
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: poizon
+      TZ: Asia/Tashkent
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U poizon -d poizon"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  backup:
+    build:
+      context: .
+      dockerfile: Dockerfile.backup
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PGHOST: db
+      PGUSER: poizon
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      PGDATABASE: poizon
+      TZ: Asia/Tashkent
+      BACKUP_HOUR: "03"
+      BACKUP_KEEP_DAYS: "7"
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      TELEGRAM_ADMIN_IDS: ${TELEGRAM_ADMIN_IDS}
+    volumes:
+      - pg_backups:/backups
+
+volumes:
+  app_data:
+  pg_data:
+  pg_backups:

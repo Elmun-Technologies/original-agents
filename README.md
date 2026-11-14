@@ -25,3 +25,9 @@ uv run pytest
 
 Zaxira manba: CSV / Google Sheet (`python -m app.agents.sourcing <fayl|url>`, namuna
 `data/samples/manual_sheet_sample.csv`, yoki `settings.yaml: sheet_url` — har kuni 05:00).
+
+## Server (Docker)
+
+`docker compose up -d --build` — bot + jadval, Postgres, kechki backup (03:00, 7 kun).
+Hetzner + Coolify'ga joylash va Mac'dan maʼlumot koʻchirish: [docs/deploy_coolify.md](docs/deploy_coolify.md).
+Postgres testlari: `TEST_POSTGRES_URL=... uv run pytest -m postgres` (yoʻriqnomada).

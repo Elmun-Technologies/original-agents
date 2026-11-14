@@ -196,7 +196,7 @@ def test_schedule_times(env):
     _, _, _, ctx = env
     sched = admin_bot.schedule(ctx, None)
     jobs = {j.id: str(j.trigger) for j in sched.get_jobs()}
-    assert set(jobs) == {"import", "drafts", "publish0", "publish1", "publish2", "summary", "weekly"}
+    assert set(jobs) == {"import", "drafts", "publish0", "publish1", "publish2", "summary", "weekly", "heartbeat"}
     assert "hour='9', minute='0'" in jobs["drafts"] and "hour='21', minute='30'" in jobs["summary"]
 
 
@@ -331,3 +331,51 @@ def test_force_button_only_for_low_price(env, db, tmp_path, monkeypatch):
     assert not any(b.startswith(("scr:force", "scr:ok")) for b in buttons(env))   # knock-off: no override
     send(env, "/prices")
     assert "New Balance · Krossovka" in session.texts()[-1]
+
+
+def test_crash_flag_and_conflict_exit(env):
+    from aiogram.exceptions import TelegramConflictError
+    from aiogram.methods import GetUpdates
+    dp, bot, session, ctx = env
+    assert admin_bot.mark_running(ctx, True) is False      # first start
+    assert admin_bot.mark_running(ctx, True) is True       # started again without a clean stop = crash
+    admin_bot.mark_running(ctx, False)
+    assert admin_bot.mark_running(ctx, True) is False
+
+    stopped = []
+
+    async def stop_polling():
+        stopped.append(True)
+    dp.stop_polling = stop_polling
+    mw = admin_bot.exit_on_conflict(dp)
+
+    async def conflict(bot, method):
+        raise TelegramConflictError(method=method, message="Conflict: terminated by other getUpdates request")
+
+    async def run():
+        with pytest.raises(TelegramConflictError):
+            await mw(conflict, bot, GetUpdates())
+    asyncio.run(run())
+    assert stopped == [True]
+
+
+def test_job_error_alerts_admin(env):
+    dp, bot, session, ctx = env
+    tg = admin_bot.Tg(bot, ctx)
+
+    async def run():
+        sched = admin_bot.schedule(ctx, tg)
+        sched.add_job(lambda: 1 / 0, id="boom")
+        sched.start()
+        await asyncio.sleep(0.5)
+        sched.shutdown(wait=False)
+    asyncio.run(run())
+    assert any("«boom» xato" in t for t in session.texts())
+
+
+def test_crash_alerts_throttled(env):
+    from datetime import timedelta
+    ctx = env[3]
+    assert admin_bot.crash_alert_due(ctx, NOW) is True
+    assert admin_bot.crash_alert_due(ctx, NOW + timedelta(minutes=10)) is False   # crash loop: quiet
+    assert admin_bot.crash_alert_due(ctx, NOW + timedelta(minutes=31)) is True

@@ -8,10 +8,13 @@ import logging
 import os
 import secrets
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from aiogram import Bot, Dispatcher, F, Router
+from aiogram.exceptions import TelegramConflictError
+from aiogram.methods import GetUpdates
+from apscheduler.events import EVENT_JOB_ERROR
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from aiogram.filters import Command, CommandObject
@@ -371,7 +374,69 @@ def schedule(ctx: Ctx, tg: Tg) -> AsyncIOScheduler:
     h, m = hhmm.split(":")
     sched.add_job(job_weekly, CronTrigger(day_of_week=day, hour=int(h), minute=int(m), timezone=TZ),
                   args=(ctx, tg), id="weekly", misfire_grace_time=6 * 3600)
+    sched.add_job(heartbeat, "interval", seconds=60, id="heartbeat", next_run_time=datetime.now(TZ))
+
+    def on_error(event):  # a scheduled job crashed: tell the admin at once
+        msg = f"⚠️ Rejadagi ish «{event.job_id}» xato bilan tugadi: {event.exception!r}"[:1000]
+        log.error(msg)
+        loop = getattr(sched, "_eventloop", None)  # set by sched.start(); sync jobs report from a thread
+        if tg is not None and loop is not None:
+            loop.call_soon_threadsafe(lambda: asyncio.ensure_future(tg.admins(msg)))
+    sched.add_listener(on_error, EVENT_JOB_ERROR)
     return sched
+
+
+def heartbeat() -> None:
+    """For the container healthcheck (docker-compose.yml)."""
+    path = config.DATA_DIR / "heartbeat"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.touch()
+
+
+# --- process lifecycle: crash alerts, one bot instance ----------------------------------
+
+RUNNING_KEY = "bot_running"
+
+
+def mark_running(ctx: Ctx, running: bool) -> bool:
+    """Sets the flag; returns True if the previous run did not stop cleanly."""
+    from app.db.models import AppState
+    with ctx.factory() as s:
+        row = s.get(AppState, RUNNING_KEY) or AppState(key=RUNNING_KEY, value="0")
+        crashed = row.value.startswith("1")
+        row.value = ("1 " + os.environ.get("INSTANCE", "local")) if running else "0"
+        s.add(row)
+        s.commit()
+    return crashed
+
+
+CRASH_ALERT_KEY, CRASH_ALERT_MINUTES = "crash_alert_at", 30
+
+
+def crash_alert_due(ctx: Ctx, at: datetime) -> bool:
+    """At most one crash/restart alert per CRASH_ALERT_MINUTES (a crash loop must not spam)."""
+    from app.db.models import AppState
+    with ctx.factory() as s:
+        row = s.get(AppState, CRASH_ALERT_KEY)
+        if row is not None and at - datetime.fromisoformat(row.value) < timedelta(minutes=CRASH_ALERT_MINUTES):
+            return False
+        s.merge(AppState(key=CRASH_ALERT_KEY, value=at.isoformat()))
+        s.commit()
+    return True
+
+
+def exit_on_conflict(dp: Dispatcher):
+    """Request middleware for a second instance (EXIT_ON_CONFLICT=true, e.g. the Mac after the
+    move to the server): when another bot polls with the same token, this one stops."""
+    async def mw(make_request, bot, method):
+        try:
+            return await make_request(bot, method)
+        except TelegramConflictError:
+            if isinstance(method, GetUpdates):
+                log.warning("another instance polls this bot token: stopping this one (EXIT_ON_CONFLICT)")
+                await dp.stop_polling()
+            raise
+    return mw
 
 
 # --- handlers ------------------------------------------------------------------------
@@ -784,10 +849,28 @@ async def main() -> None:
     logging.basicConfig(level=logging.INFO)
     logging.getLogger("httpx").setLevel(logging.WARNING)
     bot, dp, ctx, tg = build()
-    sched = schedule(ctx, tg)
-    sched.start()
-    log.info("scheduler: %s", ", ".join(f"{j.id} {j.next_run_time:%d.%m %H:%M}" for j in sched.get_jobs()))
-    await dp.start_polling(bot)
+    if os.environ.get("EXIT_ON_CONFLICT", "").lower() == "true":
+        bot.session.middleware(exit_on_conflict(dp))
+    where = os.environ.get("INSTANCE", "local")
+    try:
+        if mark_running(ctx, True) and crash_alert_due(ctx, now()):
+            await tg.admins(f"♻️ Bot qayta ishga tushdi ({where}): oldingi ishga tushish kutilmaganda toʻxtagan "
+                            "(qulash yoki server qayta yuklanishi). Maʼlumotlar bazada saqlangan.")
+        sched = schedule(ctx, tg)
+        sched.start()
+        log.info("scheduler: %s", ", ".join(f"{j.id} {j.next_run_time:%d.%m %H:%M}" for j in sched.get_jobs()))
+        await dp.start_polling(bot)
+    except Exception as e:  # tell the admin before the container restarts us
+        log.exception("bot crashed")
+        try:
+            if crash_alert_due(ctx, now()):
+                await tg.admins(f"🛑 Bot qulab tushdi ({where}): {e!r}"[:1000] + "\nQayta ishga tushirilmoqda.")
+        except Exception:
+            log.exception("crash alert not sent")
+        raise
+    finally:
+        await bot.session.close()
+    mark_running(ctx, False)  # clean stop (SIGTERM on redeploy, or EXIT_ON_CONFLICT)
 
 
 if __name__ == "__main__":
