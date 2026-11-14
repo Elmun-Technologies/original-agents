@@ -8,7 +8,8 @@ import json
 import logging
 import re
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timedelta
+from decimal import Decimal
 from pathlib import Path
 
 from sqlalchemy import select
@@ -155,6 +156,17 @@ def own_photos(product: Product, limit: int | None = None) -> list[Path]:
     return photos[:limit] if limit else photos
 
 
+def priced_source(ps, now: datetime) -> tuple[Decimal, float]:
+    """(price to quote from, buffer) for a source size. A price older than
+    stale_price_buffer_after_days gets +stale_price_buffer_pct, so a price rise since the
+    screenshot does not eat the profit. Used for posts and for orders alike."""
+    p = config.settings()["publishing"]
+    if now - ps.checked_at > timedelta(days=p["stale_price_buffer_after_days"]):
+        pct = p["stale_price_buffer_pct"]
+        return ps.source_price * (1 + Decimal(str(pct))), pct
+    return ps.source_price, 0.0
+
+
 def make_quotes(product: Product, fx: dict[str, Rate], now: datetime, stock: bool) -> tuple[list[Quote], list[str]]:
     """Fresh quotes (not yet added to the session). stock=True: only sizes in our stock."""
     notes: list[str] = []
@@ -171,7 +183,10 @@ def make_quotes(product: Product, fx: dict[str, Rate], now: datetime, stock: boo
         else:
             if not ps.available:
                 continue
-            q = quote_from_source(ps.source_price, ps.source_currency, product.category, fx, now=now)
+            price, buffer = priced_source(ps, now)
+            q = quote_from_source(price, ps.source_currency, product.category, fx, now=now)
+            if buffer:
+                q.breakdown.update(listed_price=float(ps.source_price), stale_price_buffer_pct=buffer)
             notes += [w for w in q.warnings if w not in notes]
         quotes.append(Quote(product_id=product.id, size=ps.size_eu, landed_cost_usd=q.landed_cost_usd,
                             sell_price_uzs=q.sell_price_uzs, usd_rate=q.usd_rate,

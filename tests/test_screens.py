@@ -67,12 +67,12 @@ def test_stale_price_blocks_and_is_listed(db, tmp_path, monkeypatch):
     monkeypatch.setitem(config.settings()["content"], "photos_dir", str(tmp_path / "photos"))
     p = make_product(db, sku="OLD")
     for s in p.sizes:
-        s.checked_at = NOW - timedelta(days=4)
+        s.checked_at = NOW - timedelta(days=8)
     db.flush()
     assert publisher.stale_price(p, NOW) and publisher.pick_products(db, NOW, 8, FX) == []
     assert "Narxni yangilang" in publisher.daily_summary(db, NOW) and "OLD" in publisher.daily_summary(db, NOW)
     for s in p.sizes:
-        s.checked_at = NOW - timedelta(days=2)
+        s.checked_at = NOW - timedelta(days=6)
     assert not publisher.stale_price(p, NOW)
 
 

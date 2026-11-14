@@ -273,3 +273,30 @@ def test_summary_counts_published_and_waiting_orders(db, tmp_path):
     publisher.mark_published(db, post, 7, NOW)
     s = publisher.daily_summary(db, NOW)
     assert "Kanalga chiqdi: 1" in s and "New Balance 530" in s and "Muammo yoʻq" in s
+
+
+# --- weekly rhythm: buffer on old prices, repost window, "add products" reminder ---
+
+def test_old_price_gets_safety_buffer(db, tmp_path):
+    from app.agents.content import make_quotes
+    p = make_product(db, sizes=(("41", 489),))
+    p.sizes[0].checked_at = NOW - timedelta(days=2)
+    fresh, _ = make_quotes(p, FX, NOW, False)
+    p.sizes[0].checked_at = NOW - timedelta(days=4)
+    old, _ = make_quotes(p, FX, NOW, False)
+    assert "stale_price_buffer_pct" not in fresh[0].breakdown
+    assert old[0].breakdown["stale_price_buffer_pct"] == 0.03 and old[0].breakdown["listed_price"] == 489
+    assert old[0].breakdown["source_price"] == pytest.approx(489 * 1.03)
+    assert old[0].sell_price_uzs > fresh[0].sell_price_uzs
+
+
+def test_no_repost_within_7_days_then_reminder(db, tmp_path):
+    a = make_product(db, sku="A", brand="A", model="m1")
+    d = create_draft(db, a, FakeLlm(), FX, now=NOW - timedelta(days=5), out_root=tmp_path)
+    publisher.mark_published(db, d.post, 1, NOW - timedelta(days=5))
+    b = make_product(db, sku="B", brand="B", model="m2")
+    assert skus(publisher.pick_products(db, NOW, 8)) == [("B", False)]          # A posted 5 days ago
+    assert "Yangi tovar qoʻshing: ertaga chiqarish uchun 2 ta" not in publisher.daily_summary(db, NOW)
+    assert "Yangi tovar qoʻshing" in publisher.daily_summary(db, NOW)           # 1 < min 5
+    later = NOW + timedelta(days=3)
+    assert skus(publisher.pick_products(db, later, 8)) == [("B", False), ("A", False)]  # never-posted first

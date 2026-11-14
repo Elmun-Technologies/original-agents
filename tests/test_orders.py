@@ -115,8 +115,9 @@ def test_monthly_limit_other_recipient_cancelled_or_next_month(db, tmp_path):
 
 
 def test_month_is_tashkent_calendar_month(db, tmp_path):
-    post, _ = published(db, tmp_path, sizes=(("42", 1300),))
+    post, product = published(db, tmp_path, sizes=(("42", 1300),))
     late = datetime(2026, 11, 30, 23, 30, tzinfo=TZ)                # = 18:30 UTC, still November
+    product.sizes[0].checked_at = late                             # fresh price: no stale buffer
     order(db, post, "42", now=late)
     assert orders.month_totals(db, PHONE, datetime(2026, 11, 30, 23, 50, tzinfo=TZ))[0] == Decimal("195.00")
     assert orders.month_totals(db, PHONE, datetime(2026, 12, 1, 0, 10, tzinfo=TZ))[0] == 0

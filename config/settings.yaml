@@ -106,7 +106,10 @@ stock:
 publishing:
   daily_drafts: {min: 5, max: 8}
   price_change_alert_pct: 0.05      # recheck before approve/publish
-  max_price_age_days: 3             # source price older than this is not published (re-send screenshots)
+  price_max_age_days: 7             # source price older than this is not published (re-send screenshots weekly)
+  stale_price_buffer_after_days: 3  # source price older than this gets a safety buffer in the quote...
+  stale_price_buffer_pct: 0.03      # ...of +3% (fraction, like every *_pct here)
+  repost_after_days: 7              # the same product is not posted again within this many days
   per_brand_daily_max: 2            # drafts per day, keeps the channel varied
   per_model_daily_max: 1
   stock_repost_after_days: 14       # stock items may be posted again after this

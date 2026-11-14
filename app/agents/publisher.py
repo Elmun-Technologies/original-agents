@@ -86,7 +86,7 @@ def price_age_days(product: Product, now: datetime) -> float | None:
 
 def stale_price(product: Product, now: datetime) -> bool:
     age = price_age_days(product, now)
-    return age is not None and age > config.settings()["publishing"]["max_price_age_days"]
+    return age is not None and age > config.settings()["publishing"]["price_max_age_days"]
 
 
 def stale_message(product: Product, now: datetime) -> str:
@@ -117,38 +117,48 @@ def rank_score(product: Product, terms: list[set[str]], now: datetime, fx: dict[
     return sum(r["weights"][k] * v for k, v in parts.items())
 
 
-def pick_products(session: Session, now: datetime, limit: int,
-                  fx: dict[str, Rate] | None = None) -> list[tuple[Product, bool]]:
-    """[(product, as_stock_post)] in priority order, respecting the per-day diversity caps."""
+def candidates(session: Session, now: datetime, fx: dict[str, Rate] | None = None) -> list[tuple[Product, bool]]:
+    """[(product, as_stock_post)] that may be posted now, best first (no daily caps).
+    Stock first; then products never published, then reposts (none within repost_after_days),
+    each group by rank_score. Stale source prices are left out."""
     p = config.settings()["publishing"]
-    day_start = _day_start_utc(now)
     posts = list(session.scalars(select(Post).where(Post.status != "rejected")))
-    has_post = {x.product_id for x in posts}
     open_post = {x.product_id for x in posts if x.status in ("draft", "approved")}
-    repost_after = now - timedelta(days=p["stock_repost_after_days"])
-    recent_stock_post = {x.product_id for x in posts
-                         if x.is_stock and x.published_at is not None and x.published_at > repost_after}
-
-    brands: dict[str, int] = {}
-    models: dict[str, int] = {}
-    for x in posts:  # drafts already created today count toward today's caps
-        if x.created_at >= day_start:
-            prod = session.get(Product, x.product_id)
-            brands[prod.brand.casefold()] = brands.get(prod.brand.casefold(), 0) + 1
-            mk = display_model(prod).casefold()
-            models[mk] = models.get(mk, 0) + 1
+    last_published: dict[int, datetime] = {}
+    for x in posts:
+        if x.published_at is not None and x.published_at > last_published.get(x.product_id, x.published_at - timedelta(1)):
+            last_published[x.product_id] = x.published_at
+    stock_after = now - timedelta(days=p["stock_repost_after_days"])
+    repost_after = now - timedelta(days=p["repost_after_days"])
 
     products = list(session.scalars(select(Product).order_by(Product.first_seen_at.desc(), Product.id.desc())))
     terms = trend_terms(session, now)
     replica = lambda pr: (pr.rejected_reason or "").startswith("replika")
-    stock = [pr for pr in products if pr.in_stock and not replica(pr)
-             and pr.id not in open_post and pr.id not in recent_stock_post]
-    fresh = [pr for pr in products if pr.is_active and pr.id not in has_post and pr not in stock
-             and not stale_price(pr, now)]
-    ranked = sorted(fresh, key=lambda pr: -rank_score(pr, terms, now, fx))  # stable: newest first on a tie
+    stock = [pr for pr in products if pr.in_stock and not replica(pr) and pr.id not in open_post
+             and not any(x.is_stock and x.product_id == pr.id and x.published_at and x.published_at > stock_after
+                         for x in posts)]
+    fresh = [pr for pr in products if pr.is_active and not pr.in_stock and pr.id not in open_post
+             and last_published.get(pr.id, repost_after) <= repost_after and not stale_price(pr, now)]
+    # stable sorts: newest first on a tie; never-published before reposts
+    ranked = sorted(fresh, key=lambda pr: (pr.id in last_published, -rank_score(pr, terms, now, fx)))
+    return [(x, True) for x in stock] + [(x, False) for x in ranked]
+
+
+def pick_products(session: Session, now: datetime, limit: int,
+                  fx: dict[str, Rate] | None = None) -> list[tuple[Product, bool]]:
+    """candidates() with the per-day diversity caps (drafts already made today count)."""
+    p = config.settings()["publishing"]
+    day_start = _day_start_utc(now)
+    brands: dict[str, int] = {}
+    models: dict[str, int] = {}
+    for x in session.scalars(select(Post).where(Post.status != "rejected", Post.created_at >= day_start)):
+        prod = session.get(Product, x.product_id)
+        brands[prod.brand.casefold()] = brands.get(prod.brand.casefold(), 0) + 1
+        mk = display_model(prod).casefold()
+        models[mk] = models.get(mk, 0) + 1
 
     picked: list[tuple[Product, bool]] = []
-    for pr, as_stock in [(x, True) for x in stock] + [(x, False) for x in ranked]:
+    for pr, as_stock in candidates(session, now, fx):
         if len(picked) >= limit:
             break
         b, m = pr.brand.casefold(), display_model(pr).casefold()
@@ -358,7 +368,9 @@ def admin_summary(session: Session, post: Post) -> str:
     for q in post_quotes(session, post):
         b = q.breakdown
         cost = (f"tannarx {format_uzs(b['stock_cost_uzs'])}" if b.get("stock")
-                else f"manba {b['source_price']:g} {b['source_currency']}, tannarx ${b['landed_cost_usd']:.2f}")
+                else f"manba {b.get('listed_price', b['source_price']):g} {b['source_currency']}"
+                     + (f" (+{b['stale_price_buffer_pct']:.0%} eski narx)" if b.get("stale_price_buffer_pct") else "")
+                     + f", tannarx ${b['landed_cost_usd']:.2f}")
         lines.append(f"• {q.size}: {format_uzs(q.sell_price_uzs)} — {cost}, foyda {format_uzs(b['profit_uzs'])}")
     return "\n".join(lines)
 
@@ -388,6 +400,12 @@ def daily_summary(session: Session, now: datetime) -> str:
     if to_confirm or to_buy:
         lines.append(f"Sizdan kutilmoqda: toʻlovni tasdiqlash — {len(to_confirm)} ta, xarid — {len(to_buy)} ta (/orders)")
     lines.append(f"Nashr navbatida: {queued} ta · AI xarajati: ${spent_usd(session, now.astimezone(TZ).date()):.2f}")
+    tomorrow = candidates(session, now + timedelta(days=1))
+    need = config.settings()["publishing"]["daily_drafts"]["min"]
+    if len(tomorrow) < need:
+        lines += ["", f"➕ Yangi tovar qoʻshing: ertaga chiqarish uchun {len(tomorrow)} ta tovar qoldi "
+                      f"(kerak: kamida {need}). Qolganlari oxirgi "
+                      f"{config.settings()['publishing']['repost_after_days']} kunda chiqqan yoki narxi eskirgan."]
     stale = [pr for pr in session.scalars(select(Product).where(Product.is_active)) if stale_price(pr, now)]
     if stale:
         lines += ["", f"Narxni yangilang ({len(stale)} ta, skrinshotni qayta yuboring):"]

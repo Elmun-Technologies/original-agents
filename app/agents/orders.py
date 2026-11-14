@@ -13,7 +13,7 @@ from decimal import Decimal
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.agents.content import post_quotes
+from app.agents.content import post_quotes, priced_source
 from app.config import TZ
 from app.db.models import (SHIPPING_STATUSES, Expense, Lead, Order, Post, Product, ProductSize, Quote,
                            TrendNote)
@@ -196,7 +196,7 @@ def preview_order(session: Session, req: NewOrderRequest, fx: dict[str, Rate] | 
                             Decimal(str(b["weight_kg"])), posted, None, False, warnings)
     if fx is None:
         raise OrderError("Kurs yoʻq — narxni qayta hisoblab boʻlmadi.")
-    calc = quote_from_source(ps.source_price, ps.source_currency, product.category, fx, now=now,
+    calc = quote_from_source(priced_source(ps, now)[0], ps.source_currency, product.category, fx, now=now,
                              prior_month_value_usd=prior_v, prior_month_weight_kg=prior_w,
                              vacuum_packing=req.vacuum)
     warnings += calc.warnings
