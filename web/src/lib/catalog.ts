@@ -28,6 +28,23 @@ async function oldPrices(skus: string[]): Promise<Map<string, number>> {
   return max
 }
 
+/** Verified, approved reviews only: count, average, 5…1 distribution. */
+export async function reviewStats(productIds: (number | string)[]) {
+  const out = new Map<string, { count: number; avg: number; dist: number[] }>()
+  if (!productIds.length) return out
+  const p = await payload()
+  const res = await p.find({ collection: 'reviews', where: { product: { in: productIds }, approved: { equals: true } }, depth: 0, limit: 100_000, pagination: false, select: { product: true, rating: true } })
+  for (const r of res.docs) {
+    const key = String(typeof r.product === 'object' ? r.product.id : r.product)
+    const s = out.get(key) ?? { count: 0, avg: 0, dist: [0, 0, 0, 0, 0] }
+    s.avg = (s.avg * s.count + r.rating) / (s.count + 1)
+    s.count++
+    s.dist[5 - r.rating]++
+    out.set(key, s)
+  }
+  return out
+}
+
 const img = (m: unknown) => (m && typeof m === 'object' ? ((m as Media).url ?? '') : '')
 
 export function discountPct(price: number, old?: number) {
@@ -36,7 +53,7 @@ export function discountPct(price: number, old?: number) {
 
 export async function toCards(products: Product[], lang: Lang): Promise<CardProduct[]> {
   const first = products.map((pr) => pr.variants[0])
-  const olds = await oldPrices(first.map((v) => v.sku))
+  const [olds, stats] = await Promise.all([oldPrices(first.map((v) => v.sku)), reviewStats(products.map((pr) => pr.id))])
   return products.map((pr, i) => {
     const v = first[i]
     const old = (olds.get(v.sku) ?? 0) > v.price ? olds.get(v.sku) : undefined
@@ -57,6 +74,8 @@ export async function toCards(products: Product[], lang: Lang): Promise<CardProd
       price: v.price,
       old,
       tags,
+      rating: stats.get(String(pr.id))?.avg,
+      reviews: stats.get(String(pr.id))?.count,
     }
   })
 }
@@ -131,4 +150,46 @@ export async function catalogData(slug: string, lang: Lang) {
     cat, parent, items, subs, siblings: siblingCards, brands, allImg: firstImg(() => true),
     priceMin: prices.length ? Math.min(...prices) : 0, priceMax: prices.length ? Math.max(...prices) : 0,
   }
+}
+
+/** ml from "55 ml" / "10 × 24 ml" (null if not a volume) — for the per-ml price on the product page. */
+export function millilitres(volume?: string | null): number | null {
+  const m = (volume ?? '').replace(',', '.').match(/(?:(\d+)\s*[×x]\s*)?(\d+(?:\.\d+)?)\s*ml/i)
+  return m ? (m[1] ? Number(m[1]) : 1) * Number(m[2]) : null
+}
+
+/** Everything the product page needs. */
+export async function productData(slug: string, lang: Lang) {
+  const p = await payload()
+  const pr = (await p.find({ collection: 'products', where: { slug: { equals: slug } }, locale: lang, depth: 2, limit: 1 })).docs[0]
+  if (!pr) return null
+  const cat = typeof pr.category === 'object' ? pr.category : null
+  const parent = cat?.parent && typeof cat.parent === 'object' ? cat.parent : null
+  const brand = typeof pr.brand === 'object' ? pr.brand : null
+  const olds = await oldPrices(pr.variants.map((v) => v.sku))
+  const variants = pr.variants.map((v) => {
+    const old = (olds.get(v.sku) ?? 0) > v.price ? olds.get(v.sku) : undefined
+    const ml = millilitres(v.volume)
+    return { sku: v.sku, volume: v.volume ?? '', price: v.price, old, stock: v.stock ?? 0, perMl: ml ? Math.round(v.price / ml) : null }
+  })
+  const images = (pr.images ?? []).flatMap((m) => (typeof m === 'object' && m.url ? [{ url: m.url, alt: m.alt, caption: m.caption ?? undefined }] : []))
+  const [self] = await toCards([pr], lang)
+  // "bought together": admin's choice, else routine logic — a toner and an SPF from other categories (design: amp + toner + SPF)
+  let pairs = (pr.pairsWith ?? []).filter((x): x is Product => typeof x === 'object')
+  if (!pairs.length) {
+    const want = ['toner', 'spf'].filter((s) => s !== cat?.slug)
+    const rest = await p.find({ collection: 'products', where: { 'category.slug': { in: want } }, locale: lang, depth: 1, limit: 20, sort: 'createdAt' })
+    pairs = want.map((w) => rest.docs.find((d) => typeof d.category === 'object' && d.category.slug === w)).filter(Boolean) as Product[]
+  }
+  const sim = await p.find({ collection: 'products', where: { category: { equals: cat?.id ?? 0 }, slug: { not_equals: slug } }, locale: lang, depth: 1, limit: 5, sort: 'createdAt' })
+  let similar = sim.docs
+  if (similar.length < 5) {
+    const more = await p.find({ collection: 'products', where: { slug: { not_in: [slug, ...similar.map((d) => d.slug)] } }, locale: lang, depth: 1, limit: 5 - similar.length, sort: 'createdAt' })
+    similar = [...similar, ...more.docs]
+  }
+  const [pairCards, similarCards, stats, reviews] = await Promise.all([
+    toCards(pairs, lang), toCards(similar, lang), reviewStats([pr.id]),
+    p.find({ collection: 'reviews', where: { product: { equals: pr.id }, approved: { equals: true } }, sort: '-createdAt', limit: 20, depth: 0 }),
+  ])
+  return { pr, cat, parent, brand, variants, images, self, pairs: pairCards, similar: similarCards, stats: stats.get(String(pr.id)), reviews: reviews.docs }
 }

@@ -2,7 +2,8 @@ import { expect, test } from '@playwright/test'
 
 const BASE = 'http://localhost:3000'
 const WIDTHS = [360, 390, 600, 834, 1024, 1280, 1440] // HANDOFF §9
-const PAGES = ['/uz', '/ru', '/uz/dev/components', '/uz/katalog/serum', '/ru/katalog/serum?teri=dry']
+const AMP = '/mahsulot/skin1004-madagascar-centella-ampoule'
+const PAGES = ['/uz', '/ru', '/uz/dev/components', '/uz/katalog/serum', '/ru/katalog/serum?teri=dry', `/uz${AMP}`, `/ru${AMP}`]
 
 test('root redirects to a language', async ({ page }) => {
   await page.goto(BASE)
@@ -90,6 +91,50 @@ test('phone catalog: own top bar and filter sheet', async ({ page }) => {
 test('unknown category is 404', async ({ page }) => {
   const r = await page.goto(`${BASE}/uz/katalog/yoq-narsa`)
   expect(r?.status()).toBe(404)
+})
+
+test('product: volume changes price, fit answers, cart gets the chosen volume', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.goto(`${BASE}/uz${AMP}`)
+  const main = page.locator('.d-only')
+  await expect(main.locator('.num').filter({ hasText: '245 000 soʻm' }).first()).toBeVisible()
+  await main.getByRole('radio', { name: /100 ml/ }).click()
+  await expect(main.locator('.num').filter({ hasText: '389 000 soʻm' }).first()).toBeVisible()
+  await main.getByRole('button', { name: 'Quruq', exact: true }).click()
+  await expect(main.getByText('Mos, lekin ustidan namlantiruvchi krem surting')).toBeVisible()
+  await main.getByRole('button', { name: 'Savatga qoʻshish' }).click()
+  await expect(page.getByRole('status')).toContainText('Savatga qoʻshildi')
+  await expect(page.locator('header .num').first()).toHaveText('389 000')
+})
+
+test('product: no fake reviews, honest empty state and no rating markup', async ({ page }) => {
+  await page.goto(`${BASE}/uz${AMP}`)
+  await expect(page.locator('#reviews')).toContainText('Hali sharh yoʻq')
+  const ld = await page.locator('script[type="application/ld+json"]').first().textContent()
+  expect(ld).toContain('"@type":"Product"')
+  expect(ld).not.toContain('aggregateRating')
+})
+
+test('product: sold out offers a notification instead of the cart', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.goto(`${BASE}/uz/mahsulot/iunik-black-snail-restore-serum`)
+  await expect(page.locator('.d-only').getByRole('link', { name: 'Kelganda xabar berish' })).toHaveAttribute('href', /start=notify_Y-SNAIL/)
+})
+
+test('phone product: sticky bar adds to cart, tab bar hidden', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.goto(`${BASE}/uz${AMP}`)
+  await expect(page.locator('.mtabs')).toBeHidden()
+  await page.locator('.m-bar').getByRole('button', { name: /Savatga · 245 000/ }).click()
+  await expect(page.locator('.m-bar')).toContainText('rasmiylashtirish')
+})
+
+test('recently viewed shows the product in the catalog', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.goto(`${BASE}/uz${AMP}`)
+  await page.goto(`${BASE}/uz/katalog/toner`)
+  await expect(page.locator('#rv-h')).toBeVisible()
+  await expect(page.locator('section[aria-labelledby="rv-h"]')).toContainText('Madagascar Centella Ampoule')
 })
 
 for (const path of PAGES) {

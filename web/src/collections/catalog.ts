@@ -98,6 +98,23 @@ export const Products: CollectionConfig = {
         { name: 'certificate', type: 'upload', relationTo: 'media' },
       ],
     },
+    { name: 'expertNote', type: 'textarea', localized: true, admin: { description: '«Maslahatchi aytadi» (mahsulot sahifasi)' } },
+    {
+      name: 'fit', type: 'array', admin: { description: '«Teringizga mosmi?» — har teri turi uchun javob' },
+      fields: [
+        { name: 'skin', type: 'select', required: true, options: SKIN },
+        { name: 'ok', type: 'checkbox', defaultValue: true, admin: { description: 'Belgilanmasa — ehtiyot belgisi (!)' } },
+        { name: 'note', type: 'text', required: true, localized: true },
+      ],
+    },
+    {
+      name: 'faq', type: 'array', admin: { description: 'Savol-javob (doʻkon javobi)' },
+      fields: [
+        { name: 'q', type: 'text', required: true, localized: true },
+        { name: 'a', type: 'textarea', required: true, localized: true },
+      ],
+    },
+    { name: 'pairsWith', type: 'relationship', relationTo: 'products', hasMany: true, admin: { description: '«Koʻpincha birga olinadi» (boʻsh boʻlsa — rutina qoidasi)' } },
     { name: 'sample', type: 'checkbox', defaultValue: false, admin: { description: 'Namuna maʼlumot (ishga tushirishdan oldin almashtiring)' } },
   ],
   hooks: {
@@ -123,6 +140,23 @@ export const PriceHistory: CollectionConfig = {
     { name: 'product', type: 'relationship', relationTo: 'products', required: true, index: true },
     { name: 'sku', type: 'text', required: true, index: true },
     { name: 'price', type: 'number', required: true },
+  ],
+}
+
+// Reviews only from verified purchases (HANDOFF §6): shown when linked to an order and approved by the admin.
+export const Reviews: CollectionConfig = {
+  slug: 'reviews',
+  admin: { useAsTitle: 'name', group: 'Katalog', defaultColumns: ['product', 'rating', 'approved', 'createdAt'] },
+  access: { read: ({ req }) => (req.user ? true : { approved: { equals: true } }) },
+  fields: [
+    { name: 'product', type: 'relationship', relationTo: 'products', required: true, index: true },
+    { name: 'order', type: 'text', required: true, admin: { description: 'Buyurtma raqami — tasdiqlangan xarid' } },
+    { name: 'name', type: 'text', required: true },
+    { name: 'skin', type: 'select', options: SKIN },
+    { name: 'rating', type: 'number', required: true, min: 1, max: 5 },
+    { name: 'text', type: 'textarea', required: true },
+    { name: 'helpful', type: 'number', defaultValue: 0 },
+    { name: 'approved', type: 'checkbox', defaultValue: false, index: true },
   ],
 }
 

@@ -11,6 +11,7 @@ export const Media: CollectionConfig = {
       type: 'text',
       required: true,
     },
+    { name: 'caption', type: 'text', localized: true, admin: { description: 'Mahsulot galereyasidagi izoh: «Asl qadoq» …' } },
   ],
   upload: true,
 }

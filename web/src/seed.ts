@@ -31,6 +31,16 @@ const CONCERNS: Record<string, ('acne' | 'pores' | 'pigment' | 'dryness' | 'wrin
   amp: ['acne', 'pores'], toner: ['acne', 'dull'], snail: ['acne', 'dryness'], ess: ['dryness', 'dull'], revive: ['dryness'],
   baha: ['dull', 'pores'], pore: ['pores'], cream: ['dryness'], clean: ['pores'], mask: ['acne'], spf: [], set: ['dull'],
 }
+// Lexical rich text from paragraphs; **bold** spans
+const rich = (...paras: string[]) => ({
+  root: { type: 'root', format: '' as const, indent: 0, version: 1, direction: 'ltr' as const, children: paras.map((para) => ({
+    type: 'paragraph', format: '', indent: 0, version: 1, direction: 'ltr' as const, textFormat: 0,
+    children: para.split(/(\*\*[^*]+\*\*)/).filter(Boolean).map((t) => ({
+      type: 'text', text: t.replace(/\*\*/g, ''), format: t.startsWith('**') ? 1 : 0, detail: 0, mode: 'normal', style: '', version: 1,
+    })),
+  })) },
+})
+
 const slugify = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
 
 async function main() {
@@ -112,6 +122,59 @@ async function main() {
     await payload.update({ collection: 'banners', id: sale.id, locale: 'ru', data: { title: R('Centella haftaligi:')!, accent: R('−15% gacha') } })
   }
   const bySku = async (id: string) => (await payload.find({ collection: 'products', where: { 'variants.sku': { equals: `Y-${id.toUpperCase()}` } }, limit: 1 })).docs[0]?.id
+  // full product page content for the design's sample product (Product.html / p_product.py)
+  const ru = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'ru.json'), 'utf8')) as Record<string, string>
+  const R = (x: string) => ru[x] ?? x
+  const ampId = (await payload.find({ collection: 'products', where: { 'variants.sku': { equals: 'Y-AMP' } }, limit: 1 })).docs[0]?.id
+  if (ampId) {
+    const SH = [
+      ['p-centella-amp.jpg', 'SKIN1004 Centella Ampoule flakoni', 'Asl qadoq'], ['p-centella-duo.jpg', 'Centella ampulalari', 'Liniyadagi boshqa ampula bilan'],
+      ['dropper-hand.jpg', 'Pipetkadan tomayotgan serum', 'Tekstura: suvdek yengil'], ['tex-3.jpg', 'Serum teksturasi va barglar', 'Bitta ingredient — centella'],
+      ['face-glow.jpg', 'Tinch, yumshoq teri', 'Kundalik parvarishda'],
+    ]
+    const imgs = []
+    for (const [file, alt, cap] of SH) {
+      const m = await media(file, alt)
+      await payload.update({ collection: 'media', id: m.id, locale: 'uz', data: { caption: cap } })
+      await payload.update({ collection: 'media', id: m.id, locale: 'ru', data: { caption: R(cap) } })
+      imgs.push(m.id)
+    }
+    const D = ['Bu ampula bitta ingredientdan iborat — Madagaskarda oʻsadigan', 'centella asiatica', 'ekstrakti. Shuning uchun u juda yumshoq: qizarishni tinchlantiradi, toshmalardan keyin terini tiklaydi va namlik beradi.',
+      'Kimga mos:', 'sezgir, yogʻli, aralash va normal teri. Quruq teri boʻlsa, ustidan namlantiruvchi krem surting.',
+      'Natija qachon:', 'koʻpchilik birinchi haftada tinchlanishni sezadi. Doimiy natija uchun 4–6 hafta har kuni ishlating.']
+    const desc = (T: (x: string) => string) => rich(`${T(D[0])} **${T(D[1])}** ${T(D[2])}`, `**${T(D[3])}** ${T(D[4])}`, `**${T(D[5])}** ${T(D[6])}`)
+    const FIT: [string, boolean, string][] = [
+      ['dry', false, 'Mos, lekin ustidan namlantiruvchi krem surting — ampula yengil.'], ['oily', true, 'Juda mos: yogʻ qoldirmaydi, toshmalarni tinchlantiradi.'],
+      ['combo', true, 'Mos: T-zonani ogʻirlashtirmaydi, yonoqlarni tinchlantiradi.'], ['sens', true, 'Aynan siz uchun: bitta ingredient, xushboʻysiz.'],
+      ['normal', true, 'Mos: profilaktika va yengil namlik uchun.'],
+    ]
+    const FAQ = [
+      ['Retinol bilan birga ishlatsa boʻladimi?', 'Ha. Retinoldan keyin surtsangiz, tirnashni kamaytiradi. Faqat retinolni kechqurun ishlating va ertalab SPF unutmang.'],
+      ['Homiladorlikda mumkinmi?', 'Tarkibida faqat centella ekstrakti bor. Shunga qaramay, homiladorlikda har qanday yangi vositani shifokoringiz bilan kelishib oling.'],
+      ['Ochganimdan keyin qancha saqlanadi?', 'Odatda 12 oy — aniq muddat qadoqdagi «ochilgandan keyin» belgisida. Quyosh tushmaydigan joyda saqlang.'],
+    ]
+    const SUM = 'Yuzingiz tez qizarsa yoki toshma tez-tez chiqsa — shu ampuladan boshlang. Suvdek yengil, yopishmaydi, sezgir teriga ham yoqadi.'
+    const EXPERT = '«Bu ampula — eng xavfsiz boshlanish. Agar birinchi marta koreys parvarishini sinayotgan boʻlsangiz yoki teringiz hamma narsaga qizarsa, aynan shundan boshlang. Bir oyda farqni koʻrasiz.»'
+    const ING = 'Centella asiatica ekstrakti 100%. Hid, spirt, boʻyoq yoʻq.'
+    const HOW = 'Tonerdan keyin 2–3 tomchi, yuzga yengil urib. Ertalab va kechqurun.'
+    const pairs = (await Promise.all(['toner', 'spf'].map(bySku))).filter(Boolean) as number[]
+    const doc = await payload.update({
+      collection: 'products', id: ampId, locale: 'uz',
+      data: {
+        images: imgs, summary: SUM, description: desc((x) => x), ingredients: rich(ING), howTo: rich(HOW), expertNote: EXPERT.replace(/[«»]/g, ''),
+        fit: FIT.map(([skin, ok, note]) => ({ skin: skin as any, ok, note })), faq: FAQ.map(([q, a]) => ({ q, a })), pairsWith: pairs,
+        variants: [{ volume: '55 ml', sku: 'Y-AMP', price: 245000, stock: 10 }, { volume: '100 ml', sku: 'Y-AMP-100', price: 389000, stock: 6 }],
+      },
+    })
+    await payload.update({
+      collection: 'products', id: ampId, locale: 'ru',
+      data: {
+        summary: R(SUM), description: desc(R), ingredients: rich(R(ING)), howTo: rich(R(HOW)), expertNote: R(EXPERT).replace(/[«»]/g, ''),
+        fit: doc.fit!.map((f, i) => ({ ...f, note: R(FIT[i][2]) })), faq: doc.faq!.map((f, i) => ({ ...f, q: R(FAQ[i][0]), a: R(FAQ[i][1]) })),
+      },
+    })
+  }
+
   const routine = (await Promise.all(['toner', 'amp', 'spf'].map(bySku))).filter(Boolean) as number[]
   await payload.updateGlobal({ slug: 'store', data: { homeRoutine: routine } })
 

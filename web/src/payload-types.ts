@@ -71,6 +71,7 @@ export interface Config {
     brands: Brand;
     categories: Category;
     'price-history': PriceHistory;
+    reviews: Review;
     banners: Banner;
     media: Media;
     users: User;
@@ -85,6 +86,7 @@ export interface Config {
     brands: BrandsSelect<false> | BrandsSelect<true>;
     categories: CategoriesSelect<false> | CategoriesSelect<true>;
     'price-history': PriceHistorySelect<false> | PriceHistorySelect<true>;
+    reviews: ReviewsSelect<false> | ReviewsSelect<true>;
     banners: BannersSelect<false> | BannersSelect<true>;
     media: MediaSelect<false> | MediaSelect<true>;
     users: UsersSelect<false> | UsersSelect<true>;
@@ -220,6 +222,38 @@ export interface Product {
   expiresAt?: string | null;
   certificate?: (number | null) | Media;
   /**
+   * «Maslahatchi aytadi» (mahsulot sahifasi)
+   */
+  expertNote?: string | null;
+  /**
+   * «Teringizga mosmi?» — har teri turi uchun javob
+   */
+  fit?:
+    | {
+        skin: 'dry' | 'oily' | 'combo' | 'sens' | 'normal';
+        /**
+         * Belgilanmasa — ehtiyot belgisi (!)
+         */
+        ok?: boolean | null;
+        note: string;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * Savol-javob (doʻkon javobi)
+   */
+  faq?:
+    | {
+        q: string;
+        a: string;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * «Koʻpincha birga olinadi» (boʻsh boʻlsa — rutina qoidasi)
+   */
+  pairsWith?: (number | Product)[] | null;
+  /**
    * Namuna maʼlumot (ishga tushirishdan oldin almashtiring)
    */
   sample?: boolean | null;
@@ -272,6 +306,10 @@ export interface Category {
 export interface Media {
   id: number;
   alt: string;
+  /**
+   * Mahsulot galereyasidagi izoh: «Asl qadoq» …
+   */
+  caption?: string | null;
   updatedAt: string;
   createdAt: string;
   url?: string | null;
@@ -295,6 +333,26 @@ export interface PriceHistory {
   product: number | Product;
   sku: string;
   price: number;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "reviews".
+ */
+export interface Review {
+  id: number;
+  product: number | Product;
+  /**
+   * Buyurtma raqami — tasdiqlangan xarid
+   */
+  order: string;
+  name: string;
+  skin?: ('dry' | 'oily' | 'combo' | 'sens' | 'normal') | null;
+  rating: number;
+  text: string;
+  helpful?: number | null;
+  approved?: boolean | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -409,6 +467,10 @@ export interface PayloadLockedDocument {
         value: number | PriceHistory;
       } | null)
     | ({
+        relationTo: 'reviews';
+        value: number | Review;
+      } | null)
+    | ({
         relationTo: 'banners';
         value: number | Banner;
       } | null)
@@ -494,6 +556,23 @@ export interface ProductsSelect<T extends boolean = true> {
   batch?: T;
   expiresAt?: T;
   certificate?: T;
+  expertNote?: T;
+  fit?:
+    | T
+    | {
+        skin?: T;
+        ok?: T;
+        note?: T;
+        id?: T;
+      };
+  faq?:
+    | T
+    | {
+        q?: T;
+        a?: T;
+        id?: T;
+      };
+  pairsWith?: T;
   sample?: T;
   updatedAt?: T;
   createdAt?: T;
@@ -539,6 +618,22 @@ export interface PriceHistorySelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "reviews_select".
+ */
+export interface ReviewsSelect<T extends boolean = true> {
+  product?: T;
+  order?: T;
+  name?: T;
+  skin?: T;
+  rating?: T;
+  text?: T;
+  helpful?: T;
+  approved?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "banners_select".
  */
 export interface BannersSelect<T extends boolean = true> {
@@ -568,6 +663,7 @@ export interface BannersSelect<T extends boolean = true> {
  */
 export interface MediaSelect<T extends boolean = true> {
   alt?: T;
+  caption?: T;
   updatedAt?: T;
   createdAt?: T;
   url?: T;
