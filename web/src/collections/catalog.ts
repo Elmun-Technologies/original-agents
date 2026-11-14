@@ -124,21 +124,50 @@ export const PriceHistory: CollectionConfig = {
   ],
 }
 
+// Home slides and the weekly sale block (HANDOFF §8 Banner). The sale timer counts down to endsAt.
+export const Banners: CollectionConfig = {
+  slug: 'banners',
+  admin: { useAsTitle: 'title', group: 'Sayt', defaultColumns: ['title', 'kind', 'active', 'order'] },
+  access: publicRead,
+  fields: [
+    { name: 'kind', type: 'select', required: true, defaultValue: 'slide', options: [
+      { value: 'slide', label: 'Bosh sahifa slaydi' }, { value: 'sale', label: 'Aksiya bloki (taymer)' }] },
+    { name: 'active', type: 'checkbox', defaultValue: true },
+    { name: 'order', type: 'number', defaultValue: 0 },
+    { name: 'tag', type: 'text', localized: true },
+    { name: 'tagStyle', type: 'select', defaultValue: 'tag-sale', options: ['tag-sale', 'tag-hit', 'tag-new'] },
+    { name: 'title', type: 'text', required: true, localized: true },
+    { name: 'accent', type: 'text', localized: true, admin: { description: 'Sarlavhadagi kursiv soʻz (aksiya bloki)' } },
+    { name: 'text', type: 'textarea', localized: true },
+    { name: 'cta', type: 'text', localized: true },
+    { name: 'tagShort', type: 'text', localized: true, admin: { description: 'Telefon uchun qisqa teg' } },
+    { name: 'titleShort', type: 'text', localized: true, admin: { description: 'Telefon uchun qisqa sarlavha' } },
+    { name: 'ctaShort', type: 'text', localized: true, admin: { description: 'Telefon uchun qisqa havola matni' } },
+    { name: 'link', type: 'text', admin: { description: 'Masalan: /katalog/serum yoki /aksiyalar' } },
+    { name: 'image', type: 'upload', relationTo: 'media' },
+    { name: 'imagePos', type: 'text', defaultValue: '50% 50%' },
+    { name: 'bg', type: 'text', defaultValue: '#F2D6D0' },
+    { name: 'endsAt', type: 'date', admin: { date: { pickerAppearance: 'dayAndTime' }, description: 'Aksiya tugash vaqti (taymer)' } },
+  ],
+}
+
 // Admin-managed shop values (design placeholders [N], [300 000] …). All marked as samples until the owner sets them.
 export const Store: GlobalConfig = {
   slug: 'store',
   access: { read: () => true },
   admin: { group: 'Sozlamalar' },
   fields: [
-    { name: 'freeDeliveryFrom', type: 'number', defaultValue: 300000, admin: { description: 'NAMUNA. Bepul yetkazish chegarasi, soʻm' } },
-    { name: 'tashkentDays', type: 'number', defaultValue: 1, admin: { description: 'NAMUNA. Toshkent boʻylab, kun' } },
-    { name: 'regionDays', type: 'text', defaultValue: '2–4', admin: { description: 'NAMUNA. Viloyatlarga, kun' } },
-    { name: 'tashkentPrice', type: 'number', defaultValue: 25000, admin: { description: 'NAMUNA. Toshkent yetkazish narxi' } },
-    { name: 'regionPrice', type: 'number', defaultValue: 35000, admin: { description: 'NAMUNA. Viloyat yetkazish narxi' } },
-    { name: 'returnDays', type: 'number', defaultValue: 14, admin: { description: 'NAMUNA. Ochilmagan boʻlsa qaytarish, kun' } },
-    { name: 'orderCutoff', type: 'text', defaultValue: '18:00', admin: { description: 'Shu vaqtgacha buyurtma — ertaga yetkaziladi' } },
-    { name: 'telegramUrl', type: 'text', defaultValue: 'https://t.me/' },
-    { name: 'telegramBotUrl', type: 'text', defaultValue: 'https://t.me/' },
+    { name: 'freeDeliveryFrom', type: 'number', required: true, defaultValue: 300000, admin: { description: 'NAMUNA. Bepul yetkazish chegarasi, soʻm' } },
+    { name: 'tashkentDays', type: 'number', required: true, defaultValue: 1, admin: { description: 'NAMUNA. Toshkent boʻylab, kun' } },
+    { name: 'regionDays', type: 'text', required: true, defaultValue: '2–4', admin: { description: 'NAMUNA. Viloyatlarga, kun' } },
+    { name: 'tashkentPrice', type: 'number', required: true, defaultValue: 25000, admin: { description: 'NAMUNA. Toshkent yetkazish narxi' } },
+    { name: 'regionPrice', type: 'number', required: true, defaultValue: 35000, admin: { description: 'NAMUNA. Viloyat yetkazish narxi' } },
+    { name: 'returnDays', type: 'number', required: true, defaultValue: 14, admin: { description: 'NAMUNA. Ochilmagan boʻlsa qaytarish, kun' } },
+    { name: 'orderCutoff', type: 'text', required: true, defaultValue: '18:00', admin: { description: 'Shu vaqtgacha buyurtma — ertaga yetkaziladi' } },
+    { name: 'telegramUrl', type: 'text', required: true, defaultValue: 'https://t.me/' },
+    { name: 'telegramBotUrl', type: 'text', required: true, defaultValue: 'https://t.me/' },
     { name: 'phone', type: 'text' },
+    { name: 'homeRoutine', type: 'relationship', relationTo: 'products', hasMany: true, maxRows: 3,
+      admin: { description: 'Bosh sahifadagi «Tayyor rutina»: toner, ampula, SPF (tartib bilan)' } },
   ],
 }

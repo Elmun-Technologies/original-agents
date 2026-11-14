@@ -25,6 +25,11 @@ const CATS: [slug: string, uz: string, ru: string, types: string[]][] = [
   ['niqoblar', 'Niqoblar', 'Маски', ['Niqob']],
   ['toplamlar', 'Toʻplamlar', 'Наборы', ['Toʻplam']],
 ]
+// concerns per sample product (from the design's picker mapping, p_main.py ndMap)
+const CONCERNS: Record<string, ('acne' | 'pores' | 'pigment' | 'dryness' | 'wrinkles' | 'dull')[]> = {
+  amp: ['acne', 'pores'], toner: ['acne', 'dull'], snail: ['acne', 'dryness'], ess: ['dryness', 'dull'], revive: ['dryness'],
+  baha: ['dull', 'pores'], pore: ['pores'], cream: ['dryness'], clean: ['pores'], mask: ['acne'], spf: [], set: ['dull'],
+}
 const slugify = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
 
 async function main() {
@@ -63,7 +68,7 @@ async function main() {
       locale: 'uz',
       data: {
         name: s.name, slug, brand: brand.id, category: cats[s.type].id, type: s.type, need: s.need,
-        skin: s.skin, tags, images: [image.id], sample: true,
+        skin: s.skin, concerns: CONCERNS[s.id] ?? [], tags, images: [image.id], sample: true,
         variants: [{ volume: s.vol || undefined, sku, price: s.price, stock: 10 }],
       },
     })
@@ -76,6 +81,28 @@ async function main() {
     }
     made++
   }
+  // home: 3 slides + weekly sale (design p_main.py SL), ready routine (toner, ampoule, SPF)
+  if (!(await payload.find({ collection: 'banners', limit: 1 })).docs.length) {
+    const SL = [
+      { tag: 'Birinchi buyurtmaga', tagStyle: 'tag-sale', title: 'Birinchi xaridingizga −10%', text: 'Savatda SALOM10 kodini kiriting. Qaysi mahsulot mosligini bilmasangiz — yozing, tanlashga yordam beramiz.', cta: 'Xaridni boshlash', tagShort: 'Birinchi xarid', titleShort: 'SALOM10 bilan −10%', ctaShort: 'Kodni savatda kiriting', link: '/katalog/serum', img: 'hero-dewy.jpg', pos: '50% 25%', bg: '#F2D6D0', alt: 'Tabiiy porloq terili ayol' },
+      { tag: 'Centella haftaligi', tagStyle: 'tag-hit', title: 'SKIN1004 ampulalari −15% gacha', text: 'Qizarish va toshmalarni tinchlantiradigan eng mashhur ampula. Aksiya yakshanba kuni tugaydi.', cta: 'Aksiyani koʻrish', titleShort: 'SKIN1004 −15% gacha', ctaShort: 'Aksiyani koʻrish', link: '/aksiyalar', img: 'p-centella-amp.jpg', pos: '50% 50%', bg: '#F5DCC9', alt: 'SKIN1004 Centella ampulasi' },
+      { tag: 'Qishki parvarish', tagStyle: 'tag-new', title: 'Sovuqda teri tortishyaptimi?', text: 'Qishda teri tez quriydi. Namlantiruvchi essensiya va serumlarni bir joyga yigʻdik.', cta: 'Namlantiruvchilar', titleShort: 'Quruq teri uchun toʻplam', ctaShort: 'Tanlash', link: '/katalog/essensiya', img: 'face-flower.jpg', pos: '50% 28%', bg: '#F0EBE5', alt: 'Serum teksturasi' },
+    ]
+    // Russian from the design dictionary (data/ru.json)
+    const ru = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'ru.json'), 'utf8')) as Record<string, string>
+    const R = (x?: string) => (x ? (ru[x] ?? x) : undefined)
+    for (const [i, b] of SL.entries()) {
+      const image = await media(b.img, b.alt)
+      const doc = await payload.create({ collection: 'banners', locale: 'uz', data: { kind: 'slide', order: i, tag: b.tag, tagStyle: b.tagStyle as any, title: b.title, text: b.text, cta: b.cta, tagShort: (b as any).tagShort, titleShort: b.titleShort, ctaShort: b.ctaShort, link: b.link, image: image.id, imagePos: b.pos, bg: b.bg } })
+      await payload.update({ collection: 'banners', id: doc.id, locale: 'ru', data: { tag: R(b.tag), title: R(b.title)!, text: R(b.text), cta: R(b.cta), tagShort: R((b as any).tagShort), titleShort: R(b.titleShort), ctaShort: R(b.ctaShort) } })
+    }
+    const sale = await payload.create({ collection: 'banners', locale: 'uz', data: { kind: 'sale', order: 10, title: 'Centella haftaligi:', accent: '−15% gacha', endsAt: new Date(Date.now() + (2 * 24 + 14) * 3_600_000).toISOString() } })
+    await payload.update({ collection: 'banners', id: sale.id, locale: 'ru', data: { title: R('Centella haftaligi:')!, accent: R('−15% gacha') } })
+  }
+  const bySku = async (id: string) => (await payload.find({ collection: 'products', where: { 'variants.sku': { equals: `Y-${id.toUpperCase()}` } }, limit: 1 })).docs[0]?.id
+  const routine = (await Promise.all(['toner', 'amp', 'spf'].map(bySku))).filter(Boolean) as number[]
+  await payload.updateGlobal({ slug: 'store', data: { homeRoutine: routine } })
+
   payload.logger.info(`seed: ${made} ta yangi mahsulot${demo ? ' (+ namuna eski narxlar)' : ''}`)
   process.exit(0)
 }

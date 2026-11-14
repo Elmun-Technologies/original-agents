@@ -51,6 +51,14 @@ export function Header({ lang, store, active = '' }: { lang: Lang; store: StoreI
   const L = (p: string) => href(lang, p)
   const tr = (s: string) => t(lang, s)
 
+  const [phone, setPhone] = useState(false)
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 600px)')
+    const on = () => setPhone(mq.matches)
+    on()
+    mq.addEventListener('change', on)
+    return () => mq.removeEventListener('change', on)
+  }, [])
   const [seenPath, setSeenPath] = useState(path)
   if (seenPath !== path) {
     // navigation closes the mega menu (state adjusted during render, not in an effect)
@@ -67,7 +75,7 @@ export function Header({ lang, store, active = '' }: { lang: Lang; store: StoreI
   const megaIcon = mega ? '✕' : '☰'
   return (
     <>
-      <div style={{ background: '#2A211E', color: '#FBFAF7', fontSize: '13px' }}>
+      <div className="ann" style={{ background: '#2A211E', color: '#FBFAF7', fontSize: '13px' }}>
         <div className="wrap" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', minHeight: '38px', flexWrap: 'wrap' }}>
           <span style={{ display: 'inline-flex', gap: '8px', alignItems: 'center' }}>
             <Icon name="truck" size={16} /> {tr('Toshkent boʻylab [N] kunda ·').replace('[N]', String(store.tashkentDays))}{' '}
@@ -83,26 +91,27 @@ export function Header({ lang, store, active = '' }: { lang: Lang; store: StoreI
           </span>
         </div>
       </div>
-      <header style={{ background: '#FBFAF7', borderBottom: '1px solid #ECE6E0', position: 'sticky', top: 0, zIndex: 20 }}>
+      <header className="hdr" style={{ background: '#FBFAF7', borderBottom: '1px solid #ECE6E0', position: 'sticky', top: 0, zIndex: 20 }}>
         <div className="wrap" style={{ display: 'flex', alignItems: 'center', gap: '16px', minHeight: '76px', flexWrap: 'wrap' }}>
-          <button className="ib show-m" aria-label={tr('Menyu')} aria-expanded={mega} aria-controls="mega" onClick={() => setMega(!mega)} style={{ marginLeft: '-8px' }}>{megaIcon}</button>
-          <Link href={L('/')} style={{ display: 'inline-flex', alignItems: 'center', gap: '10px', textDecoration: 'none', font: "500 26px 'Inter Tight', sans-serif", letterSpacing: '-0.04em' }}>
+          <button className="ib show-m hdr-burger" aria-label={tr('Menyu')} aria-expanded={mega} aria-controls="mega" onClick={() => setMega(!mega)} style={{ marginLeft: '-8px' }}>{megaIcon}</button>
+          <Link href={L('/')} className="hdr-logo" style={{ display: 'inline-flex', alignItems: 'center', gap: '10px', textDecoration: 'none', font: "500 26px 'Inter Tight', sans-serif", letterSpacing: '-0.04em' }}>
             <span style={{ width: '14px', height: '14px', borderRadius: '50%', background: '#E8B4B8', boxShadow: '8px 0 0 #2A211E' }} />
             <span style={{ marginLeft: '8px' }}>Yeppo</span>
           </Link>
           <button className="pill dark hide-m" style={{ minHeight: '48px' }} aria-expanded={mega} aria-controls="mega" onClick={() => setMega(!mega)}>{megaIcon} {tr('Katalog')}</button>
           <form action={L('/qidiruv')} role="search" className="hdr-search" style={{ flex: '1 1 320px', display: 'flex', alignItems: 'center', gap: '10px', height: '48px', padding: '0 6px 0 18px', borderRadius: '999px', background: '#F0EBE5', color: '#6B5F59', boxSizing: 'border-box', minWidth: 0 }}>
             <Icon name="search" size={19} />
-            <input name="q" aria-label={tr('Qidiruv')} placeholder={tr('Masalan: quruq teri uchun krem, SPF, centella…')}
+            <input name="q" aria-label={tr('Qidiruv')} placeholder={phone ? tr('Krem, SPF yoki muammoni yozing') : tr('Masalan: quruq teri uchun krem, SPF, centella…')}
               style={{ flex: 1, minWidth: 0, fontSize: '15px', border: 'none', background: 'transparent', outline: 'none', color: '#2A211E', height: '100%', textOverflow: 'ellipsis' }} />
             <Link href={L('/maslahatchi')} className="hide-m" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', height: '36px', padding: '0 14px', borderRadius: '999px', background: '#FBFAF7', color: '#2A211E', font: '600 13px Inter, sans-serif', textDecoration: 'none', whiteSpace: 'nowrap' }}>
               <Icon name="spark" size={15} /> {tr('AI bilan topish')}
             </Link>
           </form>
           <nav aria-label={tr('Foydalanuvchi')} className="hdr-icons" style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
-            <Link href={L('/kabinet')} className="ib" aria-label={tr('Kabinet')}><Icon name="user" /></Link>
+            <Link href={L('/kabinet')} className="ib hdr-acc" aria-label={tr('Kabinet')}><Icon name="user" /></Link>
             <Link href={L('/sevimlilar')} className="ib" aria-label={tr('Sevimlilar')}><Icon name="heart" />{shop.favs.length > 0 && <span className="badge">{shop.favs.length}</span>}</Link>
-            <Link href={L('/savat')} className="pill dark" style={{ minHeight: '48px', padding: '0 16px 0 14px', marginLeft: '6px' }} aria-label={tr('Savat')}>
+            <a href={store.telegramUrl} className="ib phone-only" aria-label="Telegram"><Icon name="tg" /></a>
+            <Link href={L('/savat')} className="pill dark hdr-cart" style={{ minHeight: '48px', padding: '0 16px 0 14px', marginLeft: '6px' }} aria-label={tr('Savat')}>
               <Icon name="bag" size={19} /><span className="num" style={{ fontSize: '15px' }}>{fmt(shop.total)}</span>
               <span style={{ minWidth: '22px', height: '22px', borderRadius: '999px', background: '#F2D6D0', color: '#2A211E', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 700 }}>{shop.count}</span>
             </Link>

@@ -71,6 +71,7 @@ export interface Config {
     brands: Brand;
     categories: Category;
     'price-history': PriceHistory;
+    banners: Banner;
     media: Media;
     users: User;
     'payload-kv': PayloadKv;
@@ -84,6 +85,7 @@ export interface Config {
     brands: BrandsSelect<false> | BrandsSelect<true>;
     categories: CategoriesSelect<false> | CategoriesSelect<true>;
     'price-history': PriceHistorySelect<false> | PriceHistorySelect<true>;
+    banners: BannersSelect<false> | BannersSelect<true>;
     media: MediaSelect<false> | MediaSelect<true>;
     users: UsersSelect<false> | UsersSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
@@ -290,6 +292,50 @@ export interface PriceHistory {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "banners".
+ */
+export interface Banner {
+  id: number;
+  kind: 'slide' | 'sale';
+  active?: boolean | null;
+  order?: number | null;
+  tag?: string | null;
+  tagStyle?: ('tag-sale' | 'tag-hit' | 'tag-new') | null;
+  title: string;
+  /**
+   * Sarlavhadagi kursiv soʻz (aksiya bloki)
+   */
+  accent?: string | null;
+  text?: string | null;
+  cta?: string | null;
+  /**
+   * Telefon uchun qisqa teg
+   */
+  tagShort?: string | null;
+  /**
+   * Telefon uchun qisqa sarlavha
+   */
+  titleShort?: string | null;
+  /**
+   * Telefon uchun qisqa havola matni
+   */
+  ctaShort?: string | null;
+  /**
+   * Masalan: /katalog/serum yoki /aksiyalar
+   */
+  link?: string | null;
+  image?: (number | null) | Media;
+  imagePos?: string | null;
+  bg?: string | null;
+  /**
+   * Aksiya tugash vaqti (taymer)
+   */
+  endsAt?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "users".
  */
 export interface User {
@@ -353,6 +399,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'price-history';
         value: number | PriceHistory;
+      } | null)
+    | ({
+        relationTo: 'banners';
+        value: number | Banner;
       } | null)
     | ({
         relationTo: 'media';
@@ -479,6 +529,31 @@ export interface PriceHistorySelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "banners_select".
+ */
+export interface BannersSelect<T extends boolean = true> {
+  kind?: T;
+  active?: T;
+  order?: T;
+  tag?: T;
+  tagStyle?: T;
+  title?: T;
+  accent?: T;
+  text?: T;
+  cta?: T;
+  tagShort?: T;
+  titleShort?: T;
+  ctaShort?: T;
+  link?: T;
+  image?: T;
+  imagePos?: T;
+  bg?: T;
+  endsAt?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "media_select".
  */
 export interface MediaSelect<T extends boolean = true> {
@@ -567,34 +642,38 @@ export interface Store {
   /**
    * NAMUNA. Bepul yetkazish chegarasi, soʻm
    */
-  freeDeliveryFrom?: number | null;
+  freeDeliveryFrom: number;
   /**
    * NAMUNA. Toshkent boʻylab, kun
    */
-  tashkentDays?: number | null;
+  tashkentDays: number;
   /**
    * NAMUNA. Viloyatlarga, kun
    */
-  regionDays?: string | null;
+  regionDays: string;
   /**
    * NAMUNA. Toshkent yetkazish narxi
    */
-  tashkentPrice?: number | null;
+  tashkentPrice: number;
   /**
    * NAMUNA. Viloyat yetkazish narxi
    */
-  regionPrice?: number | null;
+  regionPrice: number;
   /**
    * NAMUNA. Ochilmagan boʻlsa qaytarish, kun
    */
-  returnDays?: number | null;
+  returnDays: number;
   /**
    * Shu vaqtgacha buyurtma — ertaga yetkaziladi
    */
-  orderCutoff?: string | null;
-  telegramUrl?: string | null;
-  telegramBotUrl?: string | null;
+  orderCutoff: string;
+  telegramUrl: string;
+  telegramBotUrl: string;
   phone?: string | null;
+  /**
+   * Bosh sahifadagi «Tayyor rutina»: toner, ampula, SPF (tartib bilan)
+   */
+  homeRoutine?: (number | Product)[] | null;
   updatedAt?: string | null;
   createdAt?: string | null;
 }
@@ -613,6 +692,7 @@ export interface StoreSelect<T extends boolean = true> {
   telegramUrl?: T;
   telegramBotUrl?: T;
   phone?: T;
+  homeRoutine?: T;
   updatedAt?: T;
   createdAt?: T;
   globalType?: T;

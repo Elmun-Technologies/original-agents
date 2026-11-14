@@ -149,3 +149,22 @@ input.inp,select.inp,textarea.inp{height:50px;border-radius:14px;border:1.5px so
  .pill{padding:0 16px}
  .wrap-m{flex-wrap:wrap !important}
 }
+
+/* ---- Phone layout (design/source/p_mobile.py: m-top, m-tabs). Added for the site, not in common.py. ---- */
+.m-only,.phone-only{display:none !important}
+@media (max-width:600px){
+ .m-only{display:flex !important}.phone-only{display:inline-flex !important}.d-only{display:none !important}
+ .ann,.hdr-burger,.hdr-acc,.hdr-cart{display:none !important}
+ .hdr{background:rgba(240,238,233,.94) !important;-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border-bottom:none !important}
+ .hdr .wrap{padding:12px 16px 10px !important;gap:10px !important}
+ .hdr-logo{font-size:22px !important}
+ .hdr-logo>span:first-child{width:11px !important;height:11px !important;box-shadow:6px 0 0 #2A211E !important}
+ .hdr-logo>span:last-child{margin-left:6px !important}
+ .hdr-search{background:#FBFAF7 !important;color:#8A7F79 !important;padding:0 16px !important;font-size:14px}
+ .hdr-search input{font-size:14px !important}
+ .mtabs{height:80px;padding:8px 8px 20px;background:rgba(251,250,247,.94);border-top:1px solid #E6DED7}
+ .mtabs a{color:#8A7F79}
+ .mtabs a[aria-current=page]{color:#2A211E;font-weight:600}
+ body{padding-bottom:96px}
+ main>.m-only{margin-top:8px}
+}

@@ -18,9 +18,28 @@ test('russian page is translated', async ({ page }) => {
 
 test('add to cart updates header and shows toast', async ({ page }) => {
   await page.goto(`${BASE}/uz`)
-  await page.locator('.pc .addbtn').first().click()
+  const btn = page.locator('.pc .addbtn:visible').first()
+  await btn.click()
   await expect(page.getByRole('status')).toContainText('Savatga qoʻshildi')
-  await expect(page.locator('.pc .addbtn').first()).toContainText('Savatda ✓')
+  await expect(btn).toContainText('Savatda ✓')
+})
+
+test('phone shows the mobile home, desktop the full one', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.goto(`${BASE}/uz`)
+  await expect(page.getByText('Hozir koʻp olinmoqda')).toBeVisible()
+  await expect(page.getByText('Salom! Keling, birga tanlaymiz.')).toBeHidden()
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await expect(page.getByText('Salom! Keling, birga tanlaymiz.')).toBeVisible()
+})
+
+test('picker changes products by skin and concern', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.goto(`${BASE}/uz`)
+  const picks = page.locator('#pick-h').locator('xpath=ancestor::section').locator('.pc')
+  await expect(picks).toHaveCount(3)
+  await page.getByRole('button', { name: 'Quyoshdan himoya' }).click()
+  await expect(picks.first()).toContainText('Safe Block')
 })
 
 for (const path of PAGES) {

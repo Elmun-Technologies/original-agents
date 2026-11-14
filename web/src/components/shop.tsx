@@ -9,6 +9,7 @@ export type CardProduct = {
   name: string
   img: string
   vol?: string
+  type?: string // shown instead of the rating until there are verified reviews
   price: number
   old?: number // real price within the last 30 days, else undefined
   rating?: number // only from verified reviews

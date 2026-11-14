@@ -2,17 +2,13 @@ import { getPayload, type Where } from 'payload'
 import { cache } from 'react'
 
 import config from '@/payload.config'
-import type { Media, Product } from '@/payload-types'
+import type { Media, Product, Store } from '@/payload-types'
 import type { CardProduct } from '@/components/shop'
-import type { StoreInfo } from '@/components/Header'
 import type { Lang } from './i18n'
 
 export const payload = cache(async () => getPayload({ config: await config }))
 
-export const getStore = cache(async (): Promise<StoreInfo & Record<string, any>> => {
-  const p = await payload()
-  return (await p.findGlobal({ slug: 'store' })) as any
-})
+export const getStore = cache(async (): Promise<Store> => (await payload()).findGlobal({ slug: 'store', depth: 1 }))
 
 const DAY = 86_400_000
 
@@ -57,10 +53,25 @@ export async function toCards(products: Product[], lang: Lang): Promise<CardProd
       name: pr.name,
       img: img(pr.images?.[0]),
       vol: v.volume ?? undefined,
+      type: pr.type ?? undefined,
       price: v.price,
       old,
       tags,
     }
+  })
+}
+
+export type HomeCard = CardProduct & { skin: string[]; concerns: string[]; category: string }
+
+/** Cards plus what the home blocks filter on (skin, concerns, category slug). */
+export async function homeCards(lang: Lang): Promise<HomeCard[]> {
+  const p = await payload()
+  // ponytail: catalog order until there are sales; rank by orders (last 30 days) once orders exist
+  const res = await p.find({ collection: 'products', limit: 200, sort: 'createdAt', locale: lang, depth: 1 })
+  const cards = await toCards(res.docs, lang)
+  return cards.map((c, i) => {
+    const pr = res.docs[i]
+    return { ...c, skin: pr.skin ?? [], concerns: pr.concerns ?? [], category: typeof pr.category === 'object' ? pr.category.slug : '' }
   })
 }
 
