@@ -18,6 +18,6 @@ items="app.db"
 for x in photos posts screens reports cbu_usd.json cbu_cny.json; do
   [ -e "data/$x" ] && items="$items $x"
 done
-tar czf "$out" --exclude='screens/preview' -C data $items
+COPYFILE_DISABLE=1 tar czf "$out" --exclude='screens/preview' -C data $items
 echo "Tayyor: $out ($(du -h "$out" | cut -f1))"
 echo "Endi uni serverga yuboring: docs/deploy_coolify.md, 4-qadam."

@@ -20,7 +20,7 @@ from app import config
 from app.db import make_engine
 from app.db.models import Base, Post, Product
 
-ALLOWED = ("app.db", "photos/", "posts/", "screens/", "reports/", "cbu_")
+ALLOWED = ("app.db", "photos/", "posts/", "screens/", "reports/", "cbu_")  # "._*" (macOS) skipped below
 CHUNK = 500
 
 
@@ -31,7 +31,8 @@ class MigrateError(Exception):
 def unpack(archive: Path, dest: Path) -> Path:
     """Extracts the export into dest; returns the SQLite file. Only expected names, no path tricks."""
     with tarfile.open(archive) as tar:
-        members = [m for m in tar.getmembers() if m.name.lstrip("./").startswith(ALLOWED)]
+        members = [m for m in tar.getmembers() if m.name.lstrip("./").startswith(ALLOWED)
+                   and not Path(m.name).name.startswith("._")]
         tar.extractall(dest, members=members, filter="data")
     db = dest / "app.db"
     if not db.exists():
