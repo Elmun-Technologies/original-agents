@@ -67,6 +67,9 @@ export interface Config {
   };
   blocks: {};
   collections: {
+    orders: Order;
+    payments: Payment;
+    'promo-codes': PromoCode;
     products: Product;
     brands: Brand;
     categories: Category;
@@ -82,6 +85,9 @@ export interface Config {
   };
   collectionsJoins: {};
   collectionsSelect: {
+    orders: OrdersSelect<false> | OrdersSelect<true>;
+    payments: PaymentsSelect<false> | PaymentsSelect<true>;
+    'promo-codes': PromoCodesSelect<false> | PromoCodesSelect<true>;
     products: ProductsSelect<false> | ProductsSelect<true>;
     brands: BrandsSelect<false> | BrandsSelect<true>;
     categories: CategoriesSelect<false> | CategoriesSelect<true>;
@@ -132,6 +138,95 @@ export interface UserAuthOperations {
     email: string;
     password: string;
   };
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "orders".
+ */
+export interface Order {
+  id: number;
+  number: string;
+  token: string;
+  lang?: ('uz' | 'ru') | null;
+  status: 'new' | 'accepted' | 'assembling' | 'shipping' | 'delivered' | 'cancelled';
+  paymentStatus: 'pending' | 'paid' | 'cancelled' | 'refund';
+  payment: 'click' | 'payme' | 'card';
+  paidAt?: string | null;
+  name: string;
+  phone: string;
+  telegramUpdates?: boolean | null;
+  delivery: 'tashkent' | 'region';
+  city?: string | null;
+  address: string;
+  slot?: string | null;
+  comment?: string | null;
+  gift?: boolean | null;
+  items: {
+    sku: string;
+    slug?: string | null;
+    brand?: string | null;
+    name: string;
+    volume?: string | null;
+    img?: string | null;
+    price: number;
+    qty: number;
+    id?: string | null;
+  }[];
+  subtotal: number;
+  discount?: number | null;
+  discountLabel?: string | null;
+  deliveryFee?: number | null;
+  giftFee?: number | null;
+  total: number;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "payments".
+ */
+export interface Payment {
+  id: number;
+  provider: 'click' | 'payme';
+  providerId: string;
+  order: number | Order;
+  /**
+   * Click: soʻm, Payme: tiyin
+   */
+  amount: number;
+  /**
+   * Payme: 1 yaratildi, 2 toʻlandi, -1/-2 bekor. Click: 0 prepare, 1 complete, -1 bekor
+   */
+  state: number;
+  createTime?: number | null;
+  performTime?: number | null;
+  cancelTime?: number | null;
+  reason?: number | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "promo-codes".
+ */
+export interface PromoCode {
+  id: number;
+  /**
+   * KATTA harflarda, masalan SALOM10
+   */
+  code: string;
+  type: 'percent' | 'fixed';
+  value: number;
+  /**
+   * Savatda koʻrinadi: «birinchi buyurtmaga −10%»
+   */
+  note?: string | null;
+  minTotal?: number | null;
+  firstOrderOnly?: boolean | null;
+  active?: boolean | null;
+  validTo?: string | null;
+  updatedAt: string;
+  createdAt: string;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -451,6 +546,18 @@ export interface PayloadLockedDocument {
   id: number;
   document?:
     | ({
+        relationTo: 'orders';
+        value: number | Order;
+      } | null)
+    | ({
+        relationTo: 'payments';
+        value: number | Payment;
+      } | null)
+    | ({
+        relationTo: 'promo-codes';
+        value: number | PromoCode;
+      } | null)
+    | ({
         relationTo: 'products';
         value: number | Product;
       } | null)
@@ -523,6 +630,82 @@ export interface PayloadMigration {
   batch?: number | null;
   updatedAt: string;
   createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "orders_select".
+ */
+export interface OrdersSelect<T extends boolean = true> {
+  number?: T;
+  token?: T;
+  lang?: T;
+  status?: T;
+  paymentStatus?: T;
+  payment?: T;
+  paidAt?: T;
+  name?: T;
+  phone?: T;
+  telegramUpdates?: T;
+  delivery?: T;
+  city?: T;
+  address?: T;
+  slot?: T;
+  comment?: T;
+  gift?: T;
+  items?:
+    | T
+    | {
+        sku?: T;
+        slug?: T;
+        brand?: T;
+        name?: T;
+        volume?: T;
+        img?: T;
+        price?: T;
+        qty?: T;
+        id?: T;
+      };
+  subtotal?: T;
+  discount?: T;
+  discountLabel?: T;
+  deliveryFee?: T;
+  giftFee?: T;
+  total?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "payments_select".
+ */
+export interface PaymentsSelect<T extends boolean = true> {
+  provider?: T;
+  providerId?: T;
+  order?: T;
+  amount?: T;
+  state?: T;
+  createTime?: T;
+  performTime?: T;
+  cancelTime?: T;
+  reason?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "promo-codes_select".
+ */
+export interface PromoCodesSelect<T extends boolean = true> {
+  code?: T;
+  type?: T;
+  value?: T;
+  note?: T;
+  minTotal?: T;
+  firstOrderOnly?: T;
+  active?: T;
+  validTo?: T;
+  updatedAt?: T;
+  createdAt?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -766,6 +949,10 @@ export interface Store {
    */
   regionPrice: number;
   /**
+   * NAMUNA. Sovgʻa qutisi narxi, soʻm
+   */
+  giftBoxPrice: number;
+  /**
    * NAMUNA. Ochilmagan boʻlsa qaytarish, kun
    */
   returnDays: number;
@@ -793,6 +980,7 @@ export interface StoreSelect<T extends boolean = true> {
   regionDays?: T;
   tashkentPrice?: T;
   regionPrice?: T;
+  giftBoxPrice?: T;
   returnDays?: T;
   orderCutoff?: T;
   telegramUrl?: T;

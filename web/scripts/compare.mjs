@@ -14,9 +14,13 @@ const [w, h] = execFileSync(py, ['-c', `from PIL import Image; print(*Image.open
 const vw = w === 1200 ? 1440 : w
 const browser = await chromium.launch()
 const page = await browser.newPage({ viewport: { width: vw, height: Math.min(h, 900) } })
-await page.goto(url, { waitUntil: 'load' })
+// COMPARE_LS='{"key":"value"}' fills localStorage before the page loads (e.g. a cart like the design's)
+if (process.env.COMPARE_LS) {
+  await page.addInitScript((ls) => { for (const [k, v] of Object.entries(JSON.parse(ls))) localStorage.setItem(k, v) }, process.env.COMPARE_LS)
+}
+await page.goto(url, { waitUntil: 'load', timeout: 120_000 })
 await page.evaluate(() => document.fonts.ready)
-await page.waitForTimeout(500)
+await page.waitForTimeout(Number(process.env.COMPARE_WAIT ?? 500))
 const sw = await page.evaluate(() => document.documentElement.scrollWidth)
 const ours = path.join(out, `${name}-ours.png`)
 await page.screenshot({ path: ours, fullPage: h > 900 })

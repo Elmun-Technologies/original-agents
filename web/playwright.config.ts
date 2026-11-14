@@ -33,9 +33,12 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'], channel: 'chromium' },
     },
   ],
-  webServer: {
-    command: 'pnpm dev',
+  // e2e runs against a production build on :3100 (the dev server compiles pages on demand and is too slow
+  // for parallel tests). Set E2E_BASE to test another running server.
+  webServer: process.env.E2E_BASE ? undefined : {
+    command: 'pnpm build && pnpm start -p 3100',
     reuseExistingServer: true,
-    url: 'http://localhost:3000',
+    url: 'http://localhost:3100/uz',
+    timeout: 300_000,
   },
 })

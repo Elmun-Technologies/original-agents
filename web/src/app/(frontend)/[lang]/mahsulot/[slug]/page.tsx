@@ -8,6 +8,7 @@ import { ProductInfo, ProductMain, ProductPhone, Reviews, Together, type Product
 import { getStore, productData } from '@/lib/catalog'
 import { href, isLang, t } from '@/lib/i18n'
 import type { Media } from '@/payload-types'
+import { siteUrl } from '@/lib/payments/config'
 
 type Props = { params: Promise<{ lang: string; slug: string }> }
 
@@ -44,7 +45,7 @@ export default async function ProductPage({ params }: Props) {
     pairs: d.pairs, backHref: d.cat ? `/katalog/${d.cat.slug}` : '/',
   }
 
-  const site = process.env.NEXT_PUBLIC_SITE_URL ?? ''
+  const site = siteUrl()
   const ld = [{
     '@context': 'https://schema.org', '@type': 'Product', name: `${d.brand?.name ?? ''} ${pr.name}`.trim(), sku: d.variants[0]?.sku,
     brand: d.brand ? { '@type': 'Brand', name: d.brand.name } : undefined, image: d.images.map((i) => site + i.url), description: pr.summary ?? undefined,

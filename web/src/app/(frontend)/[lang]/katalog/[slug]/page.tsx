@@ -11,6 +11,9 @@ import { catalogData } from '@/lib/catalog'
 import { applyFilters, parseFilters } from '@/lib/filters'
 import { href, isLang, t, tn } from '@/lib/i18n'
 
+// reads searchParams on every request (the layout is ISR otherwise)
+export const dynamic = 'force-dynamic'
+
 type Props = { params: Promise<{ lang: string; slug: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> }
 
 export async function generateMetadata({ params, searchParams }: Props): Promise<Metadata> {

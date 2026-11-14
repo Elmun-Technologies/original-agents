@@ -1,9 +1,10 @@
 import { expect, test } from '@playwright/test'
 
-const BASE = 'http://localhost:3000'
+const BASE = process.env.E2E_BASE ?? 'http://localhost:3100'
 const WIDTHS = [360, 390, 600, 834, 1024, 1280, 1440] // HANDOFF §9
 const AMP = '/mahsulot/skin1004-madagascar-centella-ampoule'
-const PAGES = ['/uz', '/ru', '/uz/dev/components', '/uz/katalog/serum', '/ru/katalog/serum?teri=dry', `/uz${AMP}`, `/ru${AMP}`]
+const PAGES = ['/uz', '/ru', '/uz/dev/components', '/uz/katalog/serum', '/ru/katalog/serum?teri=dry', `/uz${AMP}`, `/ru${AMP}`, '/uz/savat', '/uz/rasmiylashtirish']
+const phone = () => `90 ${String(Math.floor(Math.random() * 1e7)).padStart(7, '0')}`
 
 test('root redirects to a language', async ({ page }) => {
   await page.goto(BASE)
@@ -135,6 +136,88 @@ test('recently viewed shows the product in the catalog', async ({ page }) => {
   await page.goto(`${BASE}/uz/katalog/toner`)
   await expect(page.locator('#rv-h')).toBeVisible()
   await expect(page.locator('section[aria-labelledby="rv-h"]')).toContainText('Madagascar Centella Ampoule')
+})
+
+test('full purchase (desktop, Click, test payment): cart -> checkout -> pay -> order page', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.goto(`${BASE}/uz${AMP}`)
+  await page.locator('.d-only').getByRole('button', { name: 'Savatga qoʻshish' }).click()
+  await page.goto(`${BASE}/uz/mahsulot/beauty-of-joseon-revive-serum-ginseng-snail-mucin`)
+  await page.locator('.d-only').getByRole('button', { name: 'Savatga qoʻshish' }).click()
+  await page.goto(`${BASE}/uz/savat`)
+  const aside = page.getByRole('complementary', { name: 'Buyurtma xulosasi' })
+  await expect(aside).toContainText('464 000')
+  await aside.getByPlaceholder('Promokod, masalan SALOM10').fill('salom10')
+  await aside.getByRole('button', { name: 'Qoʻllash' }).click()
+  await expect(aside).toContainText('SALOM10 qoʻllandi — birinchi buyurtmaga −10%')
+  await expect(aside).toContainText('418 000 soʻm')
+  await aside.getByRole('link', { name: /Rasmiylashtirishga/ }).click()
+  await expect(page).toHaveURL(/rasmiylashtirish/)
+  const main = page.locator('.checkout-page .d-only').last()
+  await main.getByRole('button', { name: /Click orqali 418 000/ }).click()
+  await expect(main.getByText('Ismingizni yozing')).toBeVisible()
+  await main.getByLabel('Ismingiz').fill('Malika')
+  await main.getByLabel('Telefon raqam').fill(phone())
+  await main.getByLabel('Manzil').fill('Amir Temur 1')
+  await main.getByRole('button', { name: /Click orqali 418 000/ }).click()
+  await expect(page).toHaveURL(/tolov\/sinov/)
+  await page.getByRole('button', { name: 'Toʻlash (sinov)' }).click()
+  await expect(page).toHaveURL(/buyurtma\/\d+\?t=/)
+  await expect(page.getByRole('heading', { level: 1 })).toContainText('Rahmat, Malika! Buyurtmangiz qabul qilindi')
+  await expect(page.locator('main')).toContainText('Toʻlandi · Click')
+  await expect(page.locator('header .num').first()).toHaveText('0') // cart cleared
+  await expect(page.locator('section[aria-labelledby="nx-h"]')).not.toContainText('Madagascar Centella Ampoule') // bought -> not recommended
+})
+
+test('phone checkout is step by step and Uzcard/Humo goes through Payme', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.goto(`${BASE}/uz${AMP}`)
+  await page.locator('.m-bar').getByRole('button', { name: /Savatga/ }).click()
+  await page.goto(`${BASE}/uz/savat`)
+  await page.locator('.m-bar').getByRole('link', { name: 'Rasmiylashtirish' }).click()
+  const phoneUi = page.locator('.m-only')
+  await expect(phoneUi.getByText('1/3')).toBeVisible()
+  await phoneUi.getByLabel('Ismingiz').fill('Aziz')
+  await phoneUi.getByLabel('Telefon raqam').fill(phone())
+  await page.locator('.m-bar').getByRole('button', { name: 'Davom etish' }).click()
+  await expect(phoneUi.getByText('2/3')).toBeVisible()
+  await phoneUi.getByLabel('Manzil').fill('Navoiy 5')
+  await page.locator('.m-bar').getByRole('button', { name: 'Davom etish' }).click()
+  await phoneUi.getByRole('radio', { name: /Uzcard \/ Humo/ }).click()
+  await page.locator('.m-bar').getByRole('button', { name: /orqali toʻlash/ }).click()
+  await expect(page).toHaveURL(/p=payme/)
+  await page.getByRole('button', { name: 'Toʻlash (sinov)' }).click()
+  await expect(page.locator('main')).toContainText('Toʻlandi · Payme')
+})
+
+test('cancelled test payment leaves the order unpaid with a pay button', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.goto(`${BASE}/uz${AMP}`)
+  await page.locator('.d-only').getByRole('button', { name: 'Savatga qoʻshish' }).click()
+  await page.goto(`${BASE}/uz/rasmiylashtirish`)
+  const main = page.locator('.checkout-page .d-only').last()
+  await main.getByLabel('Ismingiz').fill('Test')
+  await main.getByLabel('Telefon raqam').fill(phone())
+  await main.getByLabel('Manzil').fill('Test 1')
+  await main.getByRole('radio', { name: /Payme/ }).click()
+  await main.getByRole('button', { name: /Payme orqali/ }).click()
+  await page.getByRole('button', { name: 'Bekor qilish' }).click()
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Toʻlov oʻtmadi')
+  await expect(page.getByRole('link', { name: /Payme orqali .* toʻlash/ })).toBeVisible()
+})
+
+test('order page needs the secret token; empty cart; unknown promo', async ({ page }) => {
+  expect((await page.goto(`${BASE}/uz/buyurtma/10001?t=wrong`))?.status()).toBe(404)
+  await page.goto(`${BASE}/uz/savat`)
+  await expect(page.getByText('Savat hozircha boʻsh').first()).toBeVisible()
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.goto(`${BASE}/uz${AMP}`)
+  await page.locator('.d-only').getByRole('button', { name: 'Savatga qoʻshish' }).click()
+  await page.goto(`${BASE}/uz/savat`)
+  const aside = page.getByRole('complementary', { name: 'Buyurtma xulosasi' })
+  await aside.getByPlaceholder('Promokod, masalan SALOM10').fill('YOQ123')
+  await aside.getByRole('button', { name: 'Qoʻllash' }).click()
+  await expect(aside).toContainText('Bunday promokod topilmadi')
 })
 
 for (const path of PAGES) {

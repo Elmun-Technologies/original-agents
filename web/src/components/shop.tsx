@@ -30,6 +30,11 @@ type Shop = {
   inCart: (sku: string) => boolean
   isFav: (slug: string) => boolean
   toggleFav: (slug: string) => void
+  promo: string
+  setPromo: (code: string) => void
+  /** server says: these SKUs are gone / their price changed -> keep the browser copy in sync */
+  sync: (priced: { sku: string; price: number; qty: number }[], missing: string[]) => void
+  clear: () => void
 }
 
 const Ctx = createContext<Shop | null>(null)
@@ -39,6 +44,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   const [lines, setLines] = useState<Line[]>([])
   const [favs, setFavs] = useState<string[]>([])
   const [toast, setToast] = useState<Shop['toast']>(null)
+  const [promo, setPromo] = useState('')
   const loaded = useRef(false)
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined)
 
@@ -49,15 +55,16 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       if (Array.isArray(s.lines)) setLines(s.lines)
       if (Array.isArray(s.favs)) setFavs(s.favs)
+      if (typeof s.promo === 'string') setPromo(s.promo)
     } catch {}
     loaded.current = true
   }, [])
   useEffect(() => {
     if (!loaded.current) return
     try {
-      localStorage.setItem(KEY, JSON.stringify({ lines, favs }))
+      localStorage.setItem(KEY, JSON.stringify({ lines, favs, promo }))
     } catch {}
-  }, [lines, favs])
+  }, [lines, favs, promo])
 
   const add = useCallback((p: CardProduct, qty = 1) => {
     setLines((ls) => {
@@ -81,7 +88,17 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     inCart: (sku) => lines.some((l) => l.sku === sku),
     isFav: (slug) => favs.includes(slug),
     toggleFav: (slug) => setFavs((f) => (f.includes(slug) ? f.filter((x) => x !== slug) : [...f, slug])),
-  }), [lines, favs, toast, add])
+    promo,
+    setPromo,
+    sync: (priced, missing) => setLines((ls) => {
+      const next = ls.filter((l) => !missing.includes(l.sku)).map((l) => {
+        const p = priced.find((x) => x.sku === l.sku)
+        return p && (p.price !== l.price || p.qty !== l.qty) ? { ...l, price: p.price, qty: p.qty } : l
+      })
+      return next.length === ls.length && next.every((l, i) => l === ls[i]) ? ls : next
+    }),
+    clear: () => { setLines([]); setPromo('') },
+  }), [lines, favs, toast, add, promo])
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }

@@ -198,6 +198,7 @@ export const Store: GlobalConfig = {
     { name: 'regionDays', type: 'text', required: true, defaultValue: '2–4', admin: { description: 'NAMUNA. Viloyatlarga, kun' } },
     { name: 'tashkentPrice', type: 'number', required: true, defaultValue: 25000, admin: { description: 'NAMUNA. Toshkent yetkazish narxi' } },
     { name: 'regionPrice', type: 'number', required: true, defaultValue: 35000, admin: { description: 'NAMUNA. Viloyat yetkazish narxi' } },
+    { name: 'giftBoxPrice', type: 'number', required: true, defaultValue: 15000, admin: { description: 'NAMUNA. Sovgʻa qutisi narxi, soʻm' } },
     { name: 'returnDays', type: 'number', required: true, defaultValue: 14, admin: { description: 'NAMUNA. Ochilmagan boʻlsa qaytarish, kun' } },
     { name: 'orderCutoff', type: 'text', required: true, defaultValue: '18:00', admin: { description: 'Shu vaqtgacha buyurtma — ertaga yetkaziladi' } },
     { name: 'telegramUrl', type: 'text', required: true, defaultValue: 'https://t.me/' },

@@ -243,7 +243,8 @@ export function Together({ lang, items }: { lang: Lang; items: CardProduct[] }) 
 export type ReviewItem = { id: number | string; name: string; skin?: string | null; rating: number; text: string; helpful?: number | null }
 
 /** Reviews: verified purchases only. Without any — an honest empty state, no placeholders. */
-export function Reviews({ lang, stats, items }: { lang: Lang; stats?: { count: number; avg: number; dist: number[] }; items: ReviewItem[] }) {
+/** firstReviewPoints: loyalty bonus for the first review (set when the bonus programme starts; stage 2). */
+export function Reviews({ lang, stats, items, firstReviewPoints }: { lang: Lang; stats?: { count: number; avg: number; dist: number[] }; items: ReviewItem[]; firstReviewPoints?: number }) {
   const tr = (s: string) => t(lang, s)
   const [skin, setSkin] = useState<string | null>(null)
   const skinLabel = (s?: string | null) => SKINS.find((x) => x[0] === s)?.[1]
@@ -265,7 +266,10 @@ export function Reviews({ lang, stats, items }: { lang: Lang; stats?: { count: n
             ))}
           </>
         ) : (
-          <span className="muted" style={{ fontSize: '15px', lineHeight: 1.55 }}>{tr('Hali sharh yoʻq. Sharhni faqat shu mahsulotni sotib olganlar yoza oladi — soxta sharh yoʻq.')}</span>
+          <>
+            <span className="muted" style={{ fontSize: '15px', lineHeight: 1.55 }}>{tr('Hali sharh yoʻq. Sharhni faqat shu mahsulotni sotib olganlar yoza oladi — soxta sharh yoʻq.')}</span>
+            {firstReviewPoints ? <span className="chip tag-new" style={{ alignSelf: 'flex-start' }}>{tn(lang, 'Birinchi boʻlib sharh yozing — +[N] ball', firstReviewPoints)}</span> : null}
+          </>
         )}
         <Link href={href(lang, '/kabinet')} className="pill dark" style={{ marginTop: '8px' }}>{tr('Sharh yozish')}</Link>
       </div>

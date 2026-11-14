@@ -13,7 +13,7 @@ export const getStore = cache(async (): Promise<Store> => (await payload()).find
 const DAY = 86_400_000
 
 /** "Old price" = the highest real price of this SKU in the last 30 days, only if above today's (HANDOFF §5.3). */
-async function oldPrices(skus: string[]): Promise<Map<string, number>> {
+export async function oldPrices(skus: string[]): Promise<Map<string, number>> {
   if (!skus.length) return new Map()
   const p = await payload()
   const res = await p.find({
@@ -176,12 +176,12 @@ export async function productData(slug: string, lang: Lang) {
   const [self] = await toCards([pr], lang)
   // "bought together": admin's choice, else routine logic — a toner and an SPF from other categories (design: amp + toner + SPF)
   let pairs = (pr.pairsWith ?? []).filter((x): x is Product => typeof x === 'object')
-  if (!pairs.length) {
-    const want = ['toner', 'spf'].filter((s) => s !== cat?.slug)
-    const rest = await p.find({ collection: 'products', where: { 'category.slug': { in: want } }, locale: lang, depth: 1, limit: 20, sort: 'createdAt' })
-    pairs = want.map((w) => rest.docs.find((d) => typeof d.category === 'object' && d.category.slug === w)).filter(Boolean) as Product[]
-  }
-  const sim = await p.find({ collection: 'products', where: { category: { equals: cat?.id ?? 0 }, slug: { not_equals: slug } }, locale: lang, depth: 1, limit: 5, sort: 'createdAt' })
+  const want = ['toner', 'spf'].filter((s) => s !== cat?.slug)
+  const [rest, sim] = await Promise.all([
+    pairs.length ? null : p.find({ collection: 'products', where: { 'category.slug': { in: want } }, locale: lang, depth: 1, limit: 20, sort: 'createdAt' }),
+    p.find({ collection: 'products', where: { category: { equals: cat?.id ?? 0 }, slug: { not_equals: slug } }, locale: lang, depth: 1, limit: 5, sort: 'createdAt' }),
+  ])
+  if (rest) pairs = want.map((w) => rest.docs.find((d) => typeof d.category === 'object' && d.category.slug === w)).filter(Boolean) as Product[]
   let similar = sim.docs
   if (similar.length < 5) {
     const more = await p.find({ collection: 'products', where: { slug: { not_in: [slug, ...similar.map((d) => d.slug)] } }, locale: lang, depth: 1, limit: 5 - similar.length, sort: 'createdAt' })

@@ -1,0 +1,153 @@
+import 'server-only'
+import crypto from 'node:crypto'
+
+import type { Media, Order, Product } from '@/payload-types'
+import { getStore, oldPrices, payload } from './catalog'
+import type { Lang } from './i18n'
+import { notifyAdmins } from './notify'
+import { normalizePhone, priceCart, suggestion, type Delivery, type Priced, type Promo, type Quote } from './pricing'
+
+export type CartRequest = { lines: { sku: string; qty: number }[]; promo?: string; delivery?: Delivery; gift?: boolean; phone?: string }
+
+/** Current prices, real old prices and stock for the SKUs in a cart (+ category for the suggestion rule). */
+async function loadPriced(skus: string[], lang: Lang) {
+  const p = await payload()
+  const res = await p.find({ collection: 'products', where: { 'variants.sku': { in: skus } }, locale: lang, depth: 1, limit: 200, pagination: false })
+  const olds = await oldPrices(skus)
+  const map = new Map<string, Priced & { category: string }>()
+  for (const pr of res.docs) {
+    const img = (pr.images?.[0] as Media | undefined)?.url ?? ''
+    for (const v of pr.variants) {
+      if (!skus.includes(v.sku)) continue
+      map.set(v.sku, {
+        sku: v.sku, slug: pr.slug, brand: typeof pr.brand === 'object' ? pr.brand.name : '', name: pr.name, img, volume: v.volume ?? undefined,
+        price: v.price, old: olds.get(v.sku), stock: v.stock ?? 0, category: typeof pr.category === 'object' ? pr.category.slug : '',
+      })
+    }
+  }
+  return map
+}
+
+async function findPromo(code: string | undefined, lang: Lang): Promise<Promo | null> {
+  if (!code?.trim()) return null
+  const p = await payload()
+  const doc = (await p.find({ collection: 'promo-codes', where: { code: { equals: code.trim().toUpperCase() } }, limit: 1, depth: 0, locale: lang, overrideAccess: true })).docs[0]
+  return doc ? { note: doc.note, code: doc.code, type: doc.type, value: doc.value, minTotal: doc.minTotal, firstOrderOnly: doc.firstOrderOnly, active: doc.active, validTo: doc.validTo } : null
+}
+
+/** "First order" = no paid order with this phone yet. */
+async function isFirstOrder(phone?: string | null) {
+  if (!phone) return true
+  const p = await payload()
+  const n = await p.count({ collection: 'orders', where: { phone: { equals: phone }, paymentStatus: { equals: 'paid' } }, overrideAccess: true })
+  return n.totalDocs === 0
+}
+
+export async function quoteCart(req: CartRequest, lang: Lang) {
+  const lines = (req.lines ?? []).filter((l) => typeof l?.sku === 'string' && Number.isFinite(l.qty)).slice(0, 50)
+  const skus = [...new Set(lines.map((l) => l.sku))]
+  const [store, products, promo] = await Promise.all([getStore(), loadPriced(skus, lang), findPromo(req.promo, lang)])
+  const routineSkus = (store.homeRoutine ?? []).flatMap((r) => (typeof r === 'object' ? [(r as Product).variants[0]?.sku] : [])).filter(Boolean) as string[]
+  const phone = req.phone ? normalizePhone(req.phone) : null
+  const q = priceCart({
+    lines, products, promo, promoCode: req.promo?.trim() || undefined, isFirstOrder: await isFirstOrder(phone), routineSkus,
+    delivery: req.delivery === 'region' ? 'region' : 'tashkent', gift: !!req.gift,
+    store: { freeDeliveryFrom: store.freeDeliveryFrom, tashkentPrice: store.tashkentPrice, regionPrice: store.regionPrice, giftBoxPrice: store.giftBoxPrice },
+  })
+  // one suggestion (p_spec.py): cheapest fitting SPF/toner not in the cart
+  let suggest: (Priced & { reason: 'spf' | 'toner' }) | null = null
+  if (q.lines.length) {
+    const p = await payload()
+    const cats = q.lines.map((l) => products.get(l.sku)?.category ?? '')
+    const pool = await p.find({ collection: 'products', where: { 'category.slug': { in: ['spf', 'toner'] } }, locale: lang, depth: 1, limit: 50 })
+    const cands = pool.docs.flatMap((pr) => pr.variants.slice(0, 1).map((v) => ({
+      sku: v.sku, slug: pr.slug, brand: typeof pr.brand === 'object' ? pr.brand.name : '', name: pr.name, img: (pr.images?.[0] as Media | undefined)?.url ?? '',
+      volume: v.volume ?? undefined, price: v.price, stock: v.stock ?? 0, category: typeof pr.category === 'object' ? pr.category.slug : '',
+    }))).filter((c) => !skus.includes(c.sku))
+    const s = suggestion(cats, cands, q.subtotal)
+    if (s) suggest = { ...s.item, reason: s.reason }
+  }
+  return { quote: q, suggest, freeFrom: store.freeDeliveryFrom }
+}
+
+export type OrderRequest = CartRequest & {
+  lang: Lang; name: string; phone: string; telegramUpdates?: boolean; city?: string; address: string; slot?: string; comment?: string
+  payment: 'click' | 'payme' | 'card'; consent: boolean
+}
+
+export class OrderError extends Error {
+  constructor(public code: string) { super(code) }
+}
+
+const clean = (s: unknown, max = 300) => (typeof s === 'string' ? s.replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, max) : '')
+
+/** Validates, prices on the server and stores the order (status new, payment pending). */
+export async function createOrder(req: OrderRequest): Promise<{ order: Order; quote: Quote }> {
+  const name = clean(req.name, 80)
+  const phone = normalizePhone(clean(req.phone, 30))
+  const address = clean(req.address, 300)
+  if (!name) throw new OrderError('name')
+  if (!phone) throw new OrderError('phone')
+  if (!address) throw new OrderError('address')
+  if (!req.consent) throw new OrderError('consent')
+  if (!['click', 'payme', 'card'].includes(req.payment)) throw new OrderError('payment')
+  const { quote } = await quoteCart({ ...req, phone }, req.lang)
+  if (!quote.lines.length) throw new OrderError('empty')
+  if (quote.missing.length) throw new OrderError('missing')
+  if (req.promo && quote.promoError) throw new OrderError(`promo_${quote.promoError}`)
+  const p = await payload()
+  const token = crypto.randomBytes(16).toString('hex')
+  const draft = await p.create({
+    collection: 'orders', overrideAccess: true,
+    data: {
+      number: `T${crypto.randomBytes(4).toString('hex')}`, token, lang: req.lang, status: 'new', paymentStatus: 'pending', payment: req.payment,
+      name, phone, telegramUpdates: req.telegramUpdates !== false, delivery: quote.delivery, city: clean(req.city, 80), address,
+      slot: clean(req.slot, 20), comment: clean(req.comment, 500), gift: !!req.gift,
+      items: quote.lines.map((l) => ({ sku: l.sku, slug: l.slug, brand: l.brand, name: l.name, volume: l.volume, img: l.img, price: l.price, qty: l.qty })),
+      subtotal: quote.subtotal, discount: quote.discount, discountLabel: quote.discountLabel, deliveryFee: quote.deliveryFee, giftFee: quote.giftFee, total: quote.total,
+    },
+  })
+  // short human number from the id: 10001, 10002 …
+  const order = await p.update({ collection: 'orders', id: draft.id, overrideAccess: true, data: { number: String(10000 + Number(draft.id)) } })
+  return { order, quote }
+}
+
+export async function getOrder(number: string, token: string) {
+  const p = await payload()
+  const o = (await p.find({ collection: 'orders', where: { number: { equals: number } }, limit: 1, depth: 0, overrideAccess: true })).docs[0]
+  if (!o || !token || !crypto.timingSafeEqual(Buffer.from(o.token.padEnd(64)), Buffer.from(token.padEnd(64).slice(0, 64)))) return null
+  return o
+}
+
+export async function orderByNumber(number: string) {
+  const p = await payload()
+  return (await p.find({ collection: 'orders', where: { number: { equals: number } }, limit: 1, depth: 0, overrideAccess: true })).docs[0] ?? null
+}
+
+/** The only way an order becomes "paid": called from a provider callback that the server verified. Idempotent. */
+export async function markPaid(orderId: number, provider: 'click' | 'payme') {
+  const p = await payload()
+  const o = await p.findByID({ collection: 'orders', id: orderId, overrideAccess: true, depth: 0 })
+  if (o.paymentStatus === 'paid') return o
+  const paid = await p.update({ collection: 'orders', id: orderId, overrideAccess: true, data: { paymentStatus: 'paid', status: 'accepted', paidAt: new Date().toISOString() } })
+  // ponytail: stock decremented without row locks; fine at this volume, use a SQL UPDATE … stock = stock - qty if orders get concurrent
+  for (const it of o.items) {
+    const pr = (await p.find({ collection: 'products', where: { 'variants.sku': { equals: it.sku } }, limit: 1, depth: 0, overrideAccess: true })).docs[0]
+    if (!pr) continue
+    await p.update({ collection: 'products', id: pr.id, overrideAccess: true, data: { variants: pr.variants.map((v) => (v.sku === it.sku ? { ...v, stock: Math.max(0, (v.stock ?? 0) - it.qty) } : v)) } })
+  }
+  await notifyAdmins(`💳 Toʻlandi (${provider}) — buyurtma №${o.number}\n${o.items.map((i) => `• ${i.brand} ${i.name}${i.volume ? ` ${i.volume}` : ''} × ${i.qty}`).join('\n')}\nJami: ${o.total.toLocaleString('ru-RU')} soʻm\n${o.name}, +${o.phone}\n${o.delivery === 'tashkent' ? 'Toshkent' : 'Viloyat'}: ${o.city ? `${o.city}, ` : ''}${o.address}${o.slot ? `, ${o.slot}` : ''}${o.gift ? '\n🎁 Sovgʻa qutisi' : ''}${o.comment ? `\nIzoh: ${o.comment}` : ''}`)
+  return paid
+}
+
+export async function markPaymentCancelled(orderId: number) {
+  const p = await payload()
+  const o = await p.findByID({ collection: 'orders', id: orderId, overrideAccess: true, depth: 0 })
+  if (o.paymentStatus === 'paid') {
+    // money was taken and is being returned: the admin decides (HANDOFF: refunds are a human decision)
+    await p.update({ collection: 'orders', id: orderId, overrideAccess: true, data: { paymentStatus: 'refund' } })
+    await notifyAdmins(`↩️ Toʻlov bekor qilindi — buyurtma №${o.number}. Qaytarishni tekshiring.`)
+    return
+  }
+  await p.update({ collection: 'orders', id: orderId, overrideAccess: true, data: { paymentStatus: 'cancelled' } })
+}

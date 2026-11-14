@@ -178,6 +178,12 @@ async function main() {
   const routine = (await Promise.all(['toner', 'amp', 'spf'].map(bySku))).filter(Boolean) as number[]
   await payload.updateGlobal({ slug: 'store', data: { homeRoutine: routine } })
 
+  if (!(await payload.find({ collection: 'promo-codes', where: { code: { equals: 'SALOM10' } }, limit: 1 })).docs.length) {
+    // NAMUNA: the design's first-order code (−10%); change or switch off in the admin
+    const pc = await payload.create({ collection: 'promo-codes', locale: 'uz', data: { code: 'SALOM10', type: 'percent', value: 10, firstOrderOnly: true, active: true, note: 'birinchi buyurtmaga −10%' } })
+    await payload.update({ collection: 'promo-codes', id: pc.id, locale: 'ru', data: { note: 'скидка −10% на первый заказ' } })
+  }
+
   payload.logger.info(`seed: ${made} ta yangi mahsulot${demo ? ' (+ namuna eski narxlar)' : ''}`)
   process.exit(0)
 }

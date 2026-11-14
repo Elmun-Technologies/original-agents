@@ -18,6 +18,8 @@ export async function generateMetadata({ params }: { params: Promise<{ lang: str
   const { lang } = await params
   if (!isLang(lang)) return {}
   return {
+    // the site address: one setting, NEXT_PUBLIC_SITE_URL (e.g. https://yeppo.uz)
+    metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'),
     title: t(lang, 'Yeppo — koreys kosmetikasi internet doʻkoni'),
     alternates: { languages: { uz: '/uz', ru: '/ru' } },
   }
