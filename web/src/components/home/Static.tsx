@@ -39,42 +39,42 @@ export function Categories({ tr, L }: P) {
   <h2 id="cats-h" className="sr">{tr("Toifalar")}</h2>
   <div className="hs" style={{justifyContent: 'space-between'}}>
     
-      <Link href={L("/katalog/toner")} className="zoom" style={{flex: 'none', width: '128px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', textDecoration: 'none', textAlign: 'center'}}>
+      <Link href={L("/katalog/serum")} className="zoom" style={{flex: 'none', width: '128px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', textDecoration: 'none', textAlign: 'center'}}>
         <span style={{width: '112px', height: '112px', borderRadius: '50%', overflow: 'hidden', background: '#F2D6D0', display: 'block'}}><img className="ph" src="/img/p-centella-duo.jpg" alt="" style={{objectPosition: '50% 50%'}} /></span>
         <span style={{fontSize: '14px', fontWeight: '500'}}>{tr("Serum va ampula")}</span>
       </Link>
     
-      <Link href={L("/katalog/spf")} className="zoom" style={{flex: 'none', width: '128px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', textDecoration: 'none', textAlign: 'center'}}>
+      <Link href={L("/katalog/toner")} className="zoom" style={{flex: 'none', width: '128px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', textDecoration: 'none', textAlign: 'center'}}>
         <span style={{width: '112px', height: '112px', borderRadius: '50%', overflow: 'hidden', background: '#F2D6D0', display: 'block'}}><img className="ph" src="/img/centella-hand.jpg" alt="" style={{objectPosition: '50% 35%'}} /></span>
         <span style={{fontSize: '14px', fontWeight: '500'}}>{tr("Toner")}</span>
       </Link>
     
-      <Link href={L("/katalog/essensiya")} className="zoom" style={{flex: 'none', width: '128px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', textDecoration: 'none', textAlign: 'center'}}>
+      <Link href={L("/katalog/spf")} className="zoom" style={{flex: 'none', width: '128px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', textDecoration: 'none', textAlign: 'center'}}>
         <span style={{width: '112px', height: '112px', borderRadius: '50%', overflow: 'hidden', background: '#F2D6D0', display: 'block'}}><img className="ph" src="/img/spf-missha.jpg" alt="" style={{objectPosition: '50% 50%'}} /></span>
         <span style={{fontSize: '14px', fontWeight: '500'}}>{tr("SPF")}</span>
       </Link>
     
-      <Link href={L("/katalog/krem")} className="zoom" style={{flex: 'none', width: '128px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', textDecoration: 'none', textAlign: 'center'}}>
+      <Link href={L("/katalog/essensiya")} className="zoom" style={{flex: 'none', width: '128px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', textDecoration: 'none', textAlign: 'center'}}>
         <span style={{width: '112px', height: '112px', borderRadius: '50%', overflow: 'hidden', background: '#F2D6D0', display: 'block'}}><img className="ph" src="/img/p-mixsoon.jpg" alt="" style={{objectPosition: '50% 50%'}} /></span>
         <span style={{fontSize: '14px', fontWeight: '500'}}>{tr("Essensiya")}</span>
       </Link>
     
-      <Link href={L("/katalog/niqoblar")} className="zoom" style={{flex: 'none', width: '128px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', textDecoration: 'none', textAlign: 'center'}}>
+      <Link href={L("/katalog/krem")} className="zoom" style={{flex: 'none', width: '128px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', textDecoration: 'none', textAlign: 'center'}}>
         <span style={{width: '112px', height: '112px', borderRadius: '50%', overflow: 'hidden', background: '#F2D6D0', display: 'block'}}><img className="ph" src="/img/jar-shadow.jpg" alt="" style={{objectPosition: '50% 60%'}} /></span>
         <span style={{fontSize: '14px', fontWeight: '500'}}>{tr("Kremlar")}</span>
       </Link>
     
-      <Link href={L("/katalog/toplamlar")} className="zoom" style={{flex: 'none', width: '128px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', textDecoration: 'none', textAlign: 'center'}}>
+      <Link href={L("/katalog/niqoblar")} className="zoom" style={{flex: 'none', width: '128px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', textDecoration: 'none', textAlign: 'center'}}>
         <span style={{width: '112px', height: '112px', borderRadius: '50%', overflow: 'hidden', background: '#F2D6D0', display: 'block'}}><img className="ph" src="/img/sheet-mask.jpg" alt="" style={{objectPosition: '50% 70%'}} /></span>
         <span style={{fontSize: '14px', fontWeight: '500'}}>{tr("Niqoblar")}</span>
       </Link>
     
-      <Link href={L("/kim-uchun/erkaklar")} className="zoom" style={{flex: 'none', width: '128px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', textDecoration: 'none', textAlign: 'center'}}>
+      <Link href={L("/katalog/toplamlar")} className="zoom" style={{flex: 'none', width: '128px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', textDecoration: 'none', textAlign: 'center'}}>
         <span style={{width: '112px', height: '112px', borderRadius: '50%', overflow: 'hidden', background: '#F2D6D0', display: 'block'}}><img className="ph" src="/img/p-flatlay-pink.jpg" alt="" style={{objectPosition: '50% 50%'}} /></span>
         <span style={{fontSize: '14px', fontWeight: '500'}}>{tr("Toʻplamlar")}</span>
       </Link>
     
-      <Link href={L("/katalog/serum")} className="zoom" style={{flex: 'none', width: '128px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', textDecoration: 'none', textAlign: 'center'}}>
+      <Link href={L("/kim-uchun/erkaklar")} className="zoom" style={{flex: 'none', width: '128px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', textDecoration: 'none', textAlign: 'center'}}>
         <span style={{width: '112px', height: '112px', borderRadius: '50%', overflow: 'hidden', background: '#F2D6D0', display: 'block'}}><img className="ph" src="/img/men-mirror.jpg" alt="" style={{objectPosition: '50% 35%'}} /></span>
         <span style={{fontSize: '14px', fontWeight: '500'}}>{tr("Erkaklar")}</span>
       </Link>
@@ -89,36 +89,36 @@ export function Segments({ tr, L }: P) {
 <section className="wrap" style={{marginTop: '40px'}} aria-labelledby="who-h">
   <div className="sec-h">
     <h2 id="who-h" className="h h2" style={{fontSize: '40px'}}>{tr("Kimga")} <span className="serif">{tr("tanlaysiz?")}</span></h2>
-    <Link href={L("/kim-uchun/25-35")} className="pill line">{tr("Hammasi")} <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></Link>
+    <Link href={L("/kim-uchun/18-25")} className="pill line">{tr("Hammasi")} <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></Link>
   </div>
   <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '12px'}}>
     
-      <Link href={L("/kim-uchun/35")} className="card zoom" style={{aspectRatio: '4/5', textDecoration: 'none', background: '#F2D6D0'}}>
+      <Link href={L("/kim-uchun/18-25")} className="card zoom" style={{aspectRatio: '4/5', textDecoration: 'none', background: '#F2D6D0'}}>
         <img className="ph" src="/img/face-serum.jpg" alt="" style={{position: 'absolute', inset: '0', objectPosition: '45% 30%'}} />
         <span className="glass" style={{position: 'absolute', left: '10px', right: '10px', bottom: '10px', borderRadius: '14px', padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: '2px'}}><b style={{font: "600 17px 'Inter Tight', sans-serif"}}>{tr("18–25 yosh")}</b><span className="muted" style={{fontSize: '12px'}}>{tr("Toshma, yogʻ, birinchi rutina")}</span></span>
       </Link>
     
-      <Link href={L("/kim-uchun/erkaklar")} className="card zoom" style={{aspectRatio: '4/5', textDecoration: 'none', background: '#F2D6D0'}}>
+      <Link href={L("/kim-uchun/25-35")} className="card zoom" style={{aspectRatio: '4/5', textDecoration: 'none', background: '#F2D6D0'}}>
         <img className="ph" src="/img/woman-cream.jpg" alt="" style={{position: 'absolute', inset: '0', objectPosition: '50% 30%'}} />
         <span className="glass" style={{position: 'absolute', left: '10px', right: '10px', bottom: '10px', borderRadius: '14px', padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: '2px'}}><b style={{font: "600 17px 'Inter Tight', sans-serif"}}>{tr("Ayollar 25–35")}</b><span className="muted" style={{fontSize: '12px'}}>{tr("Namlik va nur")}</span></span>
       </Link>
     
-      <Link href={L("/kim-uchun/onalar")} className="card zoom" style={{aspectRatio: '4/5', textDecoration: 'none', background: '#F2D6D0'}}>
+      <Link href={L("/kim-uchun/35")} className="card zoom" style={{aspectRatio: '4/5', textDecoration: 'none', background: '#F2D6D0'}}>
         <img className="ph" src="/img/mature-2.jpg" alt="" style={{position: 'absolute', inset: '0', objectPosition: '50% 30%'}} />
         <span className="glass" style={{position: 'absolute', left: '10px', right: '10px', bottom: '10px', borderRadius: '14px', padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: '2px'}}><b style={{font: "600 17px 'Inter Tight', sans-serif"}}>{tr("35+ yosh")}</b><span className="muted" style={{fontSize: '12px'}}>{tr("Elastiklik, pigment")}</span></span>
       </Link>
     
-      <Link href={L("/kim-uchun/osmirlar")} className="card zoom" style={{aspectRatio: '4/5', textDecoration: 'none', background: '#F2D6D0'}}>
+      <Link href={L("/kim-uchun/erkaklar")} className="card zoom" style={{aspectRatio: '4/5', textDecoration: 'none', background: '#F2D6D0'}}>
         <img className="ph" src="/img/men-mirror.jpg" alt="" style={{position: 'absolute', inset: '0', objectPosition: '50% 35%'}} />
         <span className="glass" style={{position: 'absolute', left: '10px', right: '10px', bottom: '10px', borderRadius: '14px', padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: '2px'}}><b style={{font: "600 17px 'Inter Tight', sans-serif"}}>{tr("Erkaklar")}</b><span className="muted" style={{fontSize: '12px'}}>{tr("3 qadam, 3 daqiqa")}</span></span>
       </Link>
     
-      <Link href={L("/kim-uchun/18-25")} className="card zoom" style={{aspectRatio: '4/5', textDecoration: 'none', background: '#F2D6D0'}}>
+      <Link href={L("/kim-uchun/onalar")} className="card zoom" style={{aspectRatio: '4/5', textDecoration: 'none', background: '#F2D6D0'}}>
         <img className="ph" src="/img/mom.jpg" alt="" style={{position: 'absolute', inset: '0', objectPosition: '50% 35%'}} />
         <span className="glass" style={{position: 'absolute', left: '10px', right: '10px', bottom: '10px', borderRadius: '14px', padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: '2px'}}><b style={{font: "600 17px 'Inter Tight', sans-serif"}}>{tr("Boʻlajak onalar")}</b><span className="muted" style={{fontSize: '12px'}}>{tr("Retinolsiz, ehtiyotkor")}</span></span>
       </Link>
     
-      <Link href={L("/kim-uchun/18-25")} className="card zoom" style={{aspectRatio: '4/5', textDecoration: 'none', background: '#F2D6D0'}}>
+      <Link href={L("/kim-uchun/osmirlar")} className="card zoom" style={{aspectRatio: '4/5', textDecoration: 'none', background: '#F2D6D0'}}>
         <img className="ph" src="/img/spf-missha.jpg" alt="" style={{position: 'absolute', inset: '0', objectPosition: '50% 50%'}} />
         <span className="glass" style={{position: 'absolute', left: '10px', right: '10px', bottom: '10px', borderRadius: '14px', padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: '2px'}}><b style={{font: "600 17px 'Inter Tight', sans-serif"}}>{tr("Oʻsmirlar")}</b><span className="muted" style={{fontSize: '12px'}}>{tr("Faqat yumshoq vositalar")}</span></span>
       </Link>
@@ -134,17 +134,17 @@ export function Journal({ tr, tn, L }: P & { tn: (s: string, ...n: (string | num
   <div className="sec-h"><h2 id="j-h" className="h h2" style={{fontSize: '40px'}}>{tr("Oldin oʻqing,")} <span className="serif">{tr("keyin oling")}</span></h2><Link href={L("/jurnal")} className="pill line">{tr("Jurnal")} <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></Link></div>
   <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '12px'}}>
     
-      <Link href={L("/jurnal/spf-qishda")} className="card zoom" style={{textDecoration: 'none', display: 'flex', flexDirection: 'column'}}>
+      <Link href={L("/jurnal/teri-turi")} className="card zoom" style={{textDecoration: 'none', display: 'flex', flexDirection: 'column'}}>
         <span style={{display: 'block', aspectRatio: '16/10', overflow: 'hidden', position: 'relative'}}><img className="ph" src="/img/face-leaf.jpg" alt="" style={{objectPosition: '50% 30%'}} /><span className="chip glass" style={{position: 'absolute', top: '12px', left: '12px'}}>{tn("Qoʻllanma · [N] daqiqa", 4)}</span></span>
         <span style={{padding: '18px 20px 22px', display: 'flex', flexDirection: 'column', gap: '8px'}}><b style={{font: "600 20px/1.2 'Inter Tight', sans-serif", letterSpacing: '-0.02em'}}>{tr("Teri turingizni 2 daqiqada qanday aniqlash mumkin")}</b><span className="muted" style={{fontSize: '14px', lineHeight: '1.5'}}>{tr("Oddiy salfetka testi va 3 ta savol. Keyin nimani olish aniq boʻladi.")}</span></span>
       </Link>
     
-      <Link href={L("/jurnal/koreyscha-parvarish")} className="card zoom" style={{textDecoration: 'none', display: 'flex', flexDirection: 'column'}}>
+      <Link href={L("/jurnal/spf-qishda")} className="card zoom" style={{textDecoration: 'none', display: 'flex', flexDirection: 'column'}}>
         <span style={{display: 'block', aspectRatio: '16/10', overflow: 'hidden', position: 'relative'}}><img className="ph" src="/img/spf-arm.jpg" alt="" style={{objectPosition: '50% 50%'}} /><span className="chip glass" style={{position: 'absolute', top: '12px', left: '12px'}}>{tn("SPF · [N] daqiqa", 3)}</span></span>
         <span style={{padding: '18px 20px 22px', display: 'flex', flexDirection: 'column', gap: '8px'}}><b style={{font: "600 20px/1.2 'Inter Tight', sans-serif", letterSpacing: '-0.02em'}}>{tr("SPF qishda ham kerakmi? Qisqa javob — ha")}</b><span className="muted" style={{fontSize: '14px', lineHeight: '1.5'}}>{tr("Nima uchun, qaysi tekstura qulay va qancha surtish kerak.")}</span></span>
       </Link>
     
-      <Link href={L("/jurnal/teri-turi")} className="card zoom" style={{textDecoration: 'none', display: 'flex', flexDirection: 'column'}}>
+      <Link href={L("/jurnal/koreyscha-parvarish")} className="card zoom" style={{textDecoration: 'none', display: 'flex', flexDirection: 'column'}}>
         <span style={{display: 'block', aspectRatio: '16/10', overflow: 'hidden', position: 'relative'}}><img className="ph" src="/img/gel-jar-hands.jpg" alt="" style={{objectPosition: '50% 50%'}} /><span className="chip glass" style={{position: 'absolute', top: '12px', left: '12px'}}>{tn("Rutina · [N] daqiqa", 5)}</span></span>
         <span style={{padding: '18px 20px 22px', display: 'flex', flexDirection: 'column', gap: '8px'}}><b style={{font: "600 20px/1.2 'Inter Tight', sans-serif", letterSpacing: '-0.02em'}}>{tr("Koreyscha parvarish: 10 qadam shartmi?")}</b><span className="muted" style={{fontSize: '14px', lineHeight: '1.5'}}>{tr("Yoʻq. Boshlash uchun 3 qadam yetarli — qaysilari, tushuntiramiz.")}</span></span>
       </Link>

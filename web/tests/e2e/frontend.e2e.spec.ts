@@ -42,6 +42,17 @@ test('picker changes products by skin and concern', async ({ page }) => {
   await expect(picks.first()).toContainText('Safe Block')
 })
 
+test('home cards link to the matching pages', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.goto(`${BASE}/uz`)
+  const href = (name: string) => page.locator('main a:visible', { hasText: name }).first().getAttribute('href')
+  expect(await href('35+ yosh')).toBe('/uz/kim-uchun/35')
+  expect(await href('Boʻlajak onalar')).toBe('/uz/kim-uchun/onalar')
+  expect(await href('Kremlar')).toBe('/uz/katalog/krem')
+  expect(await href('Toʻplamlar')).toBe('/uz/katalog/toplamlar')
+  expect(await href('SPF qishda ham kerakmi')).toBe('/uz/jurnal/spf-qishda')
+})
+
 for (const path of PAGES) {
   for (const w of WIDTHS) {
     test(`no horizontal scroll ${path} @${w}`, async ({ page }) => {
