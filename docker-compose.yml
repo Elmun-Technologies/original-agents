@@ -1,4 +1,6 @@
 # Production: bot + scheduler (one service), Postgres, nightly backup.
+# Shared server: no ports are published (the bot only calls out to Telegram/Anthropic), Postgres is
+# reachable only on the internal network, own volume/network names, memory limits per container.
 # Coolify: Docker Compose build pack; fill the ${...} variables in its Environment Variables tab.
 # Local:   cp .env.example .env (fill it), then  docker compose up -d --build
 services:
@@ -20,6 +22,8 @@ services:
       DRY_RUN: ${DRY_RUN:-true}
       BOT_HOLD: ${BOT_HOLD:-false}
       INSTANCE: server
+    mem_limit: 512m
+    networks: [internal, egress]
     volumes:
       - app_data:/app/data            # photos, rendered posts, screenshots, reports, rate cache
     healthcheck:                      # the scheduler touches data/heartbeat every minute
@@ -37,6 +41,8 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: poizon
       TZ: Asia/Tashkent
+    mem_limit: 512m
+    networks: [internal]            # no internet, no published port
     volumes:
       - pg_data:/var/lib/postgresql/data
     healthcheck:
@@ -63,10 +69,22 @@ services:
       BACKUP_KEEP_DAYS: "7"
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
       TELEGRAM_ADMIN_IDS: ${TELEGRAM_ADMIN_IDS}
+    mem_limit: 256m
+    networks: [internal, egress]    # egress: failure alert to Telegram
     volumes:
       - pg_backups:/backups
 
+networks:
+  internal:
+    name: original-agents-internal
+    internal: true
+  egress:
+    name: original-agents-egress
+
 volumes:
   app_data:
+    name: original-agents-app-data
   pg_data:
+    name: original-agents-pg-data
   pg_backups:
+    name: original-agents-pg-backups
