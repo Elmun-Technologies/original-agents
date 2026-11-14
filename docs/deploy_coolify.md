@@ -3,7 +3,7 @@
 Natija: bot va jadval serverda 24/7 ishlaydi, Postgres alohida, har kecha 03:00 da baza nusxasi
 (7 kun saqlanadi), bot qulasa Telegram'da xabar keladi. Mac'dagi bot oʻchadi.
 
-Vaqt: ~1 soat. Kerak: Hetzner akkaunt, GitHub akkaunt (`elmuntech`), Mac'da shu loyiha.
+Vaqt: ~1 soat. Kerak: Hetzner akkaunt, GitHub (`Elmun-Technologies` tashkiloti), Mac'da shu loyiha.
 
 ---
 
@@ -32,22 +32,17 @@ Settings → **Notifications → Telegram**: Bot token = bizning bot tokeni, Cha
 
 ## 3. Kodni GitHub'ga (yopiq repo)
 
-Mac'da (bir marta):
-
-```bash
-cd "/Users/elmurodovnazir/orignal "
-gh repo create poizon-uz --private --source . --push
-```
-
+Bajarilgan: `Elmun-Technologies/original-agents` (private, branch `master`).
 `.env` va `data/` gitga tushmaydi (`.gitignore`). Keyingi oʻzgarishlar: `git push`.
 
-Coolify'da: **Sources → + Add → GitHub App** → koʻrsatmalar boʻyicha GitHub App yarating va
-faqat `poizon-uz` repozitoriyasiga ruxsat bering.
+Coolify'da: **Sources → + Add → GitHub App** → koʻrsatmalar boʻyicha GitHub App yarating,
+uni **Elmun-Technologies** tashkilotiga oʻrnating va faqat `original-agents` repozitoriyasiga
+ruxsat bering (tashkilotga App oʻrnatish uchun tashkilot egasining tasdigʻi kerak boʻlishi mumkin).
 
 ## 4. Coolify'da ilova yaratish
 
 1. **Projects → + Add** → nom: `poizon` → **production** muhiti.
-2. **+ New Resource → Private Repository (with GitHub App)** → `poizon-uz`, branch `main`.
+2. **+ New Resource → Private Repository (with GitHub App)** → `original-agents`, branch `master`.
 3. **Build Pack: Docker Compose**, Docker Compose Location: `/docker-compose.yml` → **Continue**.
 4. Domen kerak emas (bot Telegram'dan oʻzi soʻraydi, tashqaridan ulanish yoʻq).
 5. **Environment Variables** → **Developer view** (matn rejimi) → quyidagini qoʻying va qiymatlarni
