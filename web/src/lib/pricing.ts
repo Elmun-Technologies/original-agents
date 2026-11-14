@@ -2,7 +2,7 @@
 // Rules (design/source/p_spec.py "Savat", HANDOFF §5.3): promo codes do not stack — the most favourable single
 // discount wins (promo or ready-routine −10%); old price = real price within 30 days (comes in as `old`).
 
-export type Priced = { sku: string; slug: string; brand: string; name: string; img: string; volume?: string; price: number; old?: number; stock: number }
+export type Priced = { giftcard?: boolean; sku: string; slug: string; brand: string; name: string; img: string; volume?: string; price: number; old?: number; stock: number }
 export type Promo = { note?: string | null; code: string; type: 'percent' | 'fixed'; value: number; minTotal?: number | null; firstOrderOnly?: boolean | null; active?: boolean | null; validTo?: string | null }
 export type Delivery = 'tashkent' | 'region'
 export type StoreRules = { freeDeliveryFrom: number; tashkentPrice: number; regionPrice: number; giftBoxPrice: number }
@@ -13,7 +13,7 @@ export type CartInput = {
   promo?: Promo | null
   promoCode?: string
   isFirstOrder?: boolean // unknown before checkout -> treated as allowed, checked again when the order is created
-  routineSkus?: string[] // the home "ready routine" (bundle −10% when all are in the cart)
+  bundles?: string[][] // ready sets (home routine, segment sets): −10% when a whole set is in the cart
   delivery?: Delivery
   gift?: boolean
   store: StoreRules
@@ -68,6 +68,8 @@ export function priceCart(i: CartInput): Quote {
   }
   const subtotal = lines.reduce((a, l) => a + l.line, 0)
   const oldTotal = lines.reduce((a, l) => a + l.lineOld, 0)
+  // gift certificates are never discounted (no buying a 300 000 card for 270 000)
+  const discountable = lines.filter((l) => !l.giftcard).reduce((a, l) => a + l.line, 0)
 
   // candidates: promo code, ready-routine bundle — the bigger one wins
   let discount = 0
@@ -75,19 +77,21 @@ export function priceCart(i: CartInput): Quote {
   let discountNote: string | undefined
   let promoError: Quote['promoError']
   if (i.promoCode) {
-    promoError = checkPromo(i.promo, subtotal, i.isFirstOrder ?? true, i.now ?? new Date())
-    if (!promoError && i.promo) { discount = promoDiscount(i.promo, subtotal); discountLabel = i.promo.code; discountNote = i.promo.note ?? undefined }
+    promoError = checkPromo(i.promo, discountable, i.isFirstOrder ?? true, i.now ?? new Date())
+    if (!promoError && i.promo) { discount = promoDiscount(i.promo, discountable); discountLabel = i.promo.code; discountNote = i.promo.note ?? undefined }
   }
-  const routine = i.routineSkus ?? []
-  if (routine.length >= 3 && routine.every((s) => lines.some((l) => l.sku === s))) {
-    const bundle = round1000(routine.reduce((a, s) => a + (lines.find((l) => l.sku === s)?.price ?? 0), 0) * 0.1)
+  for (const set of i.bundles ?? []) {
+    if (set.length < 2 || !set.every((s) => lines.some((l) => l.sku === s))) continue
+    const bundle = round1000(set.reduce((a, s) => a + (lines.find((l) => l.sku === s)?.price ?? 0), 0) * 0.1)
     if (bundle > discount) { discount = bundle; discountLabel = 'routine'; discountNote = undefined }
   }
 
   const delivery = i.delivery ?? 'tashkent'
   const afterDiscount = subtotal - discount
   const freeLeft = Math.max(0, i.store.freeDeliveryFrom - afterDiscount)
-  const deliveryFee = lines.length === 0 || freeLeft === 0 ? 0 : delivery === 'tashkent' ? i.store.tashkentPrice : i.store.regionPrice
+  // only certificates sent to Telegram -> nothing to deliver
+  const digitalOnly = lines.length > 0 && lines.every((l) => l.giftcard && l.sku.endsWith('-TG'))
+  const deliveryFee = lines.length === 0 || freeLeft === 0 || digitalOnly ? 0 : delivery === 'tashkent' ? i.store.tashkentPrice : i.store.regionPrice
   const giftFee = i.gift && lines.length ? i.store.giftBoxPrice : 0
   return {
     lines, missing, count: lines.reduce((a, l) => a + l.qty, 0), subtotal, oldTotal, saleSaving: oldTotal - subtotal,

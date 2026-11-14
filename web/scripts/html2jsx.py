@@ -18,8 +18,8 @@ ATTR = {"class": "className", "for": "htmlFor", "tabindex": "tabIndex", "readonl
         "inputmode": "inputMode", "viewbox": "viewBox", "srcset": "srcSet", "crossorigin": "crossOrigin"}
 DROP = {"onclick", "onchange", "oninput", "onsubmit"}
 I18N_ATTRS = {"alt", "placeholder", "aria-label", "title"}
-ROUTES = {"Main": "/", "Catalog": "/katalog/serum", "CategoryHub": "/yuz-parvarishi", "Product": "/mahsulot",
-          "Cart": "/savat", "Checkout": "/rasmiylashtirish", "Order": "/buyurtma", "Search": "/qidiruv",
+ROUTES = {"Main": "/", "Catalog": "/katalog/serum", "CategoryHub": "/yuz-parvarishi", "Product": "/katalog/serum",
+          "Cart": "/savat", "Checkout": "/rasmiylashtirish", "Order": "/kabinet", "Search": "/qidiruv",
           "Rating": "/aksiyalar", "Segment": "/kim-uchun/18-25", "Brand": "/brend/skin1004", "Brands": "/brendlar",
           "Favorites": "/sevimlilar", "Account": "/kabinet", "Login": "/kirish", "Consultant": "/maslahatchi",
           "Routine": "/rutina", "Gifts": "/sovgalar", "Journal": "/jurnal", "Article": "/jurnal/teri-turi",

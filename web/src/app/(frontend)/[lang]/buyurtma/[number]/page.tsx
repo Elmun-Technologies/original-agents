@@ -4,7 +4,7 @@ import { notFound } from 'next/navigation'
 
 import { Icon } from '@/components/icons'
 import { ProductCard } from '@/components/ProductCard'
-import { findCards, getStore } from '@/lib/catalog'
+import { findCards, getStore, payload } from '@/lib/catalog'
 import { fmt, sum } from '@/lib/format'
 import { href, isLang, t, tn } from '@/lib/i18n'
 import { getOrder } from '@/lib/orders'
@@ -31,6 +31,7 @@ export default async function OrderPage({ params, searchParams }: { params: Prom
   const store = await getStore()
   const recs = (await findCards(lang, { slug: { not_in: o.items.map((i) => i.slug ?? '') } }, 5, 'createdAt') /* by product, not SKU: other volumes of a bought product are not 'new' */)
   const paid = o.paymentStatus === 'paid' || o.paymentStatus === 'refund'
+  const codes = paid ? (await (await payload()).find({ collection: 'gift-cards', where: { orderNumber: { equals: o.number } }, depth: 0, limit: 50, overrideAccess: true })).docs : []
   const stage = Math.max(0, STAGES.findIndex((s) => s[0] === o.status))
   const time = (d?: string | null) => (d ? new Date(d).toLocaleTimeString(lang === 'ru' ? 'ru-RU' : 'uz-UZ', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Tashkent' }) : '')
   const when = o.delivery === 'tashkent' ? tr('Ertaga') : tn(lang, '[N] kun ichida', store.regionDays)
@@ -106,6 +107,13 @@ export default async function OrderPage({ params, searchParams }: { params: Prom
               </ol>
               <Link href={L('/rutina')} className="pill" style={{ borderColor: 'rgba(251,250,247,.3)', color: '#FBFAF7', alignSelf: 'flex-start' }}>{tr('Rutinani saqlash')}</Link>
             </div>
+            {codes.length > 0 && (
+              <div className="card" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <b style={{ fontWeight: 600, fontSize: '17px' }}>{tr('Sertifikat kodlari')}</b>
+                {codes.map((c) => <span key={c.code} style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', padding: '10px 14px', borderRadius: '12px', background: '#F6F3EF' }}><b className="num" style={{ letterSpacing: '.04em' }}>{c.code}</b><span>{fmt(c.balance)} {sum(lang)}</span></span>)}
+                <span className="muted" style={{ fontSize: '13px' }}>{tr('Kodni savatdagi «Promokod» maydoniga kiriting. 12 oy amal qiladi.')}</span>
+              </div>
+            )}
             {/* Bonus card ("+[N] ball hisobingizga tushdi") — added with the loyalty programme (stage 2). */}
           </aside>
         )}

@@ -8,7 +8,7 @@ import sharp from 'sharp'
 import { Users } from './collections/Users'
 import { Media } from './collections/Media'
 import { Banners, Brands, Categories, PriceHistory, Products, Reviews, Store } from './collections/catalog'
-import { Orders, Payments, PromoCodes } from './collections/shop'
+import { Articles, GiftCards, Ingredients, LegalPages, Orders, Payments, PromoCodes, SearchLog, Segments } from './collections/shop'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -20,7 +20,7 @@ export default buildConfig({
       baseDir: path.resolve(dirname),
     },
   },
-  collections: [Orders, Payments, PromoCodes, Products, Brands, Categories, PriceHistory, Reviews, Banners, Media, Users],
+  collections: [Orders, Payments, PromoCodes, GiftCards, Products, Brands, Categories, PriceHistory, Reviews, Banners, Segments, SearchLog, LegalPages, Articles, Ingredients, Media, Users],
   globals: [Store],
   localization: {
     locales: [

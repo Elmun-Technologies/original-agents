@@ -80,23 +80,23 @@ export async function toCards(products: Product[], lang: Lang): Promise<CardProd
   })
 }
 
-export type HomeCard = CardProduct & { skin: string[]; concerns: string[]; category: string }
+export type HomeCard = CardProduct & { skin: string[]; concerns: string[]; category: string; stock: number }
 
 /** Cards plus what the home blocks filter on (skin, concerns, category slug). */
 export async function homeCards(lang: Lang): Promise<HomeCard[]> {
   const p = await payload()
   // ponytail: catalog order until there are sales; rank by orders (last 30 days) once orders exist
-  const res = await p.find({ collection: 'products', limit: 200, sort: 'createdAt', locale: lang, depth: 1 })
+  const res = await p.find({ collection: 'products', where: { 'category.slug': { not_equals: 'sertifikatlar' } }, limit: 200, sort: 'createdAt', locale: lang, depth: 1 })
   const cards = await toCards(res.docs, lang)
   return cards.map((c, i) => {
     const pr = res.docs[i]
-    return { ...c, skin: pr.skin ?? [], concerns: pr.concerns ?? [], category: typeof pr.category === 'object' ? pr.category.slug : '' }
+    return { ...c, skin: pr.skin ?? [], concerns: pr.concerns ?? [], category: typeof pr.category === 'object' ? pr.category.slug : '', stock: pr.variants.reduce((a, v) => a + (v.stock ?? 0), 0) }
   })
 }
 
 export async function findCards(lang: Lang, where: Where = {}, limit = 24, sort = '-createdAt') {
   const p = await payload()
-  const res = await p.find({ collection: 'products', where, limit, sort, locale: lang, depth: 1 })
+  const res = await p.find({ collection: 'products', where: { and: [where, { 'category.slug': { not_equals: 'sertifikatlar' } }] }, limit, sort, locale: lang, depth: 1 })
   return toCards(res.docs, lang)
 }
 
@@ -192,4 +192,14 @@ export async function productData(slug: string, lang: Lang) {
     p.find({ collection: 'reviews', where: { product: { equals: pr.id }, approved: { equals: true } }, sort: '-createdAt', limit: 20, depth: 0 }),
   ])
   return { pr, cat, parent, brand, variants, images, self, pairs: pairCards, similar: similarCards, stats: stats.get(String(pr.id)), reviews: reviews.docs }
+}
+
+/** Units sold per SKU in paid, not refunded orders since `from` (Top-10 ranking). */
+export async function salesBySku(from: Date) {
+  const p = await payload()
+  const res = await p.find({ collection: 'orders', where: { paymentStatus: { equals: 'paid' }, status: { not_equals: 'cancelled' }, paidAt: { greater_than: from.toISOString() } },
+    depth: 0, limit: 10_000, pagination: false, overrideAccess: true, select: { items: true } })
+  const out = new Map<string, number>()
+  for (const o of res.docs) for (const it of o.items ?? []) out.set(it.sku, (out.get(it.sku) ?? 0) + it.qty)
+  return out
 }

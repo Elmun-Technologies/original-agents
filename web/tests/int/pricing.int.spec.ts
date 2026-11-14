@@ -46,10 +46,22 @@ describe('cart pricing', () => {
   })
   it('promo and routine bundle do not stack: the bigger one wins', () => {
     const lines = [{ sku: 'toner', qty: 1 }, { sku: 'amp', qty: 1 }, { sku: 'spf', qty: 1 }]
-    const bundleOnly = priceCart({ ...base, lines, routineSkus: ['toner', 'amp', 'spf'] })
+    const bundleOnly = priceCart({ ...base, lines, bundles: [['toner', 'amp', 'spf']] })
     expect(bundleOnly).toMatchObject({ discount: 62000, discountLabel: 'routine', total: 561000 }) // design: 561 000, −62 000
-    const fixed = priceCart({ ...base, lines, routineSkus: ['toner', 'amp', 'spf'], promo: { code: 'BIG', type: 'fixed', value: 100000 }, promoCode: 'BIG' })
+    const fixed = priceCart({ ...base, lines, bundles: [['toner', 'amp', 'spf']], promo: { code: 'BIG', type: 'fixed', value: 100000 }, promoCode: 'BIG' })
     expect(fixed).toMatchObject({ discount: 100000, discountLabel: 'BIG' })
+  })
+  it('several sets: the biggest complete one counts, incomplete ones do not', () => {
+    const lines = [{ sku: 'amp', qty: 1 }, { sku: 'revive', qty: 1 }]
+    expect(priceCart({ ...base, lines, bundles: [['amp', 'revive'], ['amp', 'revive', 'toner']] })).toMatchObject({ discount: 46000, discountLabel: 'routine' })
+    expect(priceCart({ ...base, lines, bundles: [['amp', 'toner']] }).discount).toBe(0)
+  })
+  it('gift certificates: no discount on them, Telegram-only needs no delivery', () => {
+    const products2 = new Map([...products, ['GC-300000-TG', { sku: 'GC-300000-TG', slug: 'gc', brand: 'Yeppo', name: 'Sertifikat', img: '', price: 300000, stock: 999, giftcard: true }]])
+    const q = priceCart({ ...base, products: products2, lines: [{ sku: 'GC-300000-TG', qty: 1 }], promo: SALOM10, promoCode: 'SALOM10' })
+    expect(q).toMatchObject({ discount: 0, deliveryFee: 0, total: 300000 })
+    const mixed = priceCart({ ...base, products: products2, lines: [{ sku: 'GC-300000-TG', qty: 1 }, { sku: 'spf', qty: 1 }], promo: SALOM10, promoCode: 'SALOM10' })
+    expect(mixed.discount).toBe(15000) // 10% of the SPF only
   })
   it('empty cart costs nothing', () => expect(priceCart({ ...base, lines: [] })).toMatchObject({ total: 0, deliveryFee: 0 }))
 })

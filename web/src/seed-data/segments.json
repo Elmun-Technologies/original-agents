@@ -1,0 +1,323 @@
+[
+ {
+  "t": "Erkaklar",
+  "tag": "3 qadam · 3 daqiqa",
+  "img": "men-mirror.jpg",
+  "pos": "50% 35%",
+  "alt": "Oyna oldida serum surayotgan erkak",
+  "h1": "Ortiqcha gapsiz: 3 ta vosita, ertalab 3 daqiqa",
+  "say": "Yogʻ, soqoldan keyingi qizarish va quyosh — erkak terisining uchta asosiy dushmani. Shularni yopadigan uchta vosita tanladik. Murakkab narsa yoʻq.",
+  "setName": "Erkaklar uchun tayyor toʻplam",
+  "setWhy": "Toner tinchlantiradi, ampula soqoldan keyingi qizarishni oladi, SPF terini qaritmaydi.",
+  "set": [
+   {
+    "step": "01 Toner",
+    "id": "toner",
+    "why": "Yuvgandan keyin"
+   },
+   {
+    "step": "02 Ampula",
+    "id": "amp",
+    "why": "Soqoldan keyin"
+   },
+   {
+    "step": "03 SPF",
+    "id": "spf",
+    "why": "Ertalab, oxirida"
+   }
+  ],
+  "gridTitle": "Erkaklar koʻp oladi",
+  "grid": [
+   "amp",
+   "pore",
+   "toner",
+   "spf",
+   "baha"
+  ],
+  "avoid": [
+   "Spirtli losonlar terini quritadi — ularni tinchlantiruvchi ampula bilan almashtiring",
+   "Yuzni oddiy sovun bilan yuvmang",
+   "SPFni faqat yozda emas, har kuni surting"
+  ],
+  "faq": [
+   {
+    "q": "Erkakka nechta vosita kerak?",
+    "a": "Boshlash uchun uchta: tozalovchi, yengil namlovchi va SPF. Muammo boʻlsa — ampula qoʻshiladi."
+   },
+   {
+    "q": "Soqoldan keyin nima surtish kerak?",
+    "a": "Spirtsiz, tinchlantiruvchi vosita: centella yoki pantenol bilan."
+   }
+  ],
+  "slug": "erkaklar",
+  "order": 0,
+  "exclude": []
+ },
+ {
+  "t": "18–25 yosh",
+  "tag": "Birinchi rutina",
+  "img": "face-serum.jpg",
+  "pos": "45% 30%",
+  "alt": "Serum ushlagan jilmaygan qiz",
+  "h1": "Birinchi koreys rutinangiz — byudjetga mos",
+  "say": "Toshmalar, yogʻ yoki kengaygan poralar bezovta qiladimi? Boshlash uchun koʻp narsa kerak emas. Uchta toʻgʻri vosita — va bir oyda farqni koʻrasiz.",
+  "setName": "«Birinchi rutina» toʻplami",
+  "setWhy": "Toner — asos, ampula — toshma va poralar uchun, SPF — izlar qorayib qolmasligi uchun.",
+  "set": [
+   {
+    "step": "01 Toner",
+    "id": "toner",
+    "why": "Ertalab va kechqurun"
+   },
+   {
+    "step": "02 Ampula",
+    "id": "pore",
+    "why": "Poralar va yogʻ"
+   },
+   {
+    "step": "03 SPF",
+    "id": "spf",
+    "why": "Har kuni"
+   }
+  ],
+  "gridTitle": "Talabalar tanlovi",
+  "grid": [
+   "pore",
+   "amp",
+   "baha",
+   "spf",
+   "toner"
+  ],
+  "avoid": [
+   "Bir vaqtda bir nechta kislotali vositani ishlatmang",
+   "Toshmalarni siqmang — iz qoladi",
+   "Yangi vositani avval kichik joyda sinang"
+  ],
+  "faq": [
+   {
+    "q": "18 yoshda qanday rutina kerak?",
+    "a": "Yumshoq tozalash, yengil namlovchi va SPF. Toshma boʻlsa — centella bilan ampula."
+   },
+   {
+    "q": "Toner-pad nima?",
+    "a": "Tonerga botirilgan disklar: ertalab tez va qulay."
+   }
+  ],
+  "slug": "18-25",
+  "order": 1,
+  "exclude": []
+ },
+ {
+  "t": "Ayollar 25–35",
+  "tag": "Eng mashhur",
+  "img": "woman-cream.jpg",
+  "pos": "50% 30%",
+  "alt": "Jilmayib turgan ayol",
+  "h1": "Namlik, nur va birinchi ajinlarning oldini olish",
+  "say": "Teri charchagan koʻrinyaptimi yoki rang notekismi? Toʻliq koreyscha rutina aynan shu uchun: har qadam bitta vazifani bajaradi.",
+  "setName": "«Nur» rutinasi",
+  "setWhy": "Essensiya namlaydi, Galactomyces rangni tekislaydi, Revive kechasi tiklaydi.",
+  "set": [
+   {
+    "step": "01 Essensiya",
+    "id": "ess",
+    "why": "Tonerdan keyin"
+   },
+   {
+    "step": "02 Serum",
+    "id": "baha",
+    "why": "Ertalab"
+   },
+   {
+    "step": "03 Kechki",
+    "id": "revive",
+    "why": "Kechqurun"
+   }
+  ],
+  "gridTitle": "Bu yoshda eng koʻp olinadi",
+  "grid": [
+   "ess",
+   "baha",
+   "revive",
+   "snail",
+   "set"
+  ],
+  "avoid": [
+   "Retinol va kislotani bir kechada aralashtirmang",
+   "Makiyajni yechmasdan uxlamang",
+   "SPFsiz yorqinlashtiruvchi serum yarim ishlaydi"
+  ],
+  "faq": [
+   {
+    "q": "Essensiya va serum farqi nima?",
+    "a": "Essensiya — yengil, namlik uchun. Serum — konsentrlangan, aniq muammo uchun."
+   },
+   {
+    "q": "Qaysi tartibda surtiladi?",
+    "a": "Suyuqdan quyuqqa: toner → essensiya → serum → krem → ertalab SPF."
+   }
+  ],
+  "slug": "25-35",
+  "order": 2,
+  "exclude": []
+ },
+ {
+  "t": "35+ yosh",
+  "tag": "Yetuk teri",
+  "img": "mature-2.jpg",
+  "pos": "50% 30%",
+  "alt": "Tabiiy terili jilmaygan ayol",
+  "h1": "Elastiklik va yumshoqlik — ortiqcha vaʼdalarsiz",
+  "say": "Teri quruqroq boʻlib qoldimi, pigment dogʻlari koʻpaydimi? Bu tabiiy. Toʻgʻri parvarish ularni sezilarli yumshatadi — har qadamni tushuntirib beramiz.",
+  "setName": "«Yetuk teri» toʻplami",
+  "setWhy": "Jenshen va salyangoz mutsini tiklaydi, essensiya rangni tekislaydi, SPF yangi dogʻlardan saqlaydi.",
+  "set": [
+   {
+    "step": "01 Essensiya",
+    "id": "ess",
+    "why": "Rang uchun"
+   },
+   {
+    "step": "02 Serum",
+    "id": "revive",
+    "why": "Tiklash"
+   },
+   {
+    "step": "03 SPF",
+    "id": "spf",
+    "why": "Har kuni"
+   }
+  ],
+  "gridTitle": "Yetuk teri uchun",
+  "grid": [
+   "revive",
+   "snail",
+   "ess",
+   "baha",
+   "spf"
+  ],
+  "avoid": [
+   "Retinolni asta-sekin boshlang: haftasiga 2 marta, kechqurun",
+   "Retinol bilan SPF majburiy",
+   "Juda issiq suv bilan yuvmang"
+  ],
+  "faq": [
+   {
+    "q": "35 yoshdan keyin qaysi tarkib kerak?",
+    "a": "Peptidlar, retinol (ehtiyotkorlik bilan), niatsinamid va kuchli namlantiruvchilar."
+   },
+   {
+    "q": "Koreys kosmetikasi yetuk teriga mosmi?",
+    "a": "Ha, alohida liniyalar bor — katalogga qoʻshib boramiz."
+   }
+  ],
+  "slug": "35",
+  "order": 3,
+  "exclude": []
+ },
+ {
+  "t": "Boʻlajak onalar",
+  "tag": "Ehtiyotkor tanlov",
+  "img": "mom.jpg",
+  "pos": "50% 35%",
+  "alt": "Homilador ayol",
+  "h1": "Homiladorlik va emizish davrida — yumshoq parvarish",
+  "say": "Bu davrda teri oʻzgaradi: quruqlik, pigment, sezgirlik. Retinolsiz, yumshoq vositalarni tanladik. Baribir, har yangi vositani shifokoringiz bilan kelishib oling.",
+  "setName": "«Yumshoq parvarish» toʻplami",
+  "setWhy": "Faqat yumshoq tarkiblar: centella, namlantiruvchi essensiya, kundalik SPF.",
+  "set": [
+   {
+    "step": "01 Toner",
+    "id": "toner",
+    "why": "Yumshoq namlik"
+   },
+   {
+    "step": "02 Ampula",
+    "id": "amp",
+    "why": "Sezgir teri"
+   },
+   {
+    "step": "03 SPF",
+    "id": "spf",
+    "why": "Pigmentdan himoya"
+   }
+  ],
+  "gridTitle": "Retinolsiz tanlov",
+  "grid": [
+   "toner",
+   "amp",
+   "ess",
+   "snail",
+   "spf"
+  ],
+  "avoid": [
+   "Retinol va retinoidlardan qoching",
+   "Yuqori konsentratsiyali salitsil kislotadan qoching",
+   "Yangi vositani shifokoringiz bilan kelishing"
+  ],
+  "faq": [
+   {
+    "q": "Homiladorlikda koreys kosmetikasi mumkinmi?",
+    "a": "Koʻp vositalar mos, lekin tarkibni tekshirish kerak. Bu sahifadagilar retinolsiz."
+   },
+   {
+    "q": "Pigment koʻpaysa-chi?",
+    "a": "Har kuni SPF va yumshoq vositalar. Davolash uchun — shifokorga."
+   }
+  ],
+  "slug": "onalar",
+  "order": 4,
+  "exclude": [
+   "pregnant"
+  ]
+ },
+ {
+  "t": "Oʻsmirlar",
+  "tag": "Faqat yumshoq",
+  "img": "spf-missha.jpg",
+  "pos": "50% 50%",
+  "alt": "Quyosh kremi",
+  "h1": "Yosh teriga koʻp narsa kerak emas",
+  "say": "Yumshoq tozalash, namlik va quyoshdan himoya — shu yetarli. Bu boʻlimda retinol, kislotalar va ajinlarga qarshi vositalar yoʻq — ular yosh teriga kerak emas.",
+  "setName": "«Oddiy boshlanish» toʻplami",
+  "setWhy": "Ikki qadam: yumshoq toner va maktab, sport uchun SPF.",
+  "set": [
+   {
+    "step": "01 Toner",
+    "id": "toner",
+    "why": "Ertalab va kechqurun"
+   },
+   {
+    "step": "02 SPF",
+    "id": "spf",
+    "why": "Har kuni"
+   }
+  ],
+  "gridTitle": "Yumshoq vositalar",
+  "grid": [
+   "toner",
+   "spf",
+   "ess"
+  ],
+  "avoid": [
+   "Kattalar rutinasini takrorlash shart emas",
+   "Kuchli toshma boʻlsa — pediatr yoki dermatologga",
+   "Kislotali vositalar yosh teriga kerak emas"
+  ],
+  "faq": [
+   {
+    "q": "Oʻsmirga qanday vositalar kerak?",
+    "a": "Yumshoq tozalovchi, yengil namlovchi va SPF."
+   },
+   {
+    "q": "Toshma uchun-chi?",
+    "a": "Yumshoq tinchlantiruvchi vositalar; kuchli boʻlsa — shifokor tavsiyasi bilan."
+   }
+  ],
+  "slug": "osmirlar",
+  "order": 5,
+  "exclude": [
+   "teen"
+  ]
+ }
+]

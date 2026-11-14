@@ -95,3 +95,114 @@ export const PromoCodes: CollectionConfig = {
     { name: 'validTo', type: 'date' },
   ],
 }
+
+// "Kim uchun" pages (HANDOFF §8 Segment): who, hero text, a ready set (−10% when complete in the cart), grid, cautions, FAQ.
+export const Segments: CollectionConfig = {
+  slug: 'segments',
+  admin: { useAsTitle: 'title', group: 'Sayt', defaultColumns: ['title', 'slug', 'order'] },
+  access: { read: () => true },
+  fields: [
+    { name: 'slug', type: 'text', required: true, unique: true },
+    { name: 'order', type: 'number', defaultValue: 0 },
+    { name: 'title', type: 'text', required: true, localized: true },
+    { name: 'tag', type: 'text', localized: true },
+    { name: 'image', type: 'upload', relationTo: 'media' },
+    { name: 'imagePos', type: 'text', defaultValue: '50% 30%' },
+    { name: 'h1', type: 'text', required: true, localized: true },
+    { name: 'say', type: 'textarea', localized: true },
+    { name: 'setName', type: 'text', localized: true },
+    { name: 'setWhy', type: 'textarea', localized: true },
+    { name: 'set', type: 'array', fields: [
+      { name: 'step', type: 'text', localized: true }, { name: 'product', type: 'relationship', relationTo: 'products', required: true }, { name: 'why', type: 'text', localized: true }] },
+    { name: 'gridTitle', type: 'text', localized: true },
+    { name: 'grid', type: 'relationship', relationTo: 'products', hasMany: true },
+    { name: 'exclude', type: 'select', hasMany: true, options: [{ value: 'pregnant', label: 'Homiladorlik' }, { value: 'teen', label: 'Oʻsmirlar' }],
+      admin: { description: 'Shu belgili mahsulotlar bu sahifada umuman chiqmaydi (retinol, kuchli aktivlar)' } },
+    { name: 'avoid', type: 'array', fields: [{ name: 'text', type: 'text', required: true, localized: true }] },
+    { name: 'faq', type: 'array', fields: [{ name: 'q', type: 'text', required: true, localized: true }, { name: 'a', type: 'textarea', required: true, localized: true }] },
+  ],
+}
+
+// Search log (p_spec.py): every query counted; "missed" = no real match (closest shown) — reviewed weekly
+// to add synonyms or products. Popular found queries feed "Boshqalar hozir qidirmoqda".
+export const SearchLog: CollectionConfig = {
+  slug: 'search-log',
+  admin: { useAsTitle: 'query', group: 'Sayt', defaultColumns: ['query', 'count', 'missed', 'updatedAt'], description: 'Qidiruv soʻrovlari. «missed» — mos mahsulot topilmagan.' },
+  access: { read: ({ req }) => !!req.user, create: () => false },
+  fields: [
+    { name: 'query', type: 'text', required: true, unique: true, index: true },
+    { name: 'count', type: 'number', defaultValue: 0 },
+    { name: 'missed', type: 'checkbox', defaultValue: false, index: true },
+  ],
+}
+
+// Legal and info pages (Ommaviy oferta, Maxfiylik …). Text comes from the owner/lawyer — not written by the site.
+export const LegalPages: CollectionConfig = {
+  slug: 'legal-pages',
+  admin: { useAsTitle: 'title', group: 'Sayt' },
+  access: { read: () => true },
+  fields: [
+    { name: 'slug', type: 'text', required: true, unique: true, admin: { description: 'oferta, maxfiylik' } },
+    { name: 'title', type: 'text', required: true, localized: true },
+    { name: 'body', type: 'richText', localized: true },
+  ],
+}
+
+export const ARTICLE_CATS = [
+  { value: 'teri-turi', label: 'Teri turi' }, { value: 'tarkiblar', label: 'Tarkiblar' }, { value: 'rutina', label: 'Rutina' },
+  { value: 'spf', label: 'SPF' }, { value: 'erkaklar', label: 'Erkaklar' }, { value: 'originallik', label: 'Originallik' },
+]
+
+// Journal (HANDOFF §8 Article): "answer first" — shortAnswer on top, then body, steps with products, ingredients, FAQ.
+export const Articles: CollectionConfig = {
+  slug: 'articles',
+  admin: { useAsTitle: 'title', group: 'Sayt', defaultColumns: ['title', 'category', 'publishedAt'] },
+  access: { read: () => true },
+  fields: [
+    { name: 'slug', type: 'text', required: true, unique: true },
+    { name: 'title', type: 'text', required: true, localized: true },
+    { name: 'accent', type: 'text', localized: true, admin: { description: 'Sarlavhadagi kursiv qism (sarlavha ichidagi aynan shu soʻzlar)' } },
+    { name: 'category', type: 'select', required: true, options: ARTICLE_CATS },
+    { name: 'tag', type: 'text', localized: true, admin: { description: 'Maqola tepasidagi teg, masalan «Yogʻli teri»' } },
+    { name: 'excerpt', type: 'textarea', localized: true },
+    { name: 'cover', type: 'upload', relationTo: 'media' },
+    { name: 'coverPos', type: 'text', defaultValue: '50% 50%' },
+    { name: 'minutes', type: 'number', defaultValue: 4 },
+    { name: 'featured', type: 'checkbox', defaultValue: false },
+    { name: 'author', type: 'text', localized: true, admin: { description: 'Boʻsh boʻlsa — koʻrsatilmaydi' } },
+    { name: 'reviewedBy', type: 'text', localized: true, admin: { description: 'Tekshirgan dermatolog (boʻsh boʻlsa — koʻrsatilmaydi)' } },
+    { name: 'publishedAt', type: 'date' },
+    { name: 'shortAnswer', type: 'textarea', localized: true },
+    { name: 'sections', type: 'array', fields: [{ name: 'h', type: 'text', required: true, localized: true }, { name: 'text', type: 'textarea', localized: true, admin: { description: 'Paragraflar boʻsh qator bilan ajratiladi' } }] },
+    { name: 'steps', type: 'array', fields: [{ name: 't', type: 'text', localized: true }, { name: 'd', type: 'text', localized: true }, { name: 'product', type: 'relationship', relationTo: 'products' }] },
+    { name: 'ingredients', type: 'array', fields: [{ name: 'name', type: 'text', localized: true }, { name: 'd', type: 'text', localized: true }] },
+    { name: 'faq', type: 'array', fields: [{ name: 'q', type: 'text', required: true, localized: true }, { name: 'a', type: 'textarea', required: true, localized: true }] },
+  ],
+}
+
+export const Ingredients: CollectionConfig = {
+  slug: 'ingredients',
+  admin: { useAsTitle: 'name', group: 'Sayt' },
+  access: { read: () => true },
+  fields: [
+    { name: 'name', type: 'text', required: true, localized: true },
+    { name: 'order', type: 'number', defaultValue: 0 },
+    { name: 'does', type: 'text', localized: true }, { name: 'who', type: 'text', localized: true }, { name: 'care', type: 'text', localized: true },
+  ],
+}
+
+// Gift certificates: issued when an order with a certificate is paid; redeemed in the promo field (balance).
+export const GiftCards: CollectionConfig = {
+  slug: 'gift-cards',
+  admin: { useAsTitle: 'code', group: 'Savdo', defaultColumns: ['code', 'amount', 'balance', 'orderNumber', 'active'] },
+  access: { read: ({ req }) => !!req.user, create: () => false },
+  fields: [
+    { name: 'code', type: 'text', required: true, unique: true, index: true },
+    { name: 'amount', type: 'number', required: true },
+    { name: 'balance', type: 'number', required: true },
+    { name: 'orderNumber', type: 'text', index: true, admin: { description: 'Sotib olingan buyurtma' } },
+    { name: 'form', type: 'select', options: [{ value: 'tg', label: 'Telegramga' }, { value: 'card', label: 'Kartochkada' }] },
+    { name: 'validTo', type: 'date', admin: { description: '12 oy' } },
+    { name: 'active', type: 'checkbox', defaultValue: true },
+  ],
+}

@@ -70,12 +70,18 @@ export interface Config {
     orders: Order;
     payments: Payment;
     'promo-codes': PromoCode;
+    'gift-cards': GiftCard;
     products: Product;
     brands: Brand;
     categories: Category;
     'price-history': PriceHistory;
     reviews: Review;
     banners: Banner;
+    segments: Segment;
+    'search-log': SearchLog;
+    'legal-pages': LegalPage;
+    articles: Article;
+    ingredients: Ingredient;
     media: Media;
     users: User;
     'payload-kv': PayloadKv;
@@ -88,12 +94,18 @@ export interface Config {
     orders: OrdersSelect<false> | OrdersSelect<true>;
     payments: PaymentsSelect<false> | PaymentsSelect<true>;
     'promo-codes': PromoCodesSelect<false> | PromoCodesSelect<true>;
+    'gift-cards': GiftCardsSelect<false> | GiftCardsSelect<true>;
     products: ProductsSelect<false> | ProductsSelect<true>;
     brands: BrandsSelect<false> | BrandsSelect<true>;
     categories: CategoriesSelect<false> | CategoriesSelect<true>;
     'price-history': PriceHistorySelect<false> | PriceHistorySelect<true>;
     reviews: ReviewsSelect<false> | ReviewsSelect<true>;
     banners: BannersSelect<false> | BannersSelect<true>;
+    segments: SegmentsSelect<false> | SegmentsSelect<true>;
+    'search-log': SearchLogSelect<false> | SearchLogSelect<true>;
+    'legal-pages': LegalPagesSelect<false> | LegalPagesSelect<true>;
+    articles: ArticlesSelect<false> | ArticlesSelect<true>;
+    ingredients: IngredientsSelect<false> | IngredientsSelect<true>;
     media: MediaSelect<false> | MediaSelect<true>;
     users: UsersSelect<false> | UsersSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
@@ -225,6 +237,28 @@ export interface PromoCode {
   firstOrderOnly?: boolean | null;
   active?: boolean | null;
   validTo?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "gift-cards".
+ */
+export interface GiftCard {
+  id: number;
+  code: string;
+  amount: number;
+  balance: number;
+  /**
+   * Sotib olingan buyurtma
+   */
+  orderNumber?: string | null;
+  form?: ('tg' | 'card') | null;
+  /**
+   * 12 oy
+   */
+  validTo?: string | null;
+  active?: boolean | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -363,10 +397,70 @@ export interface Brand {
   id: number;
   name: string;
   slug: string;
+  /**
+   * Katta kartochka: «Sezgir teri uchun centella»
+   */
+  tagline?: string | null;
+  /**
+   * A–Z roʻyxat: «Madagaskar centellasi»
+   */
+  short?: string | null;
   about?: string | null;
+  cover?: (number | null) | Media;
+  /**
+   * Brendlar sahifasining yuqorisida (4 ta)
+   */
   featured?: boolean | null;
+  country?: string | null;
+  /**
+   * «Qaysi liniya sizga?» — kalit soʻz mahsulot nomida qidiriladi
+   */
+  lines?:
+    | {
+        name: string;
+        /**
+         * Masalan: Hyalu-Cica
+         */
+        keyword: string;
+        color?: string | null;
+        note?: string | null;
+        who?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  faq?:
+    | {
+        q: string;
+        a: string;
+        id?: string | null;
+      }[]
+    | null;
+  order?: number | null;
   updatedAt: string;
   createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "media".
+ */
+export interface Media {
+  id: number;
+  alt: string;
+  /**
+   * Mahsulot galereyasidagi izoh: «Asl qadoq» …
+   */
+  caption?: string | null;
+  updatedAt: string;
+  createdAt: string;
+  url?: string | null;
+  thumbnailURL?: string | null;
+  filename?: string | null;
+  mimeType?: string | null;
+  filesize?: number | null;
+  width?: number | null;
+  height?: number | null;
+  focalX?: number | null;
+  focalY?: number | null;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -393,29 +487,6 @@ export interface Category {
   seoText?: string | null;
   updatedAt: string;
   createdAt: string;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "media".
- */
-export interface Media {
-  id: number;
-  alt: string;
-  /**
-   * Mahsulot galereyasidagi izoh: «Asl qadoq» …
-   */
-  caption?: string | null;
-  updatedAt: string;
-  createdAt: string;
-  url?: string | null;
-  thumbnailURL?: string | null;
-  filename?: string | null;
-  mimeType?: string | null;
-  filesize?: number | null;
-  width?: number | null;
-  height?: number | null;
-  focalX?: number | null;
-  focalY?: number | null;
 }
 /**
  * Avtomatik: narx oʻzgarishlari. «Eski narx» shu yerdan (30 kun).
@@ -497,6 +568,176 @@ export interface Banner {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "segments".
+ */
+export interface Segment {
+  id: number;
+  slug: string;
+  order?: number | null;
+  title: string;
+  tag?: string | null;
+  image?: (number | null) | Media;
+  imagePos?: string | null;
+  h1: string;
+  say?: string | null;
+  setName?: string | null;
+  setWhy?: string | null;
+  set?:
+    | {
+        step?: string | null;
+        product: number | Product;
+        why?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  gridTitle?: string | null;
+  grid?: (number | Product)[] | null;
+  /**
+   * Shu belgili mahsulotlar bu sahifada umuman chiqmaydi (retinol, kuchli aktivlar)
+   */
+  exclude?: ('pregnant' | 'teen')[] | null;
+  avoid?:
+    | {
+        text: string;
+        id?: string | null;
+      }[]
+    | null;
+  faq?:
+    | {
+        q: string;
+        a: string;
+        id?: string | null;
+      }[]
+    | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Qidiruv soʻrovlari. «missed» — mos mahsulot topilmagan.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "search-log".
+ */
+export interface SearchLog {
+  id: number;
+  query: string;
+  count?: number | null;
+  missed?: boolean | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "legal-pages".
+ */
+export interface LegalPage {
+  id: number;
+  /**
+   * oferta, maxfiylik
+   */
+  slug: string;
+  title: string;
+  body?: {
+    root: {
+      type: string;
+      children: {
+        type: any;
+        version: number;
+        [k: string]: unknown;
+      }[];
+      direction: ('ltr' | 'rtl') | null;
+      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+      indent: number;
+      version: number;
+    };
+    [k: string]: unknown;
+  } | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "articles".
+ */
+export interface Article {
+  id: number;
+  slug: string;
+  title: string;
+  /**
+   * Sarlavhadagi kursiv qism (sarlavha ichidagi aynan shu soʻzlar)
+   */
+  accent?: string | null;
+  category: 'teri-turi' | 'tarkiblar' | 'rutina' | 'spf' | 'erkaklar' | 'originallik';
+  /**
+   * Maqola tepasidagi teg, masalan «Yogʻli teri»
+   */
+  tag?: string | null;
+  excerpt?: string | null;
+  cover?: (number | null) | Media;
+  coverPos?: string | null;
+  minutes?: number | null;
+  featured?: boolean | null;
+  /**
+   * Boʻsh boʻlsa — koʻrsatilmaydi
+   */
+  author?: string | null;
+  /**
+   * Tekshirgan dermatolog (boʻsh boʻlsa — koʻrsatilmaydi)
+   */
+  reviewedBy?: string | null;
+  publishedAt?: string | null;
+  shortAnswer?: string | null;
+  sections?:
+    | {
+        h: string;
+        /**
+         * Paragraflar boʻsh qator bilan ajratiladi
+         */
+        text?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  steps?:
+    | {
+        t?: string | null;
+        d?: string | null;
+        product?: (number | null) | Product;
+        id?: string | null;
+      }[]
+    | null;
+  ingredients?:
+    | {
+        name?: string | null;
+        d?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  faq?:
+    | {
+        q: string;
+        a: string;
+        id?: string | null;
+      }[]
+    | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "ingredients".
+ */
+export interface Ingredient {
+  id: number;
+  name: string;
+  order?: number | null;
+  does?: string | null;
+  who?: string | null;
+  care?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "users".
  */
 export interface User {
@@ -558,6 +799,10 @@ export interface PayloadLockedDocument {
         value: number | PromoCode;
       } | null)
     | ({
+        relationTo: 'gift-cards';
+        value: number | GiftCard;
+      } | null)
+    | ({
         relationTo: 'products';
         value: number | Product;
       } | null)
@@ -580,6 +825,26 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'banners';
         value: number | Banner;
+      } | null)
+    | ({
+        relationTo: 'segments';
+        value: number | Segment;
+      } | null)
+    | ({
+        relationTo: 'search-log';
+        value: number | SearchLog;
+      } | null)
+    | ({
+        relationTo: 'legal-pages';
+        value: number | LegalPage;
+      } | null)
+    | ({
+        relationTo: 'articles';
+        value: number | Article;
+      } | null)
+    | ({
+        relationTo: 'ingredients';
+        value: number | Ingredient;
       } | null)
     | ({
         relationTo: 'media';
@@ -709,6 +974,21 @@ export interface PromoCodesSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "gift-cards_select".
+ */
+export interface GiftCardsSelect<T extends boolean = true> {
+  code?: T;
+  amount?: T;
+  balance?: T;
+  orderNumber?: T;
+  form?: T;
+  validTo?: T;
+  active?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "products_select".
  */
 export interface ProductsSelect<T extends boolean = true> {
@@ -767,8 +1047,30 @@ export interface ProductsSelect<T extends boolean = true> {
 export interface BrandsSelect<T extends boolean = true> {
   name?: T;
   slug?: T;
+  tagline?: T;
+  short?: T;
   about?: T;
+  cover?: T;
   featured?: T;
+  country?: T;
+  lines?:
+    | T
+    | {
+        name?: T;
+        keyword?: T;
+        color?: T;
+        note?: T;
+        who?: T;
+        id?: T;
+      };
+  faq?:
+    | T
+    | {
+        q?: T;
+        a?: T;
+        id?: T;
+      };
+  order?: T;
   updatedAt?: T;
   createdAt?: T;
 }
@@ -837,6 +1139,134 @@ export interface BannersSelect<T extends boolean = true> {
   imagePos?: T;
   bg?: T;
   endsAt?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "segments_select".
+ */
+export interface SegmentsSelect<T extends boolean = true> {
+  slug?: T;
+  order?: T;
+  title?: T;
+  tag?: T;
+  image?: T;
+  imagePos?: T;
+  h1?: T;
+  say?: T;
+  setName?: T;
+  setWhy?: T;
+  set?:
+    | T
+    | {
+        step?: T;
+        product?: T;
+        why?: T;
+        id?: T;
+      };
+  gridTitle?: T;
+  grid?: T;
+  exclude?: T;
+  avoid?:
+    | T
+    | {
+        text?: T;
+        id?: T;
+      };
+  faq?:
+    | T
+    | {
+        q?: T;
+        a?: T;
+        id?: T;
+      };
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "search-log_select".
+ */
+export interface SearchLogSelect<T extends boolean = true> {
+  query?: T;
+  count?: T;
+  missed?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "legal-pages_select".
+ */
+export interface LegalPagesSelect<T extends boolean = true> {
+  slug?: T;
+  title?: T;
+  body?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "articles_select".
+ */
+export interface ArticlesSelect<T extends boolean = true> {
+  slug?: T;
+  title?: T;
+  accent?: T;
+  category?: T;
+  tag?: T;
+  excerpt?: T;
+  cover?: T;
+  coverPos?: T;
+  minutes?: T;
+  featured?: T;
+  author?: T;
+  reviewedBy?: T;
+  publishedAt?: T;
+  shortAnswer?: T;
+  sections?:
+    | T
+    | {
+        h?: T;
+        text?: T;
+        id?: T;
+      };
+  steps?:
+    | T
+    | {
+        t?: T;
+        d?: T;
+        product?: T;
+        id?: T;
+      };
+  ingredients?:
+    | T
+    | {
+        name?: T;
+        d?: T;
+        id?: T;
+      };
+  faq?:
+    | T
+    | {
+        q?: T;
+        a?: T;
+        id?: T;
+      };
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "ingredients_select".
+ */
+export interface IngredientsSelect<T extends boolean = true> {
+  name?: T;
+  order?: T;
+  does?: T;
+  who?: T;
+  care?: T;
   updatedAt?: T;
   createdAt?: T;
 }
@@ -962,7 +1392,33 @@ export interface Store {
   orderCutoff: string;
   telegramUrl: string;
   telegramBotUrl: string;
+  /**
+   * Doʻkon telefoni, masalan +998 90 123 45 67
+   */
   phone?: string | null;
+  email?: string | null;
+  /**
+   * Masalan @yeppo_uz_bot
+   */
+  telegramHandle?: string | null;
+  supportHours?: string | null;
+  /**
+   * Olib ketish nuqtasi (boʻsh boʻlsa — saytda koʻrsatilmaydi)
+   */
+  pickupAddress?: string | null;
+  pickupHours?: string | null;
+  /**
+   * NAMUNA. Pul kartaga necha ish kunida qaytadi
+   */
+  refundDays?: string | null;
+  /**
+   * NAMUNA. Kamida necha oy yaroqlilik muddati qolgan mahsulot yuboriladi
+   */
+  minShelfMonths?: number | null;
+  /**
+   * Toshkentda qabul qilganda toʻlash (saytda yoqilsa koʻrsatiladi)
+   */
+  cashOnDelivery?: boolean | null;
   /**
    * Bosh sahifadagi «Tayyor rutina»: toner, ampula, SPF (tartib bilan)
    */
@@ -986,6 +1442,14 @@ export interface StoreSelect<T extends boolean = true> {
   telegramUrl?: T;
   telegramBotUrl?: T;
   phone?: T;
+  email?: T;
+  telegramHandle?: T;
+  supportHours?: T;
+  pickupAddress?: T;
+  pickupHours?: T;
+  refundDays?: T;
+  minShelfMonths?: T;
+  cashOnDelivery?: T;
   homeRoutine?: T;
   updatedAt?: T;
   createdAt?: T;

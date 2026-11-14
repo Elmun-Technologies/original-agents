@@ -5,6 +5,10 @@ import type { Media, Order, Product } from '@/payload-types'
 import { getStore, oldPrices, payload } from './catalog'
 import type { Lang } from './i18n'
 import { notifyAdmins } from './notify'
+export const GIFT_CATEGORY = 'sertifikatlar'
+/** the shop's own brand (gift certificates) — not listed among cosmetics brands */
+export const HOUSE_BRAND = 'yeppo'
+
 import { normalizePhone, priceCart, suggestion, type Delivery, type Priced, type Promo, type Quote } from './pricing'
 
 export type CartRequest = { lines: { sku: string; qty: number }[]; promo?: string; delivery?: Delivery; gift?: boolean; phone?: string }
@@ -22,16 +26,35 @@ async function loadPriced(skus: string[], lang: Lang) {
       map.set(v.sku, {
         sku: v.sku, slug: pr.slug, brand: typeof pr.brand === 'object' ? pr.brand.name : '', name: pr.name, img, volume: v.volume ?? undefined,
         price: v.price, old: olds.get(v.sku), stock: v.stock ?? 0, category: typeof pr.category === 'object' ? pr.category.slug : '',
+        giftcard: typeof pr.category === 'object' && pr.category.slug === GIFT_CATEGORY,
       })
     }
   }
   return map
 }
 
+/** Ready sets that get −10%: the home routine, every segment set and every article set (first variant of each product). */
+async function readyBundles(homeRoutine: unknown) {
+  const sku = (r: unknown) => (r && typeof r === 'object' ? (r as Product).variants?.[0]?.sku : undefined)
+  const p = await payload()
+  const [segs, arts] = await Promise.all([
+    p.find({ collection: 'segments', depth: 2, limit: 50, pagination: false, select: { set: true } }),
+    p.find({ collection: 'articles', depth: 2, limit: 200, pagination: false, select: { steps: true } }),
+  ])
+  const sets = [Array.isArray(homeRoutine) ? homeRoutine.map(sku) : [], ...segs.docs.map((s) => (s.set ?? []).map((x) => sku(x.product))),
+    ...arts.docs.map((a) => (a.steps ?? []).map((x) => sku(x.product)))]
+  return sets.map((s) => s.filter(Boolean) as string[]).filter((s) => s.length >= 2)
+}
+
 async function findPromo(code: string | undefined, lang: Lang): Promise<Promo | null> {
   if (!code?.trim()) return null
   const p = await payload()
   const doc = (await p.find({ collection: 'promo-codes', where: { code: { equals: code.trim().toUpperCase() } }, limit: 1, depth: 0, locale: lang, overrideAccess: true })).docs[0]
+  if (!doc) {
+    // a gift certificate code works in the same field: fixed discount up to its balance
+    const gc = (await p.find({ collection: 'gift-cards', where: { code: { equals: code.trim().toUpperCase() }, active: { equals: true } }, limit: 1, depth: 0, overrideAccess: true })).docs[0]
+    if (gc && gc.balance > 0 && (!gc.validTo || new Date(gc.validTo) > new Date())) return { code: gc.code, type: 'fixed', value: gc.balance, note: lang === 'ru' ? 'подарочный сертификат' : 'sovgʻa sertifikati', active: true }
+  }
   return doc ? { note: doc.note, code: doc.code, type: doc.type, value: doc.value, minTotal: doc.minTotal, firstOrderOnly: doc.firstOrderOnly, active: doc.active, validTo: doc.validTo } : null
 }
 
@@ -47,10 +70,10 @@ export async function quoteCart(req: CartRequest, lang: Lang) {
   const lines = (req.lines ?? []).filter((l) => typeof l?.sku === 'string' && Number.isFinite(l.qty)).slice(0, 50)
   const skus = [...new Set(lines.map((l) => l.sku))]
   const [store, products, promo] = await Promise.all([getStore(), loadPriced(skus, lang), findPromo(req.promo, lang)])
-  const routineSkus = (store.homeRoutine ?? []).flatMap((r) => (typeof r === 'object' ? [(r as Product).variants[0]?.sku] : [])).filter(Boolean) as string[]
+  const bundles = await readyBundles(store.homeRoutine)
   const phone = req.phone ? normalizePhone(req.phone) : null
   const q = priceCart({
-    lines, products, promo, promoCode: req.promo?.trim() || undefined, isFirstOrder: await isFirstOrder(phone), routineSkus,
+    lines, products, promo, promoCode: req.promo?.trim() || undefined, isFirstOrder: await isFirstOrder(phone), bundles,
     delivery: req.delivery === 'region' ? 'region' : 'tashkent', gift: !!req.gift,
     store: { freeDeliveryFrom: store.freeDeliveryFrom, tashkentPrice: store.tashkentPrice, regionPrice: store.regionPrice, giftBoxPrice: store.giftBoxPrice },
   })
@@ -136,7 +159,22 @@ export async function markPaid(orderId: number, provider: 'click' | 'payme') {
     if (!pr) continue
     await p.update({ collection: 'products', id: pr.id, overrideAccess: true, data: { variants: pr.variants.map((v) => (v.sku === it.sku ? { ...v, stock: Math.max(0, (v.stock ?? 0) - it.qty) } : v)) } })
   }
-  await notifyAdmins(`💳 Toʻlandi (${provider}) — buyurtma №${o.number}\n${o.items.map((i) => `• ${i.brand} ${i.name}${i.volume ? ` ${i.volume}` : ''} × ${i.qty}`).join('\n')}\nJami: ${o.total.toLocaleString('ru-RU')} soʻm\n${o.name}, +${o.phone}\n${o.delivery === 'tashkent' ? 'Toshkent' : 'Viloyat'}: ${o.city ? `${o.city}, ` : ''}${o.address}${o.slot ? `, ${o.slot}` : ''}${o.gift ? '\n🎁 Sovgʻa qutisi' : ''}${o.comment ? `\nIzoh: ${o.comment}` : ''}`)
+  // gift certificates: issue codes for bought ones, spend the balance of a redeemed one
+  const issued: string[] = []
+  for (const it of o.items) {
+    const m = it.sku.match(/^GC-(\d+)-(TG|CARD)$/)
+    if (!m) continue
+    for (let n = 0; n < it.qty; n++) {
+      const code = `YP-${crypto.randomBytes(4).toString('hex').toUpperCase()}`
+      await p.create({ collection: 'gift-cards', overrideAccess: true, data: { code, amount: Number(m[1]), balance: Number(m[1]), orderNumber: o.number, form: m[2] === 'TG' ? 'tg' : 'card', validTo: new Date(Date.now() + 365 * 86_400_000).toISOString() } })
+      issued.push(code)
+    }
+  }
+  if (o.discountLabel && o.discount) {
+    const gc = (await p.find({ collection: 'gift-cards', where: { code: { equals: o.discountLabel } }, limit: 1, depth: 0, overrideAccess: true })).docs[0]
+    if (gc) await p.update({ collection: 'gift-cards', id: gc.id, overrideAccess: true, data: { balance: Math.max(0, gc.balance - (o.discount ?? 0)) } })
+  }
+  await notifyAdmins(`💳 Toʻlandi (${provider}) — buyurtma №${o.number}\n${o.items.map((i) => `• ${i.brand} ${i.name}${i.volume ? ` ${i.volume}` : ''} × ${i.qty}`).join('\n')}\nJami: ${o.total.toLocaleString('ru-RU')} soʻm\n${o.name}, +${o.phone}\n${o.delivery === 'tashkent' ? 'Toshkent' : 'Viloyat'}: ${o.city ? `${o.city}, ` : ''}${o.address}${o.slot ? `, ${o.slot}` : ''}${o.gift ? '\n🎁 Sovgʻa qutisi' : ''}${issued.length ? `\n🎟 Sertifikat kodlari: ${issued.join(', ')}` : ''}${o.comment ? `\nIzoh: ${o.comment}` : ''}`)
   return paid
 }
 

@@ -28,8 +28,8 @@ const CATS: [slug: string, uz: string, ru: string, types: string[], short: [stri
 ]
 // concerns per sample product (from the design's picker mapping, p_main.py ndMap)
 const CONCERNS: Record<string, ('acne' | 'pores' | 'pigment' | 'dryness' | 'wrinkles' | 'dull')[]> = {
-  amp: ['acne', 'pores'], toner: ['acne', 'dull'], snail: ['acne', 'dryness'], ess: ['dryness', 'dull'], revive: ['dryness'],
-  baha: ['dull', 'pores'], pore: ['pores'], cream: ['dryness'], clean: ['pores'], mask: ['acne'], spf: [], set: ['dull'],
+  amp: ['acne', 'pores'], toner: ['acne', 'dull'], snail: ['acne', 'dryness', 'wrinkles'], ess: ['dryness', 'dull', 'pigment'], revive: ['dryness', 'wrinkles'],
+  baha: ['dull', 'pores', 'pigment'], pore: ['pores'], cream: ['dryness'], clean: ['pores'], mask: ['acne'], spf: [], set: ['dull'],
 }
 // Lexical rich text from paragraphs; **bold** spans
 const rich = (...paras: string[]) => ({
@@ -102,6 +102,21 @@ async function main() {
       })
     }
     made++
+  }
+  // gift certificate (Gifts page): one product, a variant per amount × form; price = amount, never discounted
+  if (!(await payload.find({ collection: 'products', where: { slug: { equals: 'sovga-sertifikati' } }, limit: 1 })).docs.length) {
+    const house = await one('brands', 'yeppo', () => payload.create({ collection: 'brands', data: { name: 'Yeppo', slug: 'yeppo' } }))
+    const gc = await one('categories', 'sertifikatlar', async () => {
+      const c = await payload.create({ collection: 'categories', data: { slug: 'sertifikatlar', title: 'Sovgʻa sertifikatlari', order: 99 }, locale: 'uz' })
+      await payload.update({ collection: 'categories', id: c.id, data: { title: 'Подарочные сертификаты' }, locale: 'ru' })
+      return c
+    })
+    const image = await media('p-flatlay-pink.jpg', 'Sovgʻa sertifikati')
+    const p = await payload.create({ collection: 'products', locale: 'uz', data: {
+      name: 'Sovgʻa sertifikati', slug: 'sovga-sertifikati', brand: house.id, category: gc.id, type: 'Sertifikat', images: [image.id],
+      variants: [100000, 200000, 300000, 500000].flatMap((a) => [{ volume: 'Telegram', sku: `GC-${a}-TG`, price: a, stock: 9999 }, { volume: 'Kartochka', sku: `GC-${a}-CARD`, price: a, stock: 9999 }]),
+    } })
+    await payload.update({ collection: 'products', id: p.id, locale: 'ru', data: { type: 'Сертификат' } })
   }
   // home: 3 slides + weekly sale (design p_main.py SL), ready routine (toner, ampoule, SPF)
   if (!(await payload.find({ collection: 'banners', limit: 1 })).docs.length) {
@@ -177,6 +192,127 @@ async function main() {
 
   const routine = (await Promise.all(['toner', 'amp', 'spf'].map(bySku))).filter(Boolean) as number[]
   await payload.updateGlobal({ slug: 'store', data: { homeRoutine: routine } })
+
+  // brands: taglines/short notes and covers from the design (Brands.html, Brand.html); Russian from the design dictionary
+  const BR: Record<string, { tag?: string; short: string; cover?: string; order?: number }> = {
+    skin1004: { tag: 'Sezgir teri uchun centella', short: 'Madagaskar centellasi', cover: 'p-centella-duo.jpg', order: 1 },
+    'beauty-of-joseon': { tag: 'Jenshen va guruch', short: 'Jenshen, guruch', cover: 'p-boj-glow.jpg', order: 2 },
+    mixsoon: { tag: 'Ferment essensiyalar', short: 'Ferment essensiya', cover: 'p-mixsoon.jpg', order: 3 },
+    missha: { tag: 'Yengil SPF', short: 'SPF, BB krem', cover: 'spf-missha.jpg', order: 4 },
+    'cos-de-baha': { short: 'Arzon aktivlar' }, iunik: { short: 'Salyangoz, propolis' }, mediheal: { short: 'Matoli niqoblar' },
+    'round-lab': { short: 'Dokdo suvi' }, torriden: { short: 'DIVE-IN gialuron' },
+  }
+  for (const [slug, b] of Object.entries(BR)) {
+    const doc = (await payload.find({ collection: 'brands', where: { slug: { equals: slug } }, limit: 1 })).docs[0]
+    if (!doc) continue
+    const cover = b.cover ? (await media(b.cover, doc.name)).id : undefined
+    await payload.update({ collection: 'brands', id: doc.id, locale: 'uz', data: { tagline: b.tag, short: b.short, cover, featured: !!b.cover, order: b.order ?? 10 } })
+    await payload.update({ collection: 'brands', id: doc.id, locale: 'ru', data: { tagline: b.tag && R(b.tag), short: R(b.short), country: R('Janubiy Koreya') } })
+  }
+  const skin = (await payload.find({ collection: 'brands', where: { slug: { equals: 'skin1004' } }, limit: 1 })).docs[0]
+  if (skin) {
+    const ABOUT = 'Madagaskar centellasi bilan mashhur brend. Tarkiblari qisqa, hidsiz — shuning uchun sezgir va qizarishga moyil teriga koʻp tavsiya qilamiz. Qaysi liniyadan boshlashni bilmasangiz, pastda tushuntirdik.'
+    const LINES = [
+      ['Centella (yashil)', 'Madagascar', '#9DB89A', 'Asosiy liniya. Qizarish va tirnashni tinchlantiradi.', 'Kimga: sezgir, qizarishga moyil teri'],
+      ['Hyalu-Cica (koʻk)', 'Hyalu-Cica', '#9BB7CF', 'Centella + gialuron. Namlik va yorqinlik.', 'Kimga: quruq, charchagan teri'],
+      ['Poremizing (pushti)', 'Poremizing', '#E7B9BC', 'Poralar va yogʻ uchun, yengil tekstura.', 'Kimga: yogʻli va aralash teri'],
+    ]
+    const FAQB = [
+      ['SKIN1004 qaysi davlat brendi?', 'Janubiy Koreya brendi. Asosiy tarkibi — Madagaskar centellasi.'],
+      ['Ampula va toner birga ishlatiladimi?', 'Ha: avval toner, keyin ampula, soʻng krem. Ertalab oxirida SPF.'],
+      ['Homiladorlikda mumkinmi?', 'Centella liniyasida retinol yoʻq, lekin har qanday yangi vositani shifokoringiz bilan kelishib oling.'],
+    ]
+    const d = await payload.update({ collection: 'brands', id: skin.id, locale: 'uz', data: {
+      about: ABOUT, country: 'Janubiy Koreya',
+      lines: LINES.map(([name, keyword, color, note, who]) => ({ name, keyword, color, note, who })), faq: FAQB.map(([q, a]) => ({ q, a })) } })
+    await payload.update({ collection: 'brands', id: skin.id, locale: 'ru', data: {
+      about: R(ABOUT), lines: d.lines!.map((l, i) => ({ ...l, name: R(LINES[i][0]), note: R(LINES[i][3]), who: R(LINES[i][4]) })),
+      faq: d.faq!.map((f, i) => ({ ...f, q: R(FAQB[i][0]), a: R(FAQB[i][1]) })) } })
+  }
+
+  // "Kim uchun" segments from the design (p_segment.py -> src/seed-data/segments.json)
+  if (!(await payload.find({ collection: 'segments', limit: 1 })).docs.length) {
+    const SEGS = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'src', 'seed-data', 'segments.json'), 'utf8')) as any[]
+    for (const g of SEGS) {
+      const ids = async (keys: string[]) => (await Promise.all(keys.map(bySku))).filter(Boolean) as number[]
+      const setIds = await ids(g.set.map((x: any) => x.id))
+      const image = await media(g.img, g.alt)
+      const doc = await payload.create({ collection: 'segments', locale: 'uz', data: {
+        slug: g.slug, order: g.order, title: g.t, tag: g.tag, image: image.id, imagePos: g.pos, h1: g.h1, say: g.say, setName: g.setName, setWhy: g.setWhy,
+        set: g.set.map((x: any, i: number) => ({ step: x.step, product: setIds[i], why: x.why })).filter((x: any) => x.product),
+        gridTitle: g.gridTitle, grid: await ids(g.grid), exclude: g.exclude,
+        avoid: g.avoid.map((text: string) => ({ text })), faq: g.faq.map((f: any) => ({ q: f.q, a: f.a })) } })
+      await payload.update({ collection: 'segments', id: doc.id, locale: 'ru', data: {
+        title: R(g.t), tag: R(g.tag), h1: R(g.h1), say: R(g.say), setName: R(g.setName), setWhy: R(g.setWhy), gridTitle: R(g.gridTitle),
+        set: doc.set!.map((x, i) => ({ ...x, step: R(g.set[i].step), why: R(g.set[i].why) })),
+        avoid: doc.avoid!.map((x, i) => ({ ...x, text: R(g.avoid[i]) })), faq: doc.faq!.map((x, i) => ({ ...x, q: R(g.faq[i].q), a: R(g.faq[i].a) })) } })
+    }
+  }
+
+  // journal: articles and ingredient glossary from the design (Journal.html, Article.html, p_more2.py, p_article.py)
+  if (!(await payload.find({ collection: 'articles', limit: 1 })).docs.length) {
+    type A = { slug: string; cat: 'teri-turi' | 'tarkiblar' | 'rutina' | 'spf' | 'erkaklar' | 'originallik'; title: string; ex: string; img: string; pos: string; min: number }
+    const PO: A[] = [
+      { slug: 'teri-turi', cat: 'teri-turi', title: 'Teri turingizni 2 daqiqada qanday aniqlash mumkin', ex: 'Oddiy salfetka testi va 3 ta savol.', img: 'face-touch.jpg', pos: '50% 30%', min: 4 },
+      { slug: 'spf-qishda', cat: 'spf', title: 'Qishda ham SPF kerakmi? Qisqa javob — ha', ex: 'Nega bulutli kunda ham quyosh terini qaritadi.', img: 'spf-arm.jpg', pos: '50% 50%', min: 3 },
+      { slug: 'essensiya-serum-ampula', cat: 'tarkiblar', title: 'Essensiya, serum, ampula — farqi nima?', ex: 'Uch soʻz, uch xil vazifa. Pul tejash uchun bilib qoʻying.', img: 'serum-eucalyptus.jpg', pos: '50% 50%', min: 5 },
+      { slug: 'koreyscha-parvarish', cat: 'rutina', title: 'Koreyscha parvarish: 10 qadam shartmi?', ex: 'Yoʻq. Boshlash uchun 3 qadam yetarli.', img: 'gel-jar-hands.jpg', pos: '50% 50%', min: 5 },
+      { slug: 'originallik', cat: 'originallik', title: 'Originalni soxtadan qanday ajratish mumkin', ex: 'Partiya raqami, qadoq, hid — 5 ta belgi.', img: 'face-leaf.jpg', pos: '50% 30%', min: 6 },
+      { slug: 'soqoldan-keyin', cat: 'erkaklar', title: 'Soqoldan keyin qizarish: nima surtish kerak', ex: 'Spirtli loson oʻrniga nima ishlatish.', img: 'men-jar.jpg', pos: '50% 50%', min: 3 },
+    ]
+    let day = 0
+    for (const a of PO) {
+      const cover = await media(a.img, a.title)
+      const d = await payload.create({ collection: 'articles', locale: 'uz', data: { slug: a.slug, title: a.title, category: a.cat, excerpt: a.ex, shortAnswer: a.ex, cover: cover.id, coverPos: a.pos, minutes: a.min, publishedAt: new Date(Date.now() - (++day) * 86_400_000).toISOString() } })
+      await payload.update({ collection: 'articles', id: d.id, locale: 'ru', data: { title: R(a.title), excerpt: R(a.ex), shortAnswer: R(a.ex) } })
+    }
+    // the design's full article
+    const T = 'Yuzingiz tushga borib yaltirayaptimi? Yogʻli teri uchun koreys parvarishi'
+    const SA = 'Yogʻli teriga uchta qadam kifoya: yumshoq tozalovchi, yengil namlantiruvchi (masalan, centella yoki niatsinamidli ampula) va har kuni SPF. Kuchli quritadigan vositalar yogʻni faqat koʻpaytiradi.'
+    const H = 'Nega teri yogʻlanadi?'
+    const P1 = 'Yogʻ bezlari terini himoya qilish uchun sebum ishlab chiqaradi. Ularning faolligi irsiyat, gormonlar va iqlimga bogʻliq. Toshkentning issiq yozida koʻpchilik buni ayniqsa sezadi.'
+    const P2 = 'Eng koʻp uchraydigan xato — terini «quritish». Spirtli loson yoki qattiq sovundan keyin teri suvsizlanadi va oʻzini himoya qilish uchun yanada koʻp yogʻ chiqaradi.'
+    const ST: [string, string, string][] = [['Toner', 'Yuvgandan keyin, kaft bilan yengil urib', 'toner'], ['Ampula', '2–3 tomchi, butun yuzga', 'pore'], ['SPF', 'Faqat ertalab, oxirgi qadam', 'spf']]
+    const IN: [string, string][] = [['Niatsinamid', 'Yogʻ ishlab chiqarishni muvozanatlaydi, poralarni koʻrinishda toraytiradi'], ['Centella asiatica', 'Qizarish va toshmalarni tinchlantiradi'], ['BHA (salitsil kislota)', 'Poralarni tozalaydi; haftasiga 2–3 marta, SPF bilan']]
+    const FQ: [string, string][] = [
+      ['Yogʻli teriga krem kerakmi?', 'Ha, lekin yengil — gel yoki emulsiya. Namlik yetishmasa, teri koʻproq yogʻ chiqaradi.'],
+      ['Kuniga necha marta yuvish kerak?', 'Ikki marta: ertalab va kechqurun. Koʻproq yuvish terini quritadi.'],
+      ['Yogʻli teriga SPF yopishqoq boʻlmaydimi?', 'Essensiya yoki gel teksturali SPF tanlang — ular tez soʻriladi va yaltiramaydi.'],
+      ['Natija qachon koʻrinadi?', 'Odatda 3–4 haftada. Yangi vositalarni birdaniga emas, bittadan qoʻshing.'],
+    ]
+    const cover = await media('tex-3.jpg', 'Yengil gel teksturasi')
+    const stepIds = await Promise.all(ST.map(([, , k]) => bySku(k)))
+    const full = await payload.create({ collection: 'articles', locale: 'uz', data: {
+      slug: 'yogli-teri', title: T, accent: 'Yogʻli teri', category: 'teri-turi', tag: 'Yogʻli teri', featured: true, minutes: 7, cover: cover.id, coverPos: '50% 50%',
+      excerpt: 'Nega quritish yogʻni koʻpaytiradi, qaysi uchta qadam yetadi va qaysi tarkiblarni qidirish kerak.', shortAnswer: SA, publishedAt: new Date().toISOString(),
+      sections: [{ h: H, text: `${P1}\n\n${P2}` }], steps: ST.map(([t, d], i) => ({ t, d, product: stepIds[i] })),
+      ingredients: IN.map(([name, d]) => ({ name, d })), faq: FQ.map(([q, a]) => ({ q, a })) } })
+    await payload.update({ collection: 'articles', id: full.id, locale: 'ru', data: {
+      title: R(T), accent: R('Yogʻli teri'), tag: R('Yogʻli teri'), excerpt: R('Nega quritish yogʻni koʻpaytiradi, qaysi uchta qadam yetadi va qaysi tarkiblarni qidirish kerak.'),
+      shortAnswer: R(SA), sections: full.sections!.map((x) => ({ ...x, h: R(H), text: `${R(P1)}\n\n${R(P2)}` })),
+      steps: full.steps!.map((x, i) => ({ ...x, t: R(ST[i][0]), d: R(ST[i][1]) })), ingredients: full.ingredients!.map((x, i) => ({ ...x, name: R(IN[i][0]), d: R(IN[i][1]) })),
+      faq: full.faq!.map((x, i) => ({ ...x, q: R(FQ[i][0]), a: R(FQ[i][1]) })) } })
+    const IG: [string, string, string, string][] = [
+      ['Centella', 'Tinchlantiradi, qizarishni kamaytiradi', 'Sezgir, toshmaga moyil teri', 'Deyarli hammaga mos'],
+      ['Niatsinamid', 'Poralar, yogʻ va rangni tekislaydi', 'Yogʻli, aralash teri', '10% dan yuqorisi achishtirishi mumkin'],
+      ['Gialuron kislota', 'Namlikni ushlab qoladi', 'Quruq va suvsizlangan teri', 'Ustidan krem surting'],
+      ['Salyangoz mutsini', 'Tiklaydi, namlaydi', 'Quruq, charchagan teri', 'Allergiya boʻlsa — sinab koʻring'],
+      ['Retinol', 'Ajin va notekis rang', '25+ yosh, kechqurun', 'Homiladorlikda mumkin emas, SPF shart'],
+      ['BHA', 'Poralarni ichidan tozalaydi', 'Yogʻli, toshmali teri', 'Haftasiga 2–3 marta, SPF bilan'],
+      ['Galactomyces', 'Yorqinlik va tekis rang', 'Xira, charchagan teri', 'Yangi boshlovchiga ham mos'],
+      ['Pantenol', 'Tiklaydi, tirnashni oladi', 'Har qanday teri', 'Xavfsiz'],
+    ]
+    for (const [i, [name, does, who, care]] of IG.entries()) {
+      const g = await payload.create({ collection: 'ingredients', locale: 'uz', data: { name, does, who, care, order: i } })
+      await payload.update({ collection: 'ingredients', id: g.id, locale: 'ru', data: { name: R(name), does: R(does), who: R(who), care: R(care) } })
+    }
+  }
+  // legal pages: titles only — the text comes from the owner / lawyer
+  for (const [slug, uz, ru2] of [['oferta', 'Ommaviy oferta', 'Публичная оферта'], ['maxfiylik', 'Maxfiylik siyosati', 'Политика конфиденциальности']]) {
+    if ((await payload.find({ collection: 'legal-pages', where: { slug: { equals: slug } }, limit: 1 })).docs.length) continue
+    const d = await payload.create({ collection: 'legal-pages', locale: 'uz', data: { slug, title: uz } })
+    await payload.update({ collection: 'legal-pages', id: d.id, locale: 'ru', data: { title: ru2 } })
+  }
 
   if (!(await payload.find({ collection: 'promo-codes', where: { code: { equals: 'SALOM10' } }, limit: 1 })).docs.length) {
     // NAMUNA: the design's first-order code (−10%); change or switch off in the admin

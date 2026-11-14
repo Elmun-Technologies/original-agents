@@ -23,7 +23,7 @@ export default async function Home({ params }: { params: Promise<{ lang: string 
     getStore(),
     homeCards(lang),
     p.find({ collection: 'banners', where: { active: { equals: true } }, sort: 'order', locale: lang, depth: 1, limit: 20 }),
-    p.find({ collection: 'brands', sort: 'name', limit: 24, depth: 0 }),
+    p.find({ collection: 'brands', where: { slug: { not_equals: 'yeppo' } }, sort: 'name', limit: 24, depth: 0 }),
   ])
 
   const slides: Slide[] = banners.docs.filter((b) => b.kind === 'slide').map((b) => ({
