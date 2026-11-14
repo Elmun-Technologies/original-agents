@@ -82,6 +82,7 @@ class Product(Base):
     description: Mapped[str | None] = mapped_column(Text)   # source text; content agent's only fact base
     seller_note: Mapped[str | None] = mapped_column(Text)   # note from source/intermediary sheet
     images: Mapped[list] = mapped_column(JSON, default=list)
+    sold_count: Mapped[int | None]  # "Sold" at the source, for ranking
     first_seen_at: Mapped[datetime] = mapped_column(default=utcnow)
     last_checked_at: Mapped[datetime] = mapped_column(default=utcnow)
     is_active: Mapped[bool] = mapped_column(default=True)
@@ -272,3 +273,12 @@ class AppState(Base):
 
     key: Mapped[str] = mapped_column(String(64), primary_key=True)
     value: Mapped[str] = mapped_column(Text)
+
+
+class Problem(Base):
+    """Something that kept a post from going out (or another issue) for the daily summary."""
+    __tablename__ = "problems"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    created_at: Mapped[datetime] = mapped_column(default=utcnow, index=True)
+    text: Mapped[str] = mapped_column(Text)

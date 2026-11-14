@@ -178,11 +178,23 @@ def test_google_sheet_url(db):
         run(db, "https://docs.google.com/x", client=bad)
 
 
-def test_poizon_mode_refused_without_written_permission(db, monkeypatch):
-    s = config.settings()
-    monkeypatch.setitem(s, "sourcing_mode", "poizon_com")
-    with pytest.raises(SheetError, match="yozma ruxsat"):
+def test_poizon_mode_refused_client_not_built(db, monkeypatch):
+    monkeypatch.setitem(config.settings(), "sourcing_mode", "poizon_com")
+    with pytest.raises(SheetError, match="chetlab"):
         run(db, SAMPLE)
-    monkeypatch.setitem(s, "poizon_written_permission", "yes")       # only literal true counts
-    with pytest.raises(SheetError, match="yozma ruxsat"):
-        sourcing.check_sourcing_mode(s)
+
+
+def test_sold_count_column(db, tmp_path):
+    header = HEADER + ",sold_count"
+    rep = run(db, csv_file(tmp_path, row() + ",\"12,400+\"", row(style="X", size="41") + ",abc", header=header))
+    assert rep.created == ["MR530SG"] and "sold_count" in rep.row_errors[0][1]
+    assert product(db, "MR530SG").sold_count == 12400
+
+
+def test_import_daily_uses_sheet_url(db, monkeypatch):
+    monkeypatch.setitem(config.settings(), "sheet_url", "")
+    assert sourcing.import_daily(db) is None
+    monkeypatch.setitem(config.settings(), "sheet_url", "https://docs.google.com/x/export?format=csv")
+    client = httpx.Client(transport=httpx.MockTransport(
+        lambda r: httpx.Response(200, content="\n".join([HEADER, row()]).encode())))
+    assert sourcing.import_daily(db, client).created == ["MR530SG"]

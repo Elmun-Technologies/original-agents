@@ -148,8 +148,8 @@ def photo_dir(product: Product) -> Path:
 
 
 def own_photos(product: Product, limit: int | None = None) -> list[Path]:
-    # TODO(admin): image_source_policy=source_images (download Poizon images) is not built;
-    # own_photos_only is the only mode until the image-rights question is settled.
+    """Photos for the cards: the admin's own (sent to the bot) first, then downloaded source images
+    (src_*, image_source_policy=source_images)."""
     d = photo_dir(product)
     photos = sorted(p for p in d.glob("*") if p.suffix.lower() in PHOTO_EXT) if d.is_dir() else []
     return photos[:limit] if limit else photos

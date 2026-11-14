@@ -190,3 +190,35 @@ def test_album_items_wait_for_captioned_one(env, db, tmp_path, monkeypatch):
         await asyncio.gather(dp.feed_update(bot, Update(update_id=10, message=photo(None, 1))), late())
     asyncio.run(both())
     assert len(saved) == 2 and not any("Izohga SKU" in t for t in session.texts())
+
+
+def test_schedule_times(env):
+    _, _, _, ctx = env
+    sched = admin_bot.schedule(ctx, None)
+    jobs = {j.id: str(j.trigger) for j in sched.get_jobs()}
+    assert set(jobs) == {"import", "drafts", "publish0", "publish1", "publish2", "summary"}
+    assert "hour='9', minute='0'" in jobs["drafts"] and "hour='21', minute='30'" in jobs["summary"]
+
+
+def test_auto_run_is_quiet_then_one_summary(env, db, tmp_path, monkeypatch):
+    from app import config
+    from app.agents import publisher
+    monkeypatch.setitem(config.settings(), "auto_publish", True)
+    monkeypatch.setitem(config.settings()["content"], "photos_dir", str(tmp_path / "photos"))
+    monkeypatch.setattr(publisher, "create_draft", lambda *a, **k: (_ for _ in ()).throw(ValueError("boom")))
+    make_product(db)
+    db.commit()
+    dp, bot, session, ctx = env
+    asyncio.run(admin_bot.job_daily_drafts(ctx, admin_bot.Tg(bot, ctx)))
+    assert session.sent == []                                   # nothing per draft in auto mode
+    send(env, "/summary")
+    assert "kunlik xulosa" in session.texts()[-1] and "MR530SG: boom" in session.texts()[-1]
+
+
+def test_import_job_bad_sheet_goes_to_summary(env, monkeypatch):
+    from app import config
+    monkeypatch.setitem(config.settings(), "sheet_url", "/nonexistent.csv")
+    dp, bot, session, ctx = env
+    asyncio.run(admin_bot.job_import(ctx, None))
+    send(env, "/summary")
+    assert "Jadval yuklanmadi" in session.texts()[-1]

@@ -1,14 +1,19 @@
-"""Publishing workflow (CLAUDE.md §6.5): daily drafts -> admin approval -> channel slots.
+"""Publishing workflow (CLAUDE.md §6.5): daily drafts -> approval -> channel slots.
 
 Business logic only; the Telegram bot does the sending. Rules:
-- Draft order: our stock -> products matching /trend notes -> newest active products without a post.
+- Draft order: our stock first, then the rest by rank_score ("Solishtiruvchi": sold count, price
+  range, popular sizes, season, /trend notes, images), newest first on a tie.
   Per day at most per_brand_daily_max drafts per brand and per_model_daily_max per model.
-- No approval without the admin's own photos (own_photos_only).
+- auto_publish: a draft that passes every check (photos, fresh quotes, text filters, price change
+  within the limit) is approved without the admin; one that fails is recorded as a Problem and
+  shown in the daily summary. Drafts that failed earlier are re-checked the next day.
+- No approval without photos.
 - Before approval and before publishing, prices are re-quoted with current rates; a change
   above price_change_alert_pct sends the post back to the admin with the reason per size
   (source price vs exchange rate).
 """
 import logging
+import math
 import re
 from dataclasses import dataclass, field
 from datetime import datetime, time, timedelta, timezone
@@ -19,8 +24,9 @@ from sqlalchemy.orm import Session
 from app import config
 from app.agents.content import (ContentError, Draft, create_draft, display_model, own_photos, post_quotes,
                                 refresh_post)
+from app.agents.sourcing import SHOE_SIZE
 from app.config import TZ
-from app.db.models import AppState, Post, Product, Quote, TrendNote
+from app.db.models import AppState, Order, Post, Problem, Product, Quote, TrendNote
 from app.pricing.calculator import price_change
 from app.pricing.rates import Rate
 from app.uz import format_uzs
@@ -72,7 +78,31 @@ def trend_score(product: Product, terms: list[set[str]]) -> int:
     return best
 
 
-def pick_products(session: Session, now: datetime, limit: int) -> list[tuple[Product, bool]]:
+def rank_score(product: Product, terms: list[set[str]], now: datetime, fx: dict[str, Rate] | None) -> float:
+    """"Solishtiruvchi": weighted sum of parts in 0..1 (weights in settings.ranking)."""
+    s = config.settings()
+    r, cat = s["ranking"], config.categories()[product.category]
+    sizes = [ps for ps in product.sizes if ps.available]
+    parts = {"sold": math.log1p(min(product.sold_count or 0, r["sold_cap"])) / math.log1p(r["sold_cap"]),
+             "trend": min(trend_score(product, terms) / 2, 1.0),
+             "has_images": 1.0 if product.images or own_photos(product) else 0.0}
+    if fx and sizes:
+        usd = min(ps.source_price * (fx[ps.source_currency].value / fx["USD"].value) for ps in sizes)
+        lo, hi = r["price_range_usd"]
+        parts["price"] = 1.0 if lo <= usd <= hi else 0.0
+    if cat["size_type"] == "shoe":
+        lo, hi = s["sourcing"]["popular_sizes_eu"][product.gender or "unisex"]
+        have = {int(m.group(1)) for ps in sizes if (m := SHOE_SIZE.match(ps.size_eu))}
+        parts["sizes"] = len(have & set(range(lo, hi + 1))) / (hi - lo + 1)
+    else:
+        parts["sizes"] = 1.0 if sizes else 0.0
+    winter_now = now.astimezone(TZ).month in r["winter_months"]
+    parts["season"] = 1.0 if cat["winter"] == winter_now else (0.5 if winter_now else 0.0)
+    return sum(r["weights"][k] * v for k, v in parts.items())
+
+
+def pick_products(session: Session, now: datetime, limit: int,
+                  fx: dict[str, Rate] | None = None) -> list[tuple[Product, bool]]:
     """[(product, as_stock_post)] in priority order, respecting the per-day diversity caps."""
     p = config.settings()["publishing"]
     day_start = _day_start_utc(now)
@@ -98,11 +128,10 @@ def pick_products(session: Session, now: datetime, limit: int) -> list[tuple[Pro
     stock = [pr for pr in products if pr.in_stock and not replica(pr)
              and pr.id not in open_post and pr.id not in recent_stock_post]
     fresh = [pr for pr in products if pr.is_active and pr.id not in has_post and pr not in stock]
-    trending = sorted((pr for pr in fresh if trend_score(pr, terms)), key=lambda pr: -trend_score(pr, terms))
-    newest = [pr for pr in fresh if pr not in trending]
+    ranked = sorted(fresh, key=lambda pr: -rank_score(pr, terms, now, fx))  # stable: newest first on a tie
 
     picked: list[tuple[Product, bool]] = []
-    for pr, as_stock in [(x, True) for x in stock] + [(x, False) for x in trending + newest]:
+    for pr, as_stock in [(x, True) for x in stock] + [(x, False) for x in ranked]:
         if len(picked) >= limit:
             break
         b, m = pr.brand.casefold(), display_model(pr).casefold()
@@ -121,19 +150,47 @@ class DailyResult:
     notes: list[str] = field(default_factory=list)
 
 
-def make_daily_drafts(session: Session, llm_client, fx: dict[str, Rate], now: datetime, out_root=None) -> DailyResult:
-    """Creates up to daily_drafts.max drafts; each draft is committed on its own."""
+def note_problem(session: Session, text: str, now: datetime) -> None:
+    session.add(Problem(text=text, created_at=now))
+    session.flush()
+
+
+def make_daily_drafts(session: Session, llm_client, fx: dict[str, Rate], now: datetime, out_root=None,
+                      fetch_images=None) -> DailyResult:
+    """Creates up to daily_drafts.max drafts; each draft is committed on its own.
+    auto_publish: re-checks older drafts, downloads source images and auto-approves what passes.
+    fetch_images(product) -> problems; default app.media.images.fetch_source_images."""
     res = DailyResult()
     if is_paused(session):
         res.notes.append("Pauza yoqilgan (/resume) — draftlar tayyorlanmadi.")
         return res
-    p = config.settings()["publishing"]["daily_drafts"]
-    for product, as_stock in pick_products(session, now, p["max"]):
-        try:
-            d = create_draft(session, product, llm_client, fx, now=now, out_root=out_root, stock=as_stock)
+    s = config.settings()
+    auto = s["auto_publish"]
+    if fetch_images is None:
+        from app.media.images import fetch_source_images as fetch_images
+
+    def check(post: Post) -> None:
+        out = approve(session, post.id, None, fx, now, out_root=out_root)
+        if not out.ok:
+            res.errors.append(out.message)
+
+    if auto:  # yesterday's failures (no photo, price jump) get another chance
+        for post in session.scalars(select(Post).where(Post.status == "draft",
+                                                       Post.created_at < _day_start_utc(now))).all():
+            fetch_images(session.get(Product, post.product_id))
+            check(post)
             session.commit()
+
+    p = s["publishing"]["daily_drafts"]
+    for product, as_stock in pick_products(session, now, p["max"], fx):
+        try:
+            res.errors += fetch_images(product)
+            d = create_draft(session, product, llm_client, fx, now=now, out_root=out_root, stock=as_stock)
             res.drafts.append(d)
             res.notes += [n for n in d.notes if n not in res.notes]
+            if auto:
+                check(d.post)
+            session.commit()
         except Exception as e:  # one bad product must not stop the rest
             session.rollback()  # earlier drafts are already committed
             log.warning("draft failed for %s: %s", product.style_code, e)
@@ -141,6 +198,10 @@ def make_daily_drafts(session: Session, llm_client, fx: dict[str, Rate], now: da
     if len(res.drafts) < p["min"]:
         res.notes.append(f"Bugun {len(res.drafts)} ta draft (reja: {p['min']}–{p['max']}). "
                          "Yangi mahsulot yuklang yoki /trend yozing.")
+    if auto:
+        for text in res.errors + [n for n in res.notes if not n.startswith("Rasm kerak")]:
+            note_problem(session, text, now)
+        session.commit()
     return res
 
 
@@ -190,13 +251,15 @@ def _get_post(session: Session, post_id: int, statuses: tuple[str, ...]) -> Post
     return post
 
 
-def approve(session: Session, post_id: int, admin_id: int, fx: dict[str, Rate], now: datetime,
+def approve(session: Session, post_id: int, admin_id: int | None, fx: dict[str, Rate], now: datetime,
             out_root=None) -> Outcome:
+    """admin_id None = automatic approval (auto_publish)."""
     post = _get_post(session, post_id, ("draft",))
     product = session.get(Product, post.product_id)
     if not own_photos(product):
-        return Outcome(False, f"Post #{post_id}: surat yoʻq — tasdiqlab boʻlmaydi. Botga SKU {product.style_code} "
-                              "izohi bilan surat yuboring.")
+        return Outcome(False, f"Post #{post_id} ({product.style_code}): surat yoʻq — tasdiqlab boʻlmaydi. "
+                              f"Botga SKU {product.style_code} izohi bilan surat yuboring"
+                              + (" yoki jadvalga image_urls qoʻshing." if product.images == [] else "."))
     threshold = config.settings()["publishing"]["price_change_alert_pct"]
     old, new, notes = refresh_post(session, post, fx, now=now, out_root=out_root)  # re-render with photos
     exceeded, lines = change_report(old, new, threshold)
@@ -249,9 +312,11 @@ def prepare_publish(session: Session, post: Post, fx: dict[str, Rate], now: date
     exceeded, lines = change_report(old, new, threshold)
     if exceeded:
         post.status = "draft"
-        session.flush()
-        return Outcome(False, f"Post #{post.id} nashr qilinmadi: narx {threshold:.0%} dan koʻp oʻzgardi. "
-                              "Qayta tasdiqlang.\n" + "\n".join(lines), notes)
+        msg = (f"Post #{post.id} nashr qilinmadi: narx {threshold:.0%} dan koʻp oʻzgardi. "
+               + ("Ertaga qayta tekshiriladi." if config.settings()["auto_publish"] else "Qayta tasdiqlang.")
+               + "\n" + "\n".join(lines))
+        note_problem(session, msg, now)
+        return Outcome(False, msg, notes)
     return Outcome(True, "", notes)
 
 
@@ -270,4 +335,36 @@ def admin_summary(session: Session, post: Post) -> str:
         cost = (f"tannarx {format_uzs(b['stock_cost_uzs'])}" if b.get("stock")
                 else f"manba {b['source_price']:g} {b['source_currency']}, tannarx ${b['landed_cost_usd']:.2f}")
         lines.append(f"• {q.size}: {format_uzs(q.sell_price_uzs)} — {cost}, foyda {format_uzs(b['profit_uzs'])}")
+    return "\n".join(lines)
+
+
+# --- daily summary -------------------------------------------------------------------
+
+def daily_summary(session: Session, now: datetime) -> str:
+    """The one daily message to the admin (auto mode): what went out, orders, problems."""
+    from app.llm import spent_usd
+    day_start = _day_start_utc(now)
+    published = list(session.scalars(select(Post).where(Post.published_at >= day_start).order_by(Post.published_at)))
+    new_orders = session.scalars(select(Order).where(Order.created_at >= day_start)).all()
+    active = select(Order).where(Order.cancelled_at.is_(None))
+    to_confirm = session.scalars(active.where(Order.prepayment_status == "awaiting_prepayment")).all()
+    to_buy = session.scalars(active.where(Order.prepayment_status == "paid", Order.buyout_status == "pending")).all()
+    problems = list(dict.fromkeys(session.scalars(
+        select(Problem.text).where(Problem.created_at >= day_start).order_by(Problem.id))))
+    queued = session.query(Post).filter(Post.status == "approved").count()
+
+    lines = [f"📊 {now.astimezone(TZ):%d.%m.%Y} — kunlik xulosa"
+             + (" · ⏸ PAUZA" if is_paused(session) else "") + (" · DRY_RUN" if config.dry_run() else "")]
+    lines.append(f"Kanalga chiqdi: {len(published)} ta post")
+    for post in published:
+        pr = session.get(Product, post.product_id)
+        lines.append(f"  • #{post.id} {pr.brand} {display_model(pr)}")
+    lines.append(f"Yangi buyurtmalar: {len(new_orders)} ta")
+    if to_confirm or to_buy:
+        lines.append(f"Sizdan kutilmoqda: toʻlovni tasdiqlash — {len(to_confirm)} ta, xarid — {len(to_buy)} ta (/orders)")
+    lines.append(f"Nashr navbatida: {queued} ta · AI xarajati: ${spent_usd(session, now.astimezone(TZ).date()):.2f}")
+    if problems:
+        lines += ["", "Chiqmadi / muammolar:"] + [f"  • {x}" for x in problems]
+    else:
+        lines.append("Muammo yoʻq ✅")
     return "\n".join(lines)

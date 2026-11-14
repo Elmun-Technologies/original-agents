@@ -12,6 +12,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from aiogram import Bot, Dispatcher, F, Router
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.triggers.cron import CronTrigger
 from aiogram.filters import Command, CommandObject
 from aiogram.types import (CallbackQuery, FSInputFile, InlineKeyboardButton, InlineKeyboardMarkup,
                            InputMediaDocument, InputMediaPhoto, Message)
@@ -21,7 +23,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from app import config
-from app.agents import orders, publisher
+from app.agents import orders, publisher, sourcing
 from app.agents.content import ContentError, own_photos, photo_dir
 from app.config import TZ
 from app.db.models import Order, Post, Product
@@ -35,6 +37,7 @@ PHOTO_EXTS = (".jpg", ".jpeg", ".png", ".webp", ".heic", ".heif")
 
 HELP = """Buyruqlar:
 /today — bugungi holat
+/summary — kunlik xulosa (avto rejimda har kuni kechqurun keladi)
 /drafts — hozir draft tayyorlash
 /publish — navbatdagi postni hozir nashr qilish
 /orders — ochiq buyurtmalar
@@ -44,7 +47,7 @@ HELP = """Buyruqlar:
 /trend <matn>
 /rate — CBU kurslari
 /expense <summa> <reklama|ai|server|menejer|boshqa> <izoh>
-/pause, /resume — draft va nashrni toʻxtatish/yoqish
+/pause, /resume — avtomatik ishni (yuklash, draft, nashr) toʻxtatish/yoqish
 /cancel — tahrirlashni bekor qilish
 Surat: SKUni izohga yozib yuboring (yaxshisi fayl sifatida), bitta SKUga 10 tagacha."""
 
@@ -212,25 +215,61 @@ class Tg:
 
 # --- jobs (also called by the scheduler) -----------------------------------------------
 
-async def job_daily_drafts(ctx: Ctx, tg: Tg) -> None:
+def auto() -> bool:
+    return config.settings()["auto_publish"]
+
+
+async def job_import(ctx: Ctx, tg: Tg) -> None:
+    """Daily manual_sheet import from settings.sheet_url. Failures go to the daily summary."""
+    def run():
+        with ctx.factory() as s:
+            if publisher.is_paused(s):
+                return
+            try:
+                report = sourcing.import_daily(s)
+            except sourcing.SheetError as e:
+                s.rollback()
+                publisher.note_problem(s, f"Jadval yuklanmadi: {e}", now())
+                s.commit()
+                return
+            if report and (report.rejected or report.row_errors):
+                publisher.note_problem(s, report.text(), now())
+                s.commit()
+    await asyncio.to_thread(run)
+
+
+async def job_daily_drafts(ctx: Ctx, tg: Tg, manual: bool = False) -> None:
     def run():
         at = now()
         fx, warns = fx_now(at)
-        if fx is None:
-            return [], warns
         with ctx.factory() as s:
+            if fx is None:
+                if auto():
+                    publisher.note_problem(s, "Draftlar tayyorlanmadi: " + "; ".join(warns), at)
+                    s.commit()
+                return [], warns
             res = publisher.make_daily_drafts(s, ctx.llm, fx, at)
             views = [post_view(s, d.post) for d in res.drafts]
             return views, warns + res.notes + [f"❌ {e}" for e in res.errors]
     views, notes = await asyncio.to_thread(run)
-    for v in views:
-        await tg.draft(v)
-    if notes:
-        await tg.admins("\n".join("• " + n for n in notes))
-    await tg.flush_alerts()
+    if manual or not auto():  # scheduled auto run: everything goes into the daily summary
+        for v in views:
+            await tg.draft(v)
+        if notes:
+            await tg.admins("\n".join("• " + n for n in notes))
+    await tg.flush_alerts()  # LLM budget etc.: always at once
 
 
-async def job_publish(ctx: Ctx, tg: Tg) -> bool:
+async def job_summary(ctx: Ctx, tg: Tg) -> None:
+    await tg.admins(await asyncio.to_thread(lambda: summary_text(ctx)))
+
+
+def summary_text(ctx: Ctx) -> str:
+    with ctx.factory() as s:
+        return publisher.daily_summary(s, now())
+
+
+async def job_publish(ctx: Ctx, tg: Tg, manual: bool = False) -> bool:
     """Publishes the next approved post. Returns False if there was nothing to publish."""
     def prepare():
         at = now()
@@ -245,7 +284,7 @@ async def job_publish(ctx: Ctx, tg: Tg) -> bool:
             s.commit()
             return (post_view(s, post) if out.ok else None), (None if out.ok else out.message), warns + out.notes
     view, error, notes = await asyncio.to_thread(prepare)
-    if error:
+    if error and (manual or not auto()):  # scheduled auto run: recorded for the daily summary
         await tg.admins("⚠️ " + error)
     if view is None:
         return error is not None
@@ -263,9 +302,25 @@ async def job_publish(ctx: Ctx, tg: Tg) -> bool:
             publisher.mark_published(s, s.get(Post, view.id), message_id, now())
             s.commit()
     await asyncio.to_thread(done)
-    if notes:
+    if notes and (manual or not auto()):
         await tg.admins("\n".join("• " + n for n in notes))
     return True
+
+
+def schedule(ctx: Ctx, tg: Tg) -> AsyncIOScheduler:
+    """All times Asia/Tashkent (settings.schedule). /pause is checked inside each job."""
+    sc = config.settings()["schedule"]
+    sched = AsyncIOScheduler(timezone=TZ)
+
+    def at(hhmm: str) -> CronTrigger:
+        h, m = hhmm.split(":")
+        return CronTrigger(hour=int(h), minute=int(m), timezone=TZ)
+    sched.add_job(job_import, at(sc["import_time"]), args=(ctx, tg), id="import", misfire_grace_time=3600)
+    sched.add_job(job_daily_drafts, at(sc["draft_time"]), args=(ctx, tg), id="drafts", misfire_grace_time=3600)
+    for i, hhmm in enumerate(sc["publish_times"]):
+        sched.add_job(job_publish, at(hhmm), args=(ctx, tg), id=f"publish{i}", misfire_grace_time=1800)
+    sched.add_job(job_summary, at(sc["summary_time"]), args=(ctx, tg), id="summary", misfire_grace_time=3600)
+    return sched
 
 
 # --- handlers ------------------------------------------------------------------------
@@ -299,6 +354,10 @@ def create_router(ctx: Ctx, tg: Tg) -> Router:
     async def today(m: Message):
         await m.answer(await db(lambda s: today_text(s, now())))
 
+    @r.message(Command("summary"))
+    async def summary(m: Message):
+        await m.answer(await asyncio.to_thread(lambda: summary_text(ctx)))
+
     @r.message(Command("rate"))
     async def rate(m: Message):
         await m.answer(await asyncio.to_thread(rate_text, now()))
@@ -306,7 +365,7 @@ def create_router(ctx: Ctx, tg: Tg) -> Router:
     @r.message(Command("pause"))
     async def pause(m: Message):
         await db(lambda s: publisher.set_paused(s, True))
-        await m.answer("⏸ Draft va nashr toʻxtatildi. /resume — davom ettirish.")
+        await m.answer("⏸ Avtomatik ish (yuklash, draft, nashr) toʻxtatildi. Kunlik xulosa keladi. /resume — davom ettirish.")
 
     @r.message(Command("resume"))
     async def resume(m: Message):
@@ -316,11 +375,11 @@ def create_router(ctx: Ctx, tg: Tg) -> Router:
     @r.message(Command("drafts"))
     async def drafts(m: Message):
         await m.answer("⏳ Draftlar tayyorlanmoqda…")
-        await job_daily_drafts(ctx, tg)
+        await job_daily_drafts(ctx, tg, manual=True)
 
     @r.message(Command("publish"))
     async def publish(m: Message):
-        if not await job_publish(ctx, tg):
+        if not await job_publish(ctx, tg, manual=True):
             await m.answer("Nashr navbati boʻsh (yoki pauza yoqilgan).")
 
     @r.message(Command("trend"))
@@ -542,7 +601,10 @@ def build(token: str | None = None) -> tuple[Bot, Dispatcher, Ctx, Tg]:
 async def main() -> None:
     logging.basicConfig(level=logging.INFO)
     logging.getLogger("httpx").setLevel(logging.WARNING)
-    bot, dp, _, _ = build()
+    bot, dp, ctx, tg = build()
+    sched = schedule(ctx, tg)
+    sched.start()
+    log.info("scheduler: %s", ", ".join(f"{j.id} {j.next_run_time:%d.%m %H:%M}" for j in sched.get_jobs()))
     await dp.start_polling(bot)
 
 

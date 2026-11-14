@@ -1,11 +1,35 @@
 # All business numbers live here. Code must not hard-code them.
 
 # Safety switches (see CLAUDE.md §2, §6.2, §6.4)
-# Poizon Terms of Use 20.1 (o, p, r) forbid robots and unauthorized programs. The poizon.com
-# scraper is NOT built and poizon_com mode is refused until Poizon gives written permission.
-poizon_written_permission: false
-sourcing_mode: manual_sheet         # manual_sheet | poizon_com (needs written permission)
-image_source_policy: own_photos_only  # own_photos_only | source_images
+# Owner's decision 2026-11-14: products and images straight from poizon.com; the owner accepts
+# the Poizon ToU 20.1 (o, p, r) risk. BUT poizon.com gives an honestly identified bot no product
+# data (CLAUDE.md §6.2 "Texnik holat"), and getting it would mean posing as a browser, so
+# poizon_client is not built and sourcing_mode=poizon_com is refused with that reason.
+poizon_scraping_enabled: true
+sourcing_mode: manual_sheet         # manual_sheet | poizon_com (not built, see above)
+image_source_policy: source_images  # source_images (owner's decision, owner bears image-rights risk) | own_photos_only
+
+# Automatic mode: posts that pass every check go to the channel without admin approval.
+# Manual steps stay manual: payment confirmation and buying on Poizon/Dewu.
+auto_publish: true
+sheet_url: ""                       # manual_sheet CSV / Google Sheet export link, imported daily; empty = skip
+
+schedule:                           # Asia/Tashkent
+  import_time: "05:00"              # sheet import (the slow scraper slot if it ever exists)
+  draft_time: "09:00"               # rank + price + images + drafts + auto check
+  publish_times: ["12:00", "19:00", "21:00"]
+  summary_time: "21:30"             # one daily message to the admin
+
+images:                             # image_source_policy=source_images downloads
+  max_bytes: 15000000
+  pause_seconds: 1                  # between downloads
+  timeout_seconds: 30
+
+ranking:                            # "Solishtiruvchi": score = sum(weight * part), each part 0..1
+  weights: {sold: 3, price: 2, sizes: 2, season: 1, trend: 3, has_images: 1}
+  price_range_usd: [40, 250]        # source price that sells in our market
+  sold_cap: 10000                   # sold counts above this score the same
+  winter_months: [10, 11, 12, 1, 2] # winter categories rank up, others down
 
 pricing:
   buyout_fee_pct: 0.05
@@ -78,9 +102,7 @@ stock:
   delivery_text: "Mavjud · 1 kunda yetkazamiz"
 
 publishing:
-  daily_drafts: {min: 3, max: 8}
-  draft_time: "10:00"
-  publish_times: ["12:00", "19:00", "21:00"]
+  daily_drafts: {min: 5, max: 8}
   price_change_alert_pct: 0.05      # recheck before approve/publish
   per_brand_daily_max: 2            # drafts per day, keeps the channel varied
   per_model_daily_max: 1

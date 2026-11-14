@@ -82,7 +82,12 @@ def test_stock_repost_after_14_days(db, tmp_path):
 
 # --- daily drafts ---
 
-def test_daily_drafts_continue_after_one_failure(db, tmp_path):
+@pytest.fixture
+def manual(monkeypatch):
+    monkeypatch.setitem(config.settings(), "auto_publish", False)
+
+
+def test_daily_drafts_continue_after_one_failure(db, tmp_path, manual):
     make_product(db, sku="GOOD1", brand="A", model="m1", description="good")
     make_product(db, sku="BAD", brand="B", model="m2", description="bad")
     make_product(db, sku="GOOD2", brand="C", model="m3", description="good")
@@ -91,7 +96,7 @@ def test_daily_drafts_continue_after_one_failure(db, tmp_path):
     res = publisher.make_daily_drafts(db, llm, FX, NOW, out_root=tmp_path)
     assert len(res.drafts) == 2 and len(res.errors) == 1 and "BAD" in res.errors[0]
     assert db.query(Post).count() == 2
-    assert any("reja: 3–8" in n for n in res.notes) and any("Rasm kerak" in n for n in res.notes)
+    assert any("reja: 5–8" in n for n in res.notes) and any("Rasm kerak" in n for n in res.notes)
 
 
 def test_paused_makes_nothing(db, tmp_path):
@@ -209,3 +214,62 @@ def test_admin_summary_shows_cost_and_profit(db, tmp_path):
     post, _ = draft(db, tmp_path)
     text = publisher.admin_summary(db, post)
     assert "manba 489 CNY" in text and "foyda" in text and "soʻm" in text
+
+
+# --- ranking ("Solishtiruvchi") ---
+
+def test_rank_sold_price_sizes_season(db):
+    cheap_hit = make_product(db, sku="HIT", brand="A", model="m1", sold_count=9000)
+    make_product(db, sku="NOSALES", brand="B", model="m2")
+    make_product(db, sku="PRICEY", brand="C", model="m3", sold_count=9000, sizes=(("41", 9000),))
+    make_product(db, sku="ODDSIZE", brand="D", model="m4", sold_count=9000, sizes=(("47", 489),), gender="men")
+    winter = make_product(db, sku="PUFF", brand="E", model="m5", category="puffer", sizes=(("M", 489),))
+    order = [p.style_code for p, _ in publisher.pick_products(db, NOW, 8, FX)]
+    assert order[0] == "HIT" and order.index("PRICEY") > 0 and order.index("ODDSIZE") > 0
+    terms = []
+    summer = NOW.replace(month=7)
+    assert publisher.rank_score(winter, terms, NOW, FX) > publisher.rank_score(winter, terms, summer, FX)
+    assert publisher.rank_score(cheap_hit, terms, summer, FX) > publisher.rank_score(cheap_hit, terms, NOW, FX)
+
+
+# --- auto mode ---
+
+def test_auto_mode_approves_good_and_reports_bad(db, tmp_path, photos):
+    make_product(db, sku="WITHPHOTO", brand="A", model="m1", images=["https://img/x.jpg"])
+    make_product(db, sku="NOPHOTO", brand="B", model="m2")
+    db.commit()
+    calls = []
+
+    def fake_fetch(product):
+        calls.append(product.style_code)
+        if product.images:
+            add_photos(photos, product.style_code, 1)
+        return []
+    res = publisher.make_daily_drafts(db, FakeLlm(), FX, NOW, out_root=tmp_path, fetch_images=fake_fetch)
+    status = {db.get(publisher.Product, p.product_id).style_code: p.status for p in db.query(Post)}
+    assert status == {"WITHPHOTO": "approved", "NOPHOTO": "draft"}
+    assert db.query(Post).filter_by(status="approved").one().approved_by is None
+    summary = publisher.daily_summary(db, NOW)
+    assert "NOPHOTO" in summary and "surat yoʻq" in summary and "Kanalga chiqdi: 0" in summary
+
+    # next day: photo arrived -> the old draft is re-checked and approved
+    add_photos(photos, "NOPHOTO", 1)
+    publisher.make_daily_drafts(db, FakeLlm(), FX, NOW + timedelta(days=1), out_root=tmp_path, fetch_images=fake_fetch)
+    assert db.query(Post).filter_by(status="draft").count() == 0
+
+
+def test_price_jump_blocks_publish_and_is_in_summary(db, tmp_path, photos):
+    post, p = draft(db, tmp_path)
+    add_photos(photos, p.style_code)
+    publisher.approve(db, post.id, None, FX, NOW, out_root=tmp_path)
+    out = publisher.prepare_publish(db, post, {"USD": FX["USD"], "CNY": Rate(Decimal("2000"), NOW)}, NOW,
+                                    out_root=tmp_path)
+    assert not out.ok and post.status == "draft" and "Ertaga" in out.message
+    assert "narx 5% dan koʻp" in publisher.daily_summary(db, NOW)
+
+
+def test_summary_counts_published_and_waiting_orders(db, tmp_path):
+    post, _ = draft(db, tmp_path)
+    publisher.mark_published(db, post, 7, NOW)
+    s = publisher.daily_summary(db, NOW)
+    assert "Kanalga chiqdi: 1" in s and "New Balance 530" in s and "Muammo yoʻq" in s

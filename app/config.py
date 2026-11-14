@@ -12,8 +12,12 @@ CONFIG_DIR = ROOT / "config"
 DATA_DIR = ROOT / "data"  # runtime state (gitignored, docker volume)
 
 REQUIRED = {
-    "settings.yaml": ["poizon_written_permission", "sourcing_mode", "image_source_policy", "pricing", "customs",
-                      "sourcing", "llm", "content", "stock", "publishing"],
+    "settings.yaml": ["poizon_scraping_enabled", "sourcing_mode", "image_source_policy", "auto_publish", "sheet_url",
+                      "schedule", "images", "ranking", "pricing", "customs", "sourcing", "llm", "content", "stock",
+                      "publishing"],
+    "schedule": ["import_time", "draft_time", "publish_times", "summary_time"],
+    "images": ["max_bytes", "pause_seconds", "timeout_seconds"],
+    "ranking": ["weights", "price_range_usd", "sold_cap", "winter_months"],
     "pricing": ["buyout_fee_pct", "buyout_fee_min_usd", "ship_rate_per_kg_usd", "avia_months",
                 "local_delivery_usd", "volumetric_divisor", "usd_rate_buffer_pct", "round_to_uzs",
                 "quote_valid_hours", "stale_rate_max_hours", "stale_rate_extra_buffer_pct"],
@@ -23,7 +27,7 @@ REQUIRED = {
     "content": ["badge", "delivery_days", "cta", "hashtags", "max_body_chars", "llm_retries", "caption_max_chars",
                 "photos_dir", "cards_max"],
     "stock": ["markup", "delivery_text"],
-    "publishing": ["daily_drafts", "draft_time", "publish_times", "price_change_alert_pct",
+    "publishing": ["daily_drafts", "price_change_alert_pct",
                    "per_brand_daily_max", "per_model_daily_max", "stock_repost_after_days",
                    "trend_days", "photos_max_per_sku"],
     "category": ["weight_kg", "package_cm", "markup", "winter", "size_type", "label_uz", "hashtag"],
@@ -54,7 +58,10 @@ def validate(settings: dict, categories: dict) -> None:
     _require(settings["llm"], REQUIRED["llm"], "settings.yaml:llm")
     _require(settings["content"], REQUIRED["content"], "settings.yaml:content")
     _require(settings["stock"], REQUIRED["stock"], "settings.yaml:stock")
-    _require(settings["publishing"], REQUIRED["publishing"], "settings.yaml:publishing")
+    for key in ("publishing", "schedule", "images", "ranking"):
+        _require(settings[key], REQUIRED[key], f"settings.yaml:{key}")
+    if settings["image_source_policy"] not in ("source_images", "own_photos_only"):
+        raise ConfigError(f"image_source_policy: {settings['image_source_policy']!r}")
     for name, cat in categories.items():
         _require(cat, REQUIRED["category"], f"categories.yaml:{name}")
 

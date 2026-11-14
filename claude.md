@@ -125,7 +125,8 @@ tests/
 - Tezlik: bitta oqim, so'rovlar orasida 5–10 soniya tasodifiy pauza, kuniga ko'pi bilan ~500 sahifa. Javoblar 12 soat keshlanadi.
 - Aniq User-Agent qo'ying (loyiha nomi + aloqa email `.env` dan).
 - 403/429/captcha → darhol to'xtash, adminga xabar. Chetlab o'tishga urinmang (proxy aylantirish, captcha yechish va h.k. — **yo'q**).
-- **Scraper oʻchirilgan va qurilmagan.** Poizon Terms of Use 20.1 (o, p, r) robot, spider va ruxsatsiz dasturlar bilan kirishni taqiqlaydi. `poizon_client.py` faqat Poizon'dan **yozma ruxsat** olingandan keyin quriladi va yoqiladi (`settings.yaml`: `poizon_written_permission: true`). Ungacha `sourcing_mode: poizon_com` kod tomonidan rad etiladi; mahsulotlar faqat `manual_sheet` (CSV / Google Sheet) orqali keladi. Avtomatik rejimda ham Poizon/Dewu saytlari va CDN'idan hech narsa yuklab olinmaydi.
+- **Egasining qarori (2026-11-14):** tovar va rasmlar to'g'ridan-to'g'ri poizon.com'dan olinadi (vositachi va Google Sheet yo'q). Poizon Terms of Use 20.1 (o, p, r) robot va ruxsatsiz dasturlarni taqiqlaydi; bundan kelib chiqadigan xavfni (IP blok, rasmlar bo'yicha shikoyat) do'kon egasi biladi va o'z zimmasiga oladi. `settings.yaml`: `poizon_scraping_enabled: true`. Yuqoridagi robots.txt / tezlik / to'xtash qoidalari o'zgarmaydi.
+- **Texnik holat (2026-11-14 tekshiruvi):** aniq User-Agent bilan (oddiy so'rov ham, Playwright brauzer ham) poizon.com mahsulot ro'yxatini bermaydi: brend, `/trends`, kategoriya sahifalarida va ularning ichki API'sida `spuList` bo'sh ("No results", total 1200). Sitemap faqat maqolalarni beradi. Ma'lumot olish uchun o'zini oddiy brauzer qilib ko'rsatish (soxta UA, headless'ni yashirish) kerak bo'lardi — bu himoyani chetlab o'tish, taqiqlangan. Shuning uchun `poizon_client.py` qurilmagan; `sourcing_mode: poizon_com` kod tomonidan shu sabab bilan rad etiladi. Hozirgi manba — `manual_sheet` (CSV / Sheet, zaxira rejim). Poizon rasmiy API/hamkorlik dasturi yoki sayt bot'ga ma'lumot bera boshlasa — qayta ko'riladi.
 
 **Har bir mahsulotdan oladigan narsalar:** nom, brend, style code (SKU), rang, kategoriya, har bir o'lcham bo'yicha narx (USD) va mavjudligi, rasm URL'lari, sahifa URL'i.
 
@@ -165,7 +166,7 @@ sell_price_uzs          = ceil_to(landed_cost_usd * (1 + markup[category]) * usd
 - Post matni (o'zbekcha, lotin; ixtiyoriy ruscha): model nomi, nimasi bilan yaxshi (2–3 fakt — faqat manbadan olingan ma'lumot), mavjud o'lchamlar, narx, yetkazish muddati (avto 20–30 kun / avia 7–12 kun — sozlamadan), "buyurtma qilingan tovar o'lcham sababli qaytarilmaydi — o'lchamni yozing, yordam beramiz", buyurtma uchun chaqiriq (Instagram DM / Telegram bot).
 - Hashtaglar: 5–8 ta, o'zbekcha va brend.
 
-**Qoidalar:** `prompts/content_uz.md`. Uydirma fakt yo'q. Rasm ustida tovarni o'zgartiruvchi AI tahrir yo'q (2-bo'lim). Rasm huquqlari: manba rasmlarini ishlatish bo'yicha admin qarori `settings.yaml` dagi `image_source_policy` da (`source_images` / `own_photos_only`). Default — `own_photos_only` holatida kontent agenti adminga "rasm kerak" deb so'raydi.
+**Qoidalar:** `prompts/content_uz.md`. Uydirma fakt yo'q. Rasm ustida tovarni o'zgartiruvchi AI tahrir yo'q (2-bo'lim). Rasm huquqlari: `settings.yaml` dagi `image_source_policy` (`source_images` / `own_photos_only`). **Egasining qarori (2026-11-14): `source_images`** — mahsulotning `image_urls` dagi rasmlari (Poizon/Dewu CDN ham) avtomatik yuklab olinadi va tovarni o'zgartirmasdan kartochkaga qo'yiladi. Rasm huquqi bo'yicha xavfni do'kon egasi o'z zimmasiga oladi. `own_photos_only` holatida kontent agenti adminga "rasm kerak" deb so'raydi.
 
 ### 6.5 Nashr agenti (`agents/publisher.py` + `bot/admin_bot.py`)
 - Har kuni 10:00 da 3–8 ta yangi `draft` post adminga Telegram botda yuboriladi: rasmlar + matn + narx tafsiloti (tannarx, ustama, foyda) + tugmalar: **✅ Tasdiqlash / ✏️ Tahrirlash / ❌ Rad etish / 🔄 Narxni yangilash**.
@@ -176,6 +177,8 @@ sell_price_uzs          = ceil_to(landed_cost_usd * (1 + markup[category]) * usd
 - Draft tartibi: ombordagi tovar → `/trend`ga mos → posti yoʻq eng yangi; kuniga bir brenddan ≤2, bir modeldan ≤1.
 - Ombor: qoldiq va tannarx **oʻlcham boʻyicha** (`product_sizes.stock_qty`, `stock_cost_uzs`); narx = tannarx × (1 + `stock.markup`); postda "Mavjud · 1 kunda yetkazamiz". Tannarx buyurtma "📦 Omborga" qilinganda uning landed cost'idan olinadi (oʻrtacha), `/stockcost` bilan tuzatiladi.
 - Tasdiqlashdan oldin narx qayta tekshiriladi: manbadagi narx 5% dan ko'p o'zgargan bo'lsa — post qayta hisoblanadi va admin ogohlantiriladi.
+
+**Avtomatik rejim (`auto_publish: true`, egasining qarori 2026-11-14):** admin har bir postni tasdiqlamaydi. Jadval (Asia/Tashkent, `settings.yaml: schedule`): 05:00 mahsulot yuklash (`sheet_url`, manual_sheet), 09:00 saralash (Solishtiruvchi: sotuv soni, narx diapazoni, ommabop o'lchamlar, mavsum, /trend) + narx + rasm yuklash + draft + avto-tekshiruv, 12:00/19:00/21:00 nashr, 21:30 adminga bitta kunlik xulosa. Tekshiruvdan o'tgan post (rasm bor, narx yangi, matn filtrdan o'tgan, narx o'zgarishi ≤5%) o'zi tasdiqlanadi; o'tmagani chiqmaydi va xulosada "chiqmadi, sababi: …" bo'ladi, ertasi kuni qayta tekshiriladi. /pause hammasini to'xtatadi (xulosa keladi). Qo'lda qoladi: to'lovni tasdiqlash va xarid. Avto rejimda Instagram paket alohida yuborilmaydi.
 
 ### 6.6 Sotuv agenti — Chatplace (`agents/sales_api.py` + `prompts/sales_agent.md`)
 Chatplace Instagram/Telegram DM'larni boshqaradi; bizning backend unga ma'lumot beradi.
@@ -224,7 +227,7 @@ Har dushanba 09:00 da adminga, oddiy tilda, atamalarsiz:
 
 **Bosqich 0 — Sinov (MVP, 1–2 hafta qurish, 4–6 hafta sinov):**
 - Narx moduli + testlar
-- Manba: `manual_sheet` rejimi (birinchi), poizon.com klienti faqat Poizon'dan yozma ruxsat olinganda (ToU 20.1 o, p, r)
+- Manba: `manual_sheet` rejimi (hozirgi yagona ishlaydigan manba); poizon.com klienti — 6.2 "Texnik holat"ga qarang
 - Kontent (rasm shablon + matn)
 - Admin bot + Telegram kanalga nashr
 - Buyurtmalar botda qo'lda

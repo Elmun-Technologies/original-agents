@@ -28,8 +28,9 @@ from app.scraping import blocklist
 SOURCE = "manual_sheet"
 COLUMNS = ("brand", "model_name", "style_code", "category", "gender", "colorway", "size_eu",
            "price", "currency", "available", "source_url", "image_urls", "description", "seller_note")
-OPTIONAL_COLUMNS = ("origin",)  # dewu | poizon_com | other (default). Only dewu/poizon_com
-                                # name+description count as official text for the blocklist.
+# origin: dewu | poizon_com | other (default); only dewu/poizon_com name+description count as
+# official text for the blocklist. sold_count: "Sold" number at the source, used for ranking.
+OPTIONAL_COLUMNS = ("origin", "sold_count")
 SHOE_SIZE = re.compile(r"^(\d{2})(\.5| 1/3| 2/3)?$")
 APPAREL_SIZES = {"XXS", "XS", "S", "M", "L", "XL", "XXL", "XXXL", "2XL", "3XL", "4XL"}
 YES = {"", "1", "true", "yes", "ha", "bor", "+"}
@@ -38,7 +39,7 @@ GENDERS = {"": "unisex", "unisex": "unisex", "u": "unisex",
            "men": "men", "male": "men", "m": "men", "erkak": "men",
            "women": "women", "female": "women", "w": "women", "ayol": "women"}
 PRODUCT_FIELDS = ("brand", "model_name", "category", "gender", "colorway", "source_url",
-                  "description", "seller_note", "origin")
+                  "description", "seller_note", "origin", "sold_count")
 
 log = logging.getLogger(__name__)
 
@@ -143,6 +144,10 @@ def parse_row(row: dict, cats: dict) -> dict | str:
         return f"gender noto'g'ri: '{r['gender']}' (men/women/unisex)"
     r["gender"] = gender
     r["images"] = [u for u in re.split(r"[|\s]+", r.pop("image_urls")) if u.startswith("http")]
+    sold = r["sold_count"].replace(" ", "").replace(",", "").replace("+", "")
+    if sold and not sold.isdigit():
+        return f"sold_count notoʻgʻri: '{r['sold_count']}' (butun son)"
+    r["sold_count"] = int(sold) if sold else None
     for k in ("colorway", "source_url", "description", "seller_note"):
         r[k] = r[k] or None
     return r
@@ -155,11 +160,13 @@ def has_popular_size(sizes: dict[str, dict], gender: str, ranges: dict) -> bool:
 
 
 def check_sourcing_mode(settings: dict) -> None:
-    """poizon_com mode needs Poizon's written permission (ToU 20.1 o, p, r forbid robots)."""
-    if settings["sourcing_mode"] == "poizon_com" and settings["poizon_written_permission"] is not True:
-        raise SheetError("sourcing_mode=poizon_com: Poizon'dan yozma ruxsat yoʻq (poizon_written_permission). "
-                         "Mahsulotlar faqat manual_sheet orqali yuklanadi.")
-    if settings["sourcing_mode"] not in ("manual_sheet", "poizon_com"):
+    """poizon_com is not built: poizon.com gives an honestly identified bot no product data, and
+    posing as a browser to get it would be bypassing their protection (CLAUDE.md §6.2)."""
+    if settings["sourcing_mode"] == "poizon_com":
+        raise SheetError("sourcing_mode=poizon_com: poizon.com aniq User-Agent'li bot'ga mahsulot roʻyxatini "
+                         "bermaydi (2026-11-14 tekshiruvi), oʻzini brauzer qilib koʻrsatish — himoyani chetlab "
+                         "oʻtish. Klient qurilmagan; manual_sheet ishlating.")
+    if settings["sourcing_mode"] != "manual_sheet":
         raise SheetError(f"sourcing_mode notoʻgʻri: {settings['sourcing_mode']}")
 
 
@@ -227,6 +234,16 @@ def import_sheet(session: Session, source: str, *, client: httpx.Client | None =
         else:
             (report.created if is_new else report.updated).append(sc)
     session.flush()
+    return report
+
+
+def import_daily(session: Session, client: httpx.Client | None = None) -> ImportReport | None:
+    """Scheduled import from settings.sheet_url (None if not set). Commits."""
+    url = config.settings()["sheet_url"]
+    if not url:
+        return None
+    report = import_sheet(session, url, client=client)
+    session.commit()
     return report
 
 
