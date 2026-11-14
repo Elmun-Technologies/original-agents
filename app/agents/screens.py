@@ -1,8 +1,11 @@
-"""Products from POIZON app screenshots. poizon.com gives an honestly identified bot no product
+"""Products from POIZON app screenshots (+ images saved from the app). poizon.com gives an honestly identified bot no product
 data (CLAUDE.md §6.2 "Texnik holat"), so the admin sends 1-3 screenshots from the app; Claude vision
 reads them, the admin confirms (or corrects), and only then the product is saved through the same
-validation + blocklist as the sheet import. The product photo is cropped from the screenshot
-(cropping only, the product itself is not edited, CLAUDE.md §2)."""
+validation + blocklist as the sheet import.
+
+Card photos: saved images ("Save image") are preferred over screenshots; from each image only the
+product photo area is cut out (no QR code / ad strip). Cropping only: the picture itself, including
+any 得物 watermark, is used as is (CLAUDE.md §2)."""
 import hashlib
 import io
 import json
@@ -16,12 +19,17 @@ from sqlalchemy.orm import Session
 
 from app import config
 from app.agents import sourcing
-from app.agents.content import photo_dir
+from app.agents.content import language_problems, photo_dir
 from app.db.models import Product
+from app.scraping import blocklist
 
 PROMPT = config.ROOT / "prompts" / "screens.md"
 SOURCE = "poizon_app"
 MAX_SIDE = 1568            # long side sent to the model; larger only costs more tokens
+MAX_IMAGES = 6             # per product message (screenshots + saved images)
+ASK_SIZES = "Oʻlchamlar oʻqilmadi — oʻlcham tanlash oynasining skrinshotini yuboring."
+LOW_QUALITY = "rasm sifati past ({w}×{h}) — ilovadan «Save image» qilib yuboring"
+UNCLEAR_FALLBACK = "baʼzi maʼlumotlar aniq oʻqilmadi"
 CURRENCY_SIGN = {"CNY": "¥", "USD": "$"}
 
 
@@ -46,6 +54,10 @@ def parse_json(text: str) -> dict:
         raise ScreenError("Skrinshotdan maʼlumot oʻqilmadi (javob JSON emas). Aniqroq skrinshot yuboring.")
     if not isinstance(data, dict):
         raise ScreenError("Skrinshotdan maʼlumot oʻqilmadi.")
+    # notes are shown to the admin: Uzbek only; an English/Chinese slip becomes a generic note
+    unclear = [str(u) for u in data.get("unclear") or []]
+    data["unclear"] = list(dict.fromkeys(u if not language_problems(u, set()) else UNCLEAR_FALLBACK
+                                         for u in unclear))
     return data
 
 
@@ -80,20 +92,42 @@ def to_rows(d: dict, source_url: str | None = None) -> list[dict]:
     return [base | {"size_eu": str(s.get("size") or ""), "price": str(s.get("price") or "")} for s in sizes]
 
 
+def needs_sizes(d: dict) -> bool:
+    return not [s for s in d.get("sizes") or [] if str(s.get("size") or "").strip()]
+
+
 def problems(d: dict) -> list[str]:
-    """Validation errors before saving (same rules as the sheet)."""
+    """Reasons it cannot be saved yet (same rules as the sheet + knock-off + min price)."""
+    if needs_sizes(d):
+        return [ASK_SIZES]
+    cats = config.categories()
     out = []
-    if (d.get("size_system") or "EU").upper() not in ("EU", "LETTERS", "") and d.get("category") in (
-            c for c, v in config.categories().items() if v["size_type"] == "shoe"):
+    fake = blocklist.knockoff(d.get("brand"), " ".join(filter(None, [d.get("model_name"), d.get("colorway")])))
+    if fake:
+        return [fake]
+    if (d.get("size_system") or "EU").upper() not in ("EU", "LETTERS", "") and \
+            cats.get(d.get("category"), {}).get("size_type") == "shoe":
         out.append(f"oʻlchamlar {d['size_system']} tizimida — EU kerak (✏️ Tuzatish: masalan 'US 9 = EU 42.5')")
     for row in to_rows(d):
-        r = sourcing.parse_row(row, config.categories())
+        r = sourcing.parse_row(row, cats)
         if isinstance(r, str) and r not in out:
             out.append(r)
+    cat = cats.get(d.get("category"))
+    prices = [s.get("price") for s in d.get("sizes") or []]
+    if cat and not out and prices:
+        try:
+            low = min(float(x) for x in prices)
+        except (TypeError, ValueError):
+            low = None
+        floor = cat.get("min_price", {}).get(d.get("currency") or "CNY")
+        if low is not None and floor is not None and low < floor:
+            sign = CURRENCY_SIGN.get(d.get("currency") or "CNY", "")
+            out.append(f"⚠️ narx juda past: {sign}{low:g} < {sign}{floor} ({cat['label_uz']}) — "
+                       "original boʻlmasligi mumkin, qoʻshilmaydi")
     return out
 
 
-def preview_text(d: dict) -> str:
+def preview_text(d: dict, warnings: list[str] = ()) -> str:
     sign = CURRENCY_SIGN.get(d.get("currency") or "CNY", "")
     sizes = ", ".join(f"{s.get('size')}: {sign}{s.get('price')}" for s in d.get("sizes") or []) or "—"
     sku = d.get("style_code") or f"— (koʻrinmadi, {style_code(d)} beriladi)"
@@ -104,30 +138,61 @@ def preview_text(d: dict) -> str:
              f"Oʻlcham ({d.get('size_system') or '?'}) va narx: {sizes}",
              f"Sotilgan: {d['sold_count']}" if d.get("sold_count") is not None else "Sotilgan: —"]
     if d.get("unclear"):
-        lines.append("Aniq emas: " + "; ".join(map(str, d["unclear"])))
+        lines.append("Aniq emas: " + "; ".join(d["unclear"]))
+    lines += [f"⚠️ {w}" for w in warnings]
     errs = problems(d)
-    if errs:
+    if errs == [ASK_SIZES]:
+        lines += ["", "📏 " + ASK_SIZES]
+    elif errs:
         lines += ["", "❌ Saqlab boʻlmaydi:"] + [f"  • {e}" for e in errs]
-    lines.append("" if errs else "\nToʻgʻrimi?")
-    return "\n".join(lines).rstrip()
+    else:
+        lines += ["", "Toʻgʻrimi?"]
+    return "\n".join(lines)
 
 
-def crop_photo(paths: list[Path], d: dict, dest: Path) -> Path | None:
-    """Crops the product photo box from the screenshot; None if the box is missing or tiny."""
-    ph = d.get("photo") or {}
+def card_sources(paths: list[Path], d: dict) -> list[tuple[Path, list | None]]:
+    """(image, photo box) for the card: saved images first; screenshots only if there are none."""
+    info = d.get("images") or []
+    entries = [(p, (info[i] if i < len(info) and isinstance(info[i], dict) else {})) for i, p in enumerate(paths)]
+    saved = [(p, e.get("photo_box")) for p, e in entries if e.get("kind") == "saved_image"]
+    if saved:
+        return saved
+    shots = [(p, e.get("photo_box")) for p, e in entries if e.get("photo_box")]
+    return shots[:1]
+
+
+def crop_box(path: Path, box: list | None, dest: Path) -> Path | None:
+    """Cuts the product photo area (box in 0..1000) out of the image; no box = whole image.
+    Cropping only. None if the box is missing/tiny or the file is unreadable."""
     try:
-        idx, box = int(ph.get("image", 0)), [float(v) for v in ph["box"]]
-        with Image.open(paths[idx]) as im:
+        with Image.open(path) as im:
             w, h = im.size
-            x0, y0, x1, y1 = (max(0.0, min(1000.0, v)) / 1000 for v in box)
-            rect = (round(x0 * w), round(y0 * h), round(x1 * w), round(y1 * h))
+            if box is None:
+                rect = (0, 0, w, h)
+            else:
+                x0, y0, x1, y1 = (max(0.0, min(1000.0, float(v))) / 1000 for v in box)
+                rect = (round(x0 * w), round(y0 * h), round(x1 * w), round(y1 * h))
             if rect[2] - rect[0] < 200 or rect[3] - rect[1] < 200:
                 return None
             dest.parent.mkdir(parents=True, exist_ok=True)
             im.convert("RGB").crop(rect).save(dest, "JPEG", quality=95)
             return dest
-    except (KeyError, IndexError, TypeError, ValueError, OSError):
+    except (TypeError, ValueError, OSError):
         return None
+
+
+def card_photos(paths: list[Path], d: dict, folder: Path, prefix: str) -> tuple[list[Path], list[str]]:
+    """Crops for the card into folder/<prefix>_NN.jpg + low-quality warnings."""
+    out, warns = [], []
+    for i, (src, box) in enumerate(card_sources(paths, d)):
+        dest = crop_box(src, box, folder / f"{prefix}_{i:02d}.jpg")
+        if dest is None:
+            continue
+        out.append(dest)
+        with Image.open(dest) as im:
+            if max(im.size) < config.settings()["images"]["min_side_px"]:
+                warns.append(LOW_QUALITY.format(w=im.width, h=im.height))
+    return out, list(dict.fromkeys(warns))
 
 
 def save(session: Session, d: dict, paths: list[Path], source_url: str | None = None) -> tuple[Product | None, str]:
@@ -137,17 +202,19 @@ def save(session: Session, d: dict, paths: list[Path], source_url: str | None = 
     product = session.scalar(select(Product).where(Product.style_code == sku))
     if product is None:
         return None, "❌ Saqlanmadi: " + "; ".join(r for _, r in rep.row_errors)
-    folder = photo_dir(product)
-    for old in folder.glob("app_*") if folder.is_dir() else []:  # a re-send replaces the old crop
-        old.unlink()
-    cropped = crop_photo(paths, d, folder / f"app_{datetime.now():%Y%m%d%H%M%S}.jpg")
     if rep.rejected or rep.skipped:
         return product, f"⛔ {sku}: {product.rejected_reason}"
+    folder = photo_dir(product)
+    for old in folder.glob("app_*") if folder.is_dir() else []:  # a re-send replaces the old crops
+        old.unlink()
+    photos, warns = card_photos(paths, d, folder, f"app_{datetime.now():%Y%m%d%H%M%S}")
     prices = [s.source_price for s in product.sizes if s.available]
     sign = CURRENCY_SIGN.get(product.sizes[0].source_currency, "") if product.sizes else ""
     verb = "yangilandi" if sku in rep.updated else "qoʻshildi"
     return product, (f"✓ {verb}: {product.brand} {product.model_name} ({sku}), {sign}{min(prices):g} dan"
-                     + ("" if cropped else "\nRasm qirqilmadi — SKU izohi bilan rasm yuboring.")
+                     + (f", kartochka uchun {len(photos)} ta rasm" if photos else
+                        "\nRasm qirqilmadi — SKU izohi bilan rasm yuboring.")
+                     + "".join(f"\n⚠️ {w}" for w in warns)
                      + (f"\nXato oʻlchamlar: " + "; ".join(r for _, r in rep.row_errors) if rep.row_errors else ""))
 
 

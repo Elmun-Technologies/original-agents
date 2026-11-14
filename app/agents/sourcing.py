@@ -159,6 +159,21 @@ def has_popular_size(sizes: dict[str, dict], gender: str, ranges: dict) -> bool:
                for size, s in sizes.items())
 
 
+def too_cheap(product: Product, cat: dict) -> str | None:
+    """Lowest available price below the category's min_price (categories.yaml) -> reason.
+    A real pair this cheap is unlikely: rejected with a warning for the admin."""
+    sizes = [s for s in product.sizes if s.available]
+    if not sizes or "min_price" not in cat:
+        return None
+    s = min(sizes, key=lambda x: x.source_price)
+    floor = cat["min_price"].get(s.source_currency)
+    if floor is None or s.source_price >= floor:
+        return None
+    sign = "¥" if s.source_currency == "CNY" else "$"
+    return (f"narx juda past: {sign}{s.source_price:g} < {sign}{floor} ({cat['label_uz']}) — "
+            "original boʻlmasligi mumkin, qoʻshilmadi")
+
+
 def check_sourcing_mode(settings: dict) -> None:
     """poizon_com is not built: poizon.com gives an honestly identified bot no product data, and
     posing as a browser to get it would be bypassing their protection (CLAUDE.md §6.2)."""
@@ -229,8 +244,12 @@ def import_rows(session: Session, raw_rows: list[dict], source: str, first_row: 
             if size not in sizes:
                 ps.available = False
 
+        low = too_cheap(p, cats[p.category])
         if not blocklist.apply(p):
             report.rejected.append((sc, p.rejected_reason))
+        elif low:
+            p.is_active, p.rejected_reason = False, low
+            report.rejected.append((sc, low))
         elif (cats[p.category]["size_type"] == "shoe"
               and not has_popular_size({s.size_eu: {"available": s.available} for s in p.sizes},
                                        p.gender, ranges)):

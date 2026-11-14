@@ -1,4 +1,5 @@
-"""Replica filter (CLAUDE.md §2: "Faqat original"). Word lists: config/blocklist.yaml."""
+"""Replica filter (CLAUDE.md §2: "Faqat original"). Word lists: config/blocklist.yaml.
+Also the "oʻxshatma" check: a famous model name under a missing or foreign brand."""
 import re
 import unicodedata
 from dataclasses import dataclass
@@ -31,6 +32,7 @@ class Rules:
     domains: list[str]
     exceptions: list[str]
     official_sources: frozenset[str]
+    famous_models: tuple[tuple[str, re.Pattern, tuple[re.Pattern, ...]], ...] = ()  # (model, rx, allowed brands)
 
 
 def build_rules(cfg: dict) -> Rules:
@@ -44,6 +46,8 @@ def build_rules(cfg: dict) -> Rules:
         domains=[normalize(d).strip() for d in cfg["domains"]],
         exceptions=sorted((normalize(e).strip() for e in cfg["exceptions"]), key=len, reverse=True),
         official_sources=frozenset(cfg["official_sources"]),
+        famous_models=tuple((normalize(str(m)).strip(), term_regex(str(m)), tuple(term_regex(b) for b in brands))
+                            for m, brands in (cfg.get("famous_models") or {}).items()),
     )
 
 
@@ -81,6 +85,17 @@ def check(fields: dict[str, str | None], *, official: bool = False, r: Rules | N
     return "replika: " + "; ".join(found) if found else None
 
 
+def knockoff(brand: str | None, name: str | None, r: Rules | None = None) -> str | None:
+    """Famous model in the name, brand missing or not allowed for it -> reason."""
+    r = r or rules()
+    b, text = normalize(brand or "").strip(), normalize(name or "")
+    for model, rx, allowed in r.famous_models:
+        if rx.search(text) and not any(a.search(b) for a in allowed):
+            who = f"brend '{brand}'" if b else "brend yoʻq"
+            return f"brendsiz oʻxshatma — qoʻshilmadi ('{model}', {who})"
+    return None
+
+
 def apply(product) -> bool:
     """Checks a Product, sets rejected_reason/is_active. Returns True if clean."""
     reason = check({
@@ -89,6 +104,7 @@ def apply(product) -> bool:
         "seller_note": product.seller_note,
         "source_url": product.source_url,
     }, official=product.origin in rules().official_sources)
+    reason = reason or knockoff(product.brand, " ".join(filter(None, [product.model_name, product.colorway])))
     product.rejected_reason = reason
     product.is_active = reason is None
     return reason is None

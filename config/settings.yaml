@@ -25,6 +25,7 @@ images:                             # image_source_policy=source_images download
   max_bytes: 15000000
   pause_seconds: 1                  # between downloads
   timeout_seconds: 30
+  min_side_px: 1080                 # card photo with a longer side below this -> "rasm sifati past" warning
 
 ranking:                            # "Solishtiruvchi": score = sum(weight * part), each part 0..1
   weights: {sold: 3, price: 2, sizes: 2, season: 1, trend: 3, has_images: 1}

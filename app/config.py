@@ -17,7 +17,7 @@ REQUIRED = {
                       "publishing"],
     "schedule": ["import_time", "draft_time", "publish_times", "summary_time", "weekly_report"],
     "trial": ["start", "days", "paid_orders_min", "ads_per_order_max_uzs", "size_problem_max_pct"],
-    "images": ["max_bytes", "pause_seconds", "timeout_seconds"],
+    "images": ["max_bytes", "pause_seconds", "timeout_seconds", "min_side_px"],
     "ranking": ["weights", "price_range_usd", "sold_cap", "winter_months"],
     "pricing": ["buyout_fee_pct", "buyout_fee_min_usd", "ship_rate_per_kg_usd", "avia_months",
                 "local_delivery_usd", "volumetric_divisor", "usd_rate_buffer_pct", "round_to_uzs",

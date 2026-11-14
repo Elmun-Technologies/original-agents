@@ -303,3 +303,14 @@ def test_report_sends_text_and_excel(env):
     send(env, "/report")
     assert "Tushum" in env[2].texts()[-1]
     assert isinstance(env[2].sent[-1], SendDocument)
+
+
+def test_size_picker_screenshot_is_merged(env, db, tmp_path, monkeypatch):
+    photo = screenshot_env(env, monkeypatch, tmp_path, [{"sizes": []}, {}])
+    dp, bot, session, ctx = env
+    asyncio.run(dp.feed_update(bot, Update(update_id=40, message=photo(7))))
+    assert "oʻlcham tanlash oynasining skrinshotini yuboring" in session.texts()[-1]
+    asyncio.run(dp.feed_update(bot, Update(update_id=41, message=photo(8))))
+    assert "size picker" in ctx.llm.calls[-1][1] and "Toʻgʻrimi" in session.texts()[-1]
+    paths, _, _ = next(iter(ctx.pending_screens.values()))
+    assert len(paths) == 2                                          # first screenshot + size picker

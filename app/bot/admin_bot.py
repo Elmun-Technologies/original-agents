@@ -53,7 +53,8 @@ HELP = """Buyruqlar:
 /expense <summa> <reklama|ai|server|menejer|boshqa> <izoh>
 /pause, /resume — avtomatik ishni (yuklash, draft, nashr) toʻxtatish/yoqish
 /cancel — tahrirlashni bekor qilish
-Yangi tovar: ilovadan mahsulot sahifasining 1–3 ta skrinshotini izohsiz yuboring (havolani izohga yozish mumkin).
+Yangi tovar: ilovadan mahsulot sahifasining 1–3 ta skrinshotini izohsiz yuboring, xohlasangiz bir albomda
+ilovadan «Save image» qilingan rasm bilan (kartochkaga oʻsha ishlatiladi). Havolani izohga yozish mumkin.
 Narxni yangilash: shu tovarning skrinshotini qayta yuboring.
 Tovar surati: SKUni izohga yozib yuboring (yaxshisi fayl sifatida), bitta SKUga 10 tagacha."""
 
@@ -76,6 +77,7 @@ class Ctx:
     screen_groups: dict[str, list[Path]] = field(default_factory=dict) # album being collected
     pending_screens: dict[str, tuple[list[Path], dict, str | None]] = field(default_factory=dict)  # token -> (paths, data, url)
     pending_fix: dict[int, str] = field(default_factory=dict)          # admin -> screen token
+    awaiting_sizes: dict[int, str] = field(default_factory=dict)       # admin -> screen token missing sizes
 
 
 def now() -> datetime:
@@ -607,8 +609,12 @@ def create_router(ctx: Ctx, tg: Tg) -> Router:
             return
         log.info("photo saved sku=%s (%s)", sku, kind)
         count = await db(lambda s: len(own_photos(s.scalar(select(Product).where(Product.style_code == sku)))))
+        with Image.open(target if target.exists() else target.with_suffix(".jpg")) as im:
+            small = max(im.size) < config.settings()["images"]["min_side_px"]
+            size = im.size
         await m.answer(f"✓ {sku}: surat saqlandi ({count}/{config.settings()['publishing']['photos_max_per_sku']})"
-                       + ("" if m.document else ". Maslahat: sifat uchun fayl sifatida yuboring."))
+                       + (f"\n⚠️ {screens.LOW_QUALITY.format(w=size[0], h=size[1])}" if small else
+                          "" if m.document else ". Maslahat: sifat uchun fayl sifatida yuboring."))
 
     async def screenshot(m: Message, file_id: str, unique: str, ext: str):
         gid = m.media_group_id or f"single{m.message_id}"
@@ -636,9 +642,16 @@ def create_router(ctx: Ctx, tg: Tg) -> Router:
             seen = len(group)
             await asyncio.sleep(1.5)
         paths = ctx.screen_groups.pop(gid)
-        if len(paths) > 3:
-            await m.answer(f"Faqat birinchi 3 ta skrinshot oʻqiladi ({len(paths)} ta keldi).")
-        await read_and_preview(m, paths[:3], ctx.album_url.pop(gid, None) or caption_url(m.caption))
+        url = ctx.album_url.pop(gid, None) or caption_url(m.caption)
+        previous = None
+        token = ctx.awaiting_sizes.pop(m.from_user.id, None)
+        if token in ctx.pending_screens:  # the size-picker screenshot for the product shown before
+            old_paths, previous, old_url = ctx.pending_screens.pop(token)
+            paths, url = old_paths + paths, url or old_url
+        if len(paths) > screens.MAX_IMAGES:
+            await m.answer(f"Faqat birinchi {screens.MAX_IMAGES} ta rasm oʻqiladi ({len(paths)} ta keldi).")
+        await read_and_preview(m, paths[:screens.MAX_IMAGES], url, previous,
+                               "Added the size picker screenshot: read the sizes and prices from it." if previous else None)
 
     async def read_and_preview(m: Message, paths: list[Path], url: str | None,
                                previous: dict | None = None, correction: str | None = None):
@@ -652,13 +665,17 @@ def create_router(ctx: Ctx, tg: Tg) -> Router:
             return
         token = secrets.token_hex(6)
         ctx.pending_screens[token] = (paths, data, url)
-        crop = await asyncio.to_thread(screens.crop_photo, paths, data,
-                                       config.DATA_DIR / "screens" / f"preview_{token}.jpg")
-        if crop:
-            await m.answer_photo(FSInputFile(crop), caption="Kartochka uchun qirqilgan rasm")
-        row = ([] if screens.problems(data) else [("✅ Toʻgʻri", f"scr:ok:{token}")]) + [
+        crops, warns = await asyncio.to_thread(screens.card_photos, paths, data,
+                                               config.DATA_DIR / "screens" / "preview", token)
+        if crops:
+            await m.answer_media_group([InputMediaPhoto(media=FSInputFile(c), caption="Kartochka uchun rasm" if i == 0 else None)
+                                        for i, c in enumerate(crops[:10])])
+        errs = screens.problems(data)
+        if errs == [screens.ASK_SIZES]:
+            ctx.awaiting_sizes[m.from_user.id] = token  # next screenshot is added to this product
+        row = ([] if errs else [("✅ Toʻgʻri", f"scr:ok:{token}")]) + [
             ("✏️ Tuzatish", f"scr:fix:{token}"), ("❌ Bekor", f"scr:no:{token}")]
-        await m.answer(screens.preview_text(data), reply_markup=kb([row]))
+        await m.answer(screens.preview_text(data, warns), reply_markup=kb([row]))
 
     @r.callback_query(F.data.startswith("scr:"))
     async def screen_action(call: CallbackQuery):
@@ -674,6 +691,7 @@ def create_router(ctx: Ctx, tg: Tg) -> Router:
                                       "«US 9 = EU 42.5», «kategoriya hoodie».")
             return
         paths, data, url = ctx.pending_screens.pop(token)
+        ctx.awaiting_sizes.pop(call.from_user.id, None)
         if action == "no":
             await call.message.answer("Bekor qilindi.")
             return

@@ -128,7 +128,7 @@ def test_origin_column_is_optional(db, tmp_path):
     ("dewu", "Air Jordan 1 复刻 1:1", False),     # 复刻 + replica term
 ])
 def test_origin_decides_official_text(db, tmp_path, origin, model, kept):
-    rep = run(db, csv_file(tmp_path, row(model=model, origin=origin)))
+    rep = run(db, csv_file(tmp_path, row(brand="Jordan", model=model, origin=origin)))
     assert bool(rep.created) == kept and bool(rep.rejected) != kept
 
 
@@ -198,3 +198,34 @@ def test_import_daily_uses_sheet_url(db, monkeypatch):
     client = httpx.Client(transport=httpx.MockTransport(
         lambda r: httpx.Response(200, content="\n".join([HEADER, row()]).encode())))
     assert sourcing.import_daily(db, client).created == ["MR530SG"]
+
+
+@pytest.mark.parametrize("brand,model,ok", [
+    ("Nike", "Air Force 1 Low", True),
+    ("", "Air Force 1 Low", False),            # brand missing (row error before the check)
+    ("Noname", "AF1 Air Force 1 style", False),
+    ("Adidas", "Samba OG", True),
+    ("Li-Ning", "Samba classic", False),
+    ("Jordan", "Air Jordan 4", True),
+    ("Anta", "Dunk Low", False),
+    ("NB", "530", True),
+    ("Skechers", "530 retro", False),
+    ("Puma", "Suede Classic", True),            # not a listed model
+])
+def test_knockoff(db, tmp_path, brand, model, ok):
+    rep = run(db, csv_file(tmp_path, row(brand=brand, model=model)))
+    assert bool(rep.created) == ok
+    if not ok and brand:
+        assert "brendsiz oʻxshatma" in rep.rejected[0][1]
+        assert not product(db, "MR530SG").is_active
+
+
+def test_min_price_by_category(db, tmp_path):
+    rep = run(db, csv_file(tmp_path, row(style="CHEAP", price="150"), row(style="OK", price="200"),
+                           row(style="CHEAP-USD", price="20", currency="USD"),
+                           row(style="T", category="tshirt", size="M", price="70")))
+    assert sorted(rep.created) == ["OK", "T"]
+    reasons = dict(rep.rejected)
+    assert reasons["CHEAP"].startswith("narx juda past: ¥150 < ¥200 (Krossovka)")
+    assert "$20 < $28" in reasons["CHEAP-USD"]
+    assert not product(db, "CHEAP").is_active

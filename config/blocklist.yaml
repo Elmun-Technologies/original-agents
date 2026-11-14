@@ -85,3 +85,37 @@ domains:
 exceptions:
   - copyright
   - копировальн
+
+# "Oʻxshatma" (knock-off) check: a famous model name -> brands allowed to carry it.
+# If the product name (brand + model + colour) contains the model but the brand is missing or
+# not one of these, the product is rejected ("brendsiz oʻxshatma"). Matching: same rules as above.
+famous_models:
+  air force: [nike]
+  air max: [nike]
+  dunk: [nike]
+  blazer: [nike]
+  cortez: [nike]
+  jordan: [jordan, air jordan, nike]
+  yeezy: [adidas, yeezy]
+  samba: [adidas]
+  gazelle: [adidas]
+  campus: [adidas]
+  superstar: [adidas]
+  spezial: [adidas]
+  nuptse: [the north face, tnf]
+  "327": [new balance, nb]
+  "530": [new balance, nb]
+  "550": [new balance, nb]
+  "574": [new balance, nb]
+  "990": [new balance, nb]
+  "2002r": [new balance, nb]
+  "1906r": [new balance, nb]
+  "9060": [new balance, nb]
+  gel-kayano: [asics]
+  gel-1130: [asics]
+  gel-nyc: [asics]
+  chuck taylor: [converse]
+  chuck 70: [converse]
+  old skool: [vans]
+  speedcat: [puma]
+  palermo: [puma]
