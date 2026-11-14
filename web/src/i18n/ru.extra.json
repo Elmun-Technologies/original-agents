@@ -27,5 +27,14 @@
   "Qoʻllanma · [N] daqiqa": "Гайд · {n1, plural, one {# минута} few {# минуты} many {# минут} other {# минуты}}",
   "SPF · [N] daqiqa": "SPF · {n1, plural, one {# минута} few {# минуты} many {# минут} other {# минуты}}",
   "Rutina · [N] daqiqa": "Рутина · {n1, plural, one {# минута} few {# минуты} many {# минут} other {# минуты}}",
-  "shartlariga rozilik bildirasiz. Ochilmagan mahsulotni [N] kun ichida qaytarish mumkin.": ". Неоткрытый товар можно вернуть в течение {n1, plural, one {# дня} few {# дней} many {# дней} other {# дня}}."
+  "shartlariga rozilik bildirasiz. Ochilmagan mahsulotni [N] kun ichida qaytarish mumkin.": ". Неоткрытый товар можно вернуть в течение {n1, plural, one {# дня} few {# дней} many {# дней} other {# дня}}.",
+  "Faqat chegirmadagilar": "Только со скидкой",
+  "Nima bezovta qiladi?": "Что беспокоит?",
+  "Olib tashlash:": "Убрать:",
+  "Orqaga": "Назад",
+  "Qaysi biri sizga — aniq aytib beraman": "Подскажу точно, что подойдёт именно вам",
+  "Yopish": "Закрыть",
+  "Yana [N] ta koʻrsatish": "Показать ещё {n1, plural, one {# товар} few {# товара} many {# товаров} other {# товара}}",
+  "[N] ta mahsulotni koʻrsatish": "Показать {n1, plural, one {# товар} few {# товара} many {# товаров} other {# товара}}",
+  "[N] tadan [N] tasi koʻrsatildi": "Показано {n2} из {n1}"
 }

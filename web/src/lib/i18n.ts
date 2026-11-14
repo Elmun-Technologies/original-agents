@@ -26,7 +26,7 @@ export function icu(text: string, vars: Record<string, string | number>): string
     const last = Number((v.match(/\d+(?!.*\d)/) ?? ['0'])[0])
     const forms = Object.fromEntries([...body.matchAll(/(\w+)\s*\{([^{}]*)\}/g)].map((m) => [m[1], m[2]]))
     return (forms[rules.select(last)] ?? forms.other ?? '').replace(/#/g, v)
-  })
+  }).replace(/\{(\w+)\}/g, (m, name: string) => (name in vars ? String(vars[name]) : m)) // plain {n1}
 }
 
 /** Translate a text with numbers: Uzbek "[N]" placeholders are filled in order (n1, n2 …);

@@ -30,6 +30,12 @@ describe('Russian plurals', () => {
 
   it('formats large numbers with spaces', () => expect(tn('ru', '[N] sharh', 1250)).toBe('1 250 отзывов'))
 
+  it('plain placeholders and their order', () => {
+    expect(tn('ru', '[N] tadan [N] tasi koʻrsatildi', 30, 24)).toBe('Показано 24 из 30')
+    expect(tn('uz', '[N] tadan [N] tasi koʻrsatildi', 30, 24)).toBe('30 tadan 24 tasi koʻrsatildi')
+    expect(tn('ru', 'Yana [N] ta koʻrsatish', 1)).toBe('Показать ещё 1 товар')
+  })
+
   it('icu falls back to other', () => expect(icu('{n1, plural, other {# шт.}}', { n1: 3 })).toBe('3 шт.'))
 
   // Guard: a site-filled number ([N]) must not sit next to a Russian noun that changes with the number.

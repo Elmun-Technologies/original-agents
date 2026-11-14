@@ -246,10 +246,18 @@ export interface Brand {
 export interface Category {
   id: number;
   title: string;
+  /**
+   * Qisqa nom (katalogdagi tugmalar): Tonerlar, SPF …
+   */
+  short?: string | null;
   slug: string;
   parent?: (number | null) | Category;
   image?: (number | null) | Media;
   order?: number | null;
+  /**
+   * SEO blok sarlavhasi (katalog pastida)
+   */
+  seoTitle?: string | null;
   /**
    * 120–200 soʻz (SEO)
    */
@@ -508,10 +516,12 @@ export interface BrandsSelect<T extends boolean = true> {
  */
 export interface CategoriesSelect<T extends boolean = true> {
   title?: T;
+  short?: T;
   slug?: T;
   parent?: T;
   image?: T;
   order?: T;
+  seoTitle?: T;
   seoText?: T;
   updatedAt?: T;
   createdAt?: T;

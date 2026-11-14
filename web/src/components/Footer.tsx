@@ -56,7 +56,10 @@ export function MobileTabBar({ lang }: { lang: Lang }) {
     <nav className="mtabs" aria-label={t(lang, 'Asosiy menyu')}>
       {TABS.map(([p, label, icon]) => {
         const target = href(lang, p)
-        const on = p === '/' ? path === target : path.startsWith(target)
+        const rest = path.replace(/^\/(uz|ru)/, '')
+        const on = p === '/' ? path === target
+          : p === '/yuz-parvarishi' ? /^\/(yuz-parvarishi|katalog|mahsulot|brend|kim-uchun)/.test(rest)
+          : path.startsWith(target)
         return (
           <Link key={p} href={target} aria-current={on ? 'page' : undefined} style={{ position: 'relative', ...(on ? { color: '#2A211E', fontWeight: 600 } : {}) }}>
             <Icon name={icon} size={22} />{t(lang, label)}

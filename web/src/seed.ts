@@ -15,15 +15,16 @@ const ROOT = path.resolve(process.cwd(), '..', 'design', 'yeppo-handoff')
 const IMAGES = path.resolve(process.cwd(), 'public', 'img')
 const demo = process.argv.includes('--demo')
 
-const CATS: [slug: string, uz: string, ru: string, types: string[]][] = [
-  ['serum', 'Serum va ampulalar', 'Сыворотки и ампулы', ['Ampula', 'Serum']],
-  ['toner', 'Tonerlar va padlar', 'Тонеры и пэды', ['Toner']],
-  ['essensiya', 'Essensiyalar', 'Эссенции', ['Essensiya']],
-  ['krem', 'Kremlar', 'Кремы', ['Krem']],
-  ['tozalash', 'Tozalovchilar', 'Очищение', ['Tozalovchi']],
-  ['spf', 'Quyoshdan himoya', 'Защита от солнца', ['SPF']],
-  ['niqoblar', 'Niqoblar', 'Маски', ['Niqob']],
-  ['toplamlar', 'Toʻplamlar', 'Наборы', ['Toʻplam']],
+// order as in the design's sub-category pills (Catalog.html): Essensiyalar, Tonerlar, SPF first
+const CATS: [slug: string, uz: string, ru: string, types: string[], short: [string, string]][] = [
+  ['serum', 'Serum va ampulalar', 'Сыворотки и ампулы', ['Ampula', 'Serum'], ['Serumlar', 'Сыворотки']],
+  ['essensiya', 'Essensiyalar', 'Эссенции', ['Essensiya'], ['Essensiyalar', 'Эссенции']],
+  ['toner', 'Tonerlar va padlar', 'Тонеры и пэды', ['Toner'], ['Tonerlar', 'Тонеры']],
+  ['spf', 'Quyoshdan himoya', 'Защита от солнца', ['SPF'], ['SPF', 'SPF']],
+  ['krem', 'Kremlar', 'Кремы', ['Krem'], ['Kremlar', 'Кремы']],
+  ['tozalash', 'Tozalovchilar', 'Очищение', ['Tozalovchi'], ['Tozalash', 'Очищение']],
+  ['niqoblar', 'Niqoblar', 'Маски', ['Niqob'], ['Niqoblar', 'Маски']],
+  ['toplamlar', 'Toʻplamlar', 'Наборы', ['Toʻplam'], ['Toʻplamlar', 'Наборы']],
 ]
 // concerns per sample product (from the design's picker mapping, p_main.py ndMap)
 const CONCERNS: Record<string, ('acne' | 'pores' | 'pigment' | 'dryness' | 'wrinkles' | 'dull')[]> = {
@@ -39,11 +40,22 @@ async function main() {
   const one = async (collection: any, slug: string, create: () => Promise<any>) =>
     (await payload.find({ collection, where: { slug: { equals: slug } }, limit: 1 })).docs[0] ?? create()
 
+  const ruDict = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'ru.json'), 'utf8')) as Record<string, string>
+  const face = await one('categories', 'yuz-parvarishi', async () => {
+    const c = await payload.create({ collection: 'categories', data: { slug: 'yuz-parvarishi', title: 'Yuz parvarishi', order: 0 }, locale: 'uz' })
+    await payload.update({ collection: 'categories', id: c.id, data: { title: 'Уход за лицом' }, locale: 'ru' })
+    return c
+  })
+  // SEO block of the serum catalog: text from the design (Catalog.html), Russian from the design dictionary
+  const SEO: Record<string, [string, string]> = {
+    serum: ['Koreys serumini qanday tanlash kerak?', 'Serum — rutinadagi eng «ishlaydigan» qadam: u aniq bitta muammoga qaratilgan. Qizarish va toshma boʻlsa — centella yoki choy daraxti; quruqlik boʻlsa — gialuron va salyangoz mutsini; xira rang boʻlsa — niatsinamid va galactomyces. Serum tonerdan keyin, kremdan oldin surtiladi. Bilmasangiz, teri turingizni yuqorida tanlang yoki AI maslahatchidan soʻrang.'],
+  }
   const cats: Record<string, any> = {}
-  for (const [i, [slug, uz, ru, types]] of CATS.entries()) {
+  for (const [i, [slug, uz, ru, types, short]] of CATS.entries()) {
     const doc = await one('categories', slug, async () => {
-      const c = await payload.create({ collection: 'categories', data: { slug, title: uz, order: i }, locale: 'uz' })
-      await payload.update({ collection: 'categories', id: c.id, data: { title: ru }, locale: 'ru' })
+      const seo = SEO[slug]
+      const c = await payload.create({ collection: 'categories', data: { slug, title: uz, short: short[0], order: i, parent: face.id, ...(seo ? { seoTitle: seo[0], seoText: seo[1] } : {}) }, locale: 'uz' })
+      await payload.update({ collection: 'categories', id: c.id, data: { title: ru, short: short[1], ...(seo ? { seoTitle: ruDict[seo[0]] ?? seo[0], seoText: ruDict[seo[1]] ?? seo[1] } : {}) }, locale: 'ru' })
       return c
     })
     for (const t of types) cats[t] = doc
@@ -69,7 +81,7 @@ async function main() {
       data: {
         name: s.name, slug, brand: brand.id, category: cats[s.type].id, type: s.type, need: s.need,
         skin: s.skin, concerns: CONCERNS[s.id] ?? [], tags, images: [image.id], sample: true,
-        variants: [{ volume: s.vol || undefined, sku, price: s.price, stock: 10 }],
+        variants: [{ volume: s.vol || undefined, sku, price: s.price, stock: s.id === 'snail' ? 0 : 10 }], // one sold-out sample
       },
     })
     await payload.update({ collection: 'products', id: p.id, locale: 'ru', data: { type: s.type_ru, need: s.need_ru } })

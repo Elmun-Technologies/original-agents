@@ -47,10 +47,12 @@ export const Categories: CollectionConfig = {
   access: publicRead,
   fields: [
     { name: 'title', type: 'text', required: true, localized: true },
+    { name: 'short', type: 'text', localized: true, admin: { description: 'Qisqa nom (katalogdagi tugmalar): Tonerlar, SPF …' } },
     slug,
     { name: 'parent', type: 'relationship', relationTo: 'categories' },
     { name: 'image', type: 'upload', relationTo: 'media' },
     { name: 'order', type: 'number', defaultValue: 0 },
+    { name: 'seoTitle', type: 'text', localized: true, admin: { description: 'SEO blok sarlavhasi (katalog pastida)' } },
     { name: 'seoText', type: 'textarea', localized: true, admin: { description: '120–200 soʻz (SEO)' } },
   ],
 }

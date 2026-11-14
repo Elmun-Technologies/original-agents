@@ -50,6 +50,11 @@ export function Header({ lang, store, active = '' }: { lang: Lang; store: StoreI
   const otherPath = path.replace(/^\/(uz|ru)(?=\/|$)/, `/${other}`)
   const L = (p: string) => href(lang, p)
   const tr = (s: string) => t(lang, s)
+  // highlighted nav item: exact section first; any other catalog page belongs to "Yuz parvarishi" (design: Catalog.jpg)
+  const rest = path.replace(/^\/(uz|ru)/, '')
+  const current = active || NAV.find(([p]) => rest === p || rest.startsWith(p + '/'))?.[2]
+    || (rest.startsWith('/katalog/') || rest.startsWith('/mahsulot/') ? 'face' : '')
+    || (rest.startsWith('/aksiyalar') ? 'sale' : rest.startsWith('/maslahatchi') ? 'ai' : '')
 
   const [phone, setPhone] = useState(false)
   useEffect(() => {
@@ -118,11 +123,11 @@ export function Header({ lang, store, active = '' }: { lang: Lang; store: StoreI
           </nav>
         </div>
         <nav aria-label={tr('Katalog')} className="wrap hide-m" style={{ display: 'flex', alignItems: 'center', gap: '2px', minHeight: '52px', overflowX: 'auto' }}>
-          {NAV.map(([p, label, k]) => <Link key={k} href={L(p)} className={`navlink${k === active ? ' on' : ''}`}>{tr(label)}</Link>)}
+          {NAV.map(([p, label, k]) => <Link key={k} href={L(p)} className={`navlink${k === current ? ' on' : ''}`}>{tr(label)}</Link>)}
           <span style={{ flex: 1 }} />
-          <Link href={L('/aksiyalar')} className={`navlink${active === 'sale' ? ' on' : ''}`} style={{ color: '#A8475C', fontWeight: 600 }}>{tr('Aksiyalar')}</Link>
+          <Link href={L('/aksiyalar')} className={`navlink${current === 'sale' ? ' on' : ''}`} style={{ color: '#A8475C', fontWeight: 600 }}>{tr('Aksiyalar')}</Link>
           <Link href={L('/aksiyalar#top')} className={`navlink${active === 'top' ? ' on' : ''}`}>Top-10</Link>
-          <Link href={L('/maslahatchi')} className={`navlink${active === 'ai' ? ' on' : ''}`} style={{ gap: '6px' }}><Icon name="spark" size={15} /> {tr('AI maslahatchi')}</Link>
+          <Link href={L('/maslahatchi')} className={`navlink${current === 'ai' ? ' on' : ''}`} style={{ gap: '6px' }}><Icon name="spark" size={15} /> {tr('AI maslahatchi')}</Link>
         </nav>
         {mega && <MegaMenu lang={lang} />}
       </header>
