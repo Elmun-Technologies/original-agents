@@ -10,3 +10,4 @@ data/*
 !data/samples/
 .vscode/
 .DS_Store
+coolify.env
