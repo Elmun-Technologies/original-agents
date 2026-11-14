@@ -92,8 +92,25 @@ def test_knockoff_and_min_price_in_preview():
     fake = DATA | {"brand": None, "model_name": "Air Force 1 Low"}
     assert screens.problems(fake) == ["brendsiz oʻxshatma — qoʻshilmadi ('air force', brend yoʻq)"]
     cheap = DATA | {"sizes": [{"size": "41", "price": 150}]}
-    assert any("narx juda past: ¥150 < ¥200" in e for e in screens.problems(cheap))
+    errs = screens.problems(cheap)
+    assert errs[0].startswith("narx juda past: ¥150 < ¥300 (New Balance, Krossovka)")
+    assert screens.only_too_cheap(errs) and not screens.only_too_cheap(screens.problems(fake))
     assert "Toʻgʻrimi" not in screens.preview_text(cheap)
+
+
+def test_force_cheap_save_and_prices_report(db, tmp_path, monkeypatch):
+    from app.reports import prices
+    monkeypatch.setitem(config.settings()["content"], "photos_dir", str(tmp_path / "photos"))
+    cheap = DATA | {"sizes": [{"size": "41", "price": 150}]}
+    p, msg = screens.save(db, cheap, [shot(tmp_path)])
+    assert msg.startswith("⛔") and not p.is_active
+    p, msg = screens.save(db, cheap, [shot(tmp_path)], force_cheap=True)
+    assert msg.startswith("✓") and p.is_active and p.min_price_override
+    screens.save(db, DATA | {"style_code": "MR530X", "sizes": [{"size": "42", "price": 450}]}, [shot(tmp_path)])
+    text = prices.text(db, NOW + timedelta(days=1))
+    assert "New Balance · Krossovka: 2 ta tovar, eng arzon ¥150, oʻrtacha ¥300, chegara ¥300" in text
+    assert "1 tasi chegaradan past" in text
+    assert "boʻsh" in prices.text(db, NOW + timedelta(days=60), days=7)
 
 
 def test_saved_image_preferred_and_poster_cropped(tmp_path):

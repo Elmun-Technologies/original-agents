@@ -83,6 +83,8 @@ class Product(Base):
     seller_note: Mapped[str | None] = mapped_column(Text)   # note from source/intermediary sheet
     images: Mapped[list] = mapped_column(JSON, default=list)
     sold_count: Mapped[int | None]  # "Sold" at the source, for ranking
+    # admin added it although it is below min_price ("➕ Baribir qoʻshish" / /allow)
+    min_price_override: Mapped[bool] = mapped_column(default=False, server_default="0")
     first_seen_at: Mapped[datetime] = mapped_column(default=utcnow)
     last_checked_at: Mapped[datetime] = mapped_column(default=utcnow)
     is_active: Mapped[bool] = mapped_column(default=True)
@@ -285,3 +287,19 @@ class Problem(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     created_at: Mapped[datetime] = mapped_column(default=utcnow, index=True)
     text: Mapped[str] = mapped_column(Text)
+
+
+class PriceObservation(Base):
+    """Lowest price of every accepted product at import time, for /prices (tuning min_price)."""
+    __tablename__ = "price_observations"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    created_at: Mapped[datetime] = mapped_column(default=utcnow, index=True)
+    brand: Mapped[str] = mapped_column(String(100))
+    model_name: Mapped[str] = mapped_column(String(300))
+    style_code: Mapped[str] = mapped_column(String(64))
+    category: Mapped[str] = mapped_column(String(32))
+    min_price: Mapped[Decimal] = mapped_column(Numeric(12, 2))
+    currency: Mapped[str] = mapped_column(String(3))
+    source: Mapped[str] = mapped_column(String(32))
+    override: Mapped[bool] = mapped_column(default=False)  # accepted below min_price by the admin

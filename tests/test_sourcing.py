@@ -220,12 +220,38 @@ def test_knockoff(db, tmp_path, brand, model, ok):
         assert not product(db, "MR530SG").is_active
 
 
-def test_min_price_by_category(db, tmp_path):
-    rep = run(db, csv_file(tmp_path, row(style="CHEAP", price="150"), row(style="OK", price="200"),
-                           row(style="CHEAP-USD", price="20", currency="USD"),
-                           row(style="T", category="tshirt", size="M", price="70")))
-    assert sorted(rep.created) == ["OK", "T"]
-    reasons = dict(rep.rejected)
-    assert reasons["CHEAP"].startswith("narx juda past: ¥150 < ¥200 (Krossovka)")
-    assert "$20 < $28" in reasons["CHEAP-USD"]
-    assert not product(db, "CHEAP").is_active
+@pytest.mark.parametrize("brand,category,size,price,currency,ok", [
+    ("New Balance", "sneakers", "42", "299", "CNY", False),   # top brand: ¥300
+    ("New Balance", "sneakers", "42", "300", "CNY", True),
+    ("Nike", "sneakers", "42", "41", "USD", False),            # $42
+    ("Air Jordan", "sneakers", "42", "250", "CNY", False),     # "jordan" matched as a word
+    ("Vans", "sneakers", "42", "200", "CNY", True),            # mid brand: ¥200
+    ("Vans", "sneakers", "42", "199", "CNY", False),
+    ("Li-Ning", "sneakers", "42", "200", "CNY", True),         # other brand: category ¥200
+    ("Moncler", "puffer", "M", "650", "CNY", False),           # top puffer: ¥700
+    ("Uniqlo", "puffer", "M", "350", "CNY", True),             # category ¥300
+    ("Uniqlo", "tshirt", "M", "59", "CNY", False),             # category ¥60
+])
+def test_min_price_brand_then_category(db, tmp_path, brand, category, size, price, currency, ok):
+    rep = run(db, csv_file(tmp_path, row(brand=brand, model="Test", category=category, size=size,
+                                         price=price, currency=currency)))
+    assert bool(rep.created) == ok
+    if not ok:
+        assert rep.rejected[0][1].startswith(f"narx juda past: ") and brand in rep.rejected[0][1]
+
+
+def test_allow_cheap_and_price_log(db, tmp_path):
+    from app.db.models import PriceObservation
+    run(db, csv_file(tmp_path, row(style="CHEAP", price="150"), row(style="GOOD", size="41", price="489")))
+    obs = db.scalars(select(PriceObservation)).all()
+    assert [(o.style_code, o.min_price) for o in obs] == [("GOOD", Decimal("489.00"))]   # accepted only
+    p = sourcing.allow_cheap(db, "CHEAP")
+    assert p.is_active and p.min_price_override and p.rejected_reason is None
+    assert db.scalars(select(PriceObservation).where(PriceObservation.style_code == "CHEAP")).one().override
+    rep = run(db, csv_file(tmp_path, row(style="CHEAP", price="140")))        # re-import keeps the override
+    assert rep.updated == ["CHEAP"] and product(db, "CHEAP").is_active
+    with pytest.raises(SheetError, match="narx sababli rad etilmagan"):
+        sourcing.allow_cheap(db, "GOOD")
+    run(db, csv_file(tmp_path, row(style="FAKE", brand="Noname", model="Dunk Low")))
+    with pytest.raises(SheetError, match="oʻxshatma"):                       # no override for knock-offs
+        sourcing.allow_cheap(db, "FAKE")

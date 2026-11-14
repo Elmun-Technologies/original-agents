@@ -29,6 +29,7 @@ from app.config import TZ
 from app.db.models import Order, Post, Product
 from app.llm import Llm, spent_usd
 from app.pricing import rates
+from app.reports import prices as price_report
 from app.reports import weekly
 from app.uz import format_uzs
 
@@ -46,6 +47,8 @@ HELP = """Buyruqlar:
 /lead <post_id> [oʻlcham] — DMda narx soʻrashdi
 /stockcost <SKU> <summa> [oʻlcham]
 /buyprice <buyurtma_id> <yuan> — haqiqiy xarid narxi, foyda qayta hisoblanadi
+/allow <SKU> — narxi past deb rad etilgan tovarni baribir qoʻshish
+/prices [kun] — brendlar boʻyicha haqiqiy narxlar (min_price chegaralarini tuzatish uchun)
 /problem <buyurtma_id> <oʻlcham|kechikish|nuqson|boshqa> [izoh]
 /report — shu hafta hisoboti + Excel; /report otgan — oʻtgan hafta
 /trend <matn>
@@ -673,8 +676,9 @@ def create_router(ctx: Ctx, tg: Tg) -> Router:
         errs = screens.problems(data)
         if errs == [screens.ASK_SIZES]:
             ctx.awaiting_sizes[m.from_user.id] = token  # next screenshot is added to this product
-        row = ([] if errs else [("✅ Toʻgʻri", f"scr:ok:{token}")]) + [
-            ("✏️ Tuzatish", f"scr:fix:{token}"), ("❌ Bekor", f"scr:no:{token}")]
+        first = ([("✅ Toʻgʻri", f"scr:ok:{token}")] if not errs else
+                 [("➕ Baribir qoʻshish", f"scr:force:{token}")] if screens.only_too_cheap(errs) else [])
+        row = first + [("✏️ Tuzatish", f"scr:fix:{token}"), ("❌ Bekor", f"scr:no:{token}")]
         await m.answer(screens.preview_text(data, warns), reply_markup=kb([row]))
 
     @r.callback_query(F.data.startswith("scr:"))
@@ -695,9 +699,30 @@ def create_router(ctx: Ctx, tg: Tg) -> Router:
         if action == "no":
             await call.message.answer("Bekor qilindi.")
             return
-        _, msg = await db(lambda s: screens.save(s, data, paths, url))
+        if action == "force" and not screens.only_too_cheap(screens.problems(data)):
+            await call.message.answer("❌ Bu tovarni qoʻshib boʻlmaydi.")  # knock-off / replica: never
+            return
+        _, msg = await db(lambda s: screens.save(s, data, paths, url, force_cheap=action == "force"))
         log.info("screens saved: %s", screens.style_code(data))
         await call.message.answer(msg)
+
+    @r.message(Command("allow"))
+    async def allow(m: Message, command: CommandObject):
+        sku = (command.args or "").strip()
+        if not sku:
+            await m.answer("Format: /allow <SKU>")
+            return
+        try:
+            await db(lambda s: sourcing.allow_cheap(s, sku))
+            await m.answer(f"➕ {sku} qoʻshildi (narx chegarasidan past, siz tasdiqladingiz).")
+        except sourcing.SheetError as e:
+            await m.answer(f"❌ {e}")
+
+    @r.message(Command("prices"))
+    async def prices(m: Message, command: CommandObject):
+        arg = (command.args or "").strip()
+        days = int(arg) if arg.isdigit() else 30
+        await m.answer(await db(lambda s: price_report.text(s, now(), days)))
 
     @r.message(Command("problem"))
     async def problem(m: Message, command: CommandObject):

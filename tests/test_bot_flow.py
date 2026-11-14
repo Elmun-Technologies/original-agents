@@ -314,3 +314,20 @@ def test_size_picker_screenshot_is_merged(env, db, tmp_path, monkeypatch):
     assert "size picker" in ctx.llm.calls[-1][1] and "Toʻgʻrimi" in session.texts()[-1]
     paths, _, _ = next(iter(ctx.pending_screens.values()))
     assert len(paths) == 2                                          # first screenshot + size picker
+
+
+def test_force_button_only_for_low_price(env, db, tmp_path, monkeypatch):
+    photo = screenshot_env(env, monkeypatch, tmp_path, [{"sizes": [{"size": "41", "price": 150}]},
+                                                        {"brand": None, "model_name": "Dunk Low"}])
+    dp, bot, session, ctx = env
+    asyncio.run(dp.feed_update(bot, Update(update_id=50, message=photo(9))))
+    force = [b for b in buttons(env) if b.startswith("scr:force")]
+    assert force and not any(b.startswith("scr:ok") for b in buttons(env))
+    press(env, force[0])
+    from app.db.models import Product
+    assert db.scalar(select(Product).where(Product.style_code == "MR530SG")).min_price_override
+    asyncio.run(dp.feed_update(bot, Update(update_id=51, message=photo(10))))
+    assert "oʻxshatma" in session.texts()[-1]
+    assert not any(b.startswith(("scr:force", "scr:ok")) for b in buttons(env))   # knock-off: no override
+    send(env, "/prices")
+    assert "New Balance · Krossovka" in session.texts()[-1]

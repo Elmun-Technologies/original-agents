@@ -22,7 +22,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app import config
-from app.db.models import CURRENCIES, ORIGINS, Product, ProductSize, utcnow
+from app.db.models import CURRENCIES, ORIGINS, PriceObservation, Product, ProductSize, utcnow
 from app.scraping import blocklist
 
 SOURCE = "manual_sheet"
@@ -61,7 +61,8 @@ class ImportReport:
                  f"{len(self.rejected)} rad etildi, {len(self.skipped)} o'tkazib yuborildi, "
                  f"{len(self.row_errors)} xato qator."]
         sections = [
-            ("Rad etildi (replika):", [f"{sc}: {r}" for sc, r in self.rejected]),
+            ("Rad etildi:", [f"{sc}: {r}" + (f" → chegara xato boʻlsa: /allow {sc}" if r.startswith(TOO_CHEAP) else "")
+                             for sc, r in self.rejected]),
             ("O'tkazib yuborildi:", [f"{sc}: {r}" for sc, r in self.skipped]),
             ("Xato qatorlar (yuklanmadi):", [f"{n}-qator: {r}" for n, r in self.row_errors]),
         ]
@@ -159,19 +160,57 @@ def has_popular_size(sizes: dict[str, dict], gender: str, ranges: dict) -> bool:
                for size, s in sizes.items())
 
 
-def too_cheap(product: Product, cat: dict) -> str | None:
-    """Lowest available price below the category's min_price (categories.yaml) -> reason.
-    A real pair this cheap is unlikely: rejected with a warning for the admin."""
+TOO_CHEAP = "narx juda past"   # reason prefix: the only rejection the admin may override
+
+
+def min_price(cat: dict, brand: str | None, currency: str):
+    """Brand floor from min_price_by_brand (word match on the brand), else the category floor."""
+    b = blocklist.normalize(brand or "")
+    for name, floors in (cat.get("min_price_by_brand") or {}).items():
+        if blocklist.term_regex(name).search(b):
+            return floors.get(currency)
+    return (cat.get("min_price") or {}).get(currency)
+
+
+def cheapest(product: Product) -> ProductSize | None:
     sizes = [s for s in product.sizes if s.available]
-    if not sizes or "min_price" not in cat:
+    return min(sizes, key=lambda x: x.source_price) if sizes else None
+
+
+def too_cheap(product: Product, cat: dict) -> str | None:
+    """Lowest available price below the brand/category floor -> reason (admin can override)."""
+    s = cheapest(product)
+    if s is None or product.min_price_override:
         return None
-    s = min(sizes, key=lambda x: x.source_price)
-    floor = cat["min_price"].get(s.source_currency)
+    floor = min_price(cat, product.brand, s.source_currency)
     if floor is None or s.source_price >= floor:
         return None
     sign = "¥" if s.source_currency == "CNY" else "$"
-    return (f"narx juda past: {sign}{s.source_price:g} < {sign}{floor} ({cat['label_uz']}) — "
+    return (f"{TOO_CHEAP}: {sign}{s.source_price:g} < {sign}{floor} ({product.brand}, {cat['label_uz']}) — "
             "original boʻlmasligi mumkin, qoʻshilmadi")
+
+
+def record_price(session: Session, product: Product) -> None:
+    s = cheapest(product)
+    if s is not None:
+        session.add(PriceObservation(brand=product.brand, model_name=product.model_name,
+                                     style_code=product.style_code, category=product.category,
+                                     min_price=s.source_price, currency=s.source_currency,
+                                     source=product.source, override=product.min_price_override,
+                                     created_at=utcnow()))
+
+
+def allow_cheap(session: Session, sku: str) -> Product:
+    """/allow <SKU>: admin accepts a product rejected only for its low price."""
+    p = session.scalar(select(Product).where(Product.style_code == sku))
+    if p is None:
+        raise SheetError(f"SKU {sku} topilmadi.")
+    if not (p.rejected_reason or "").startswith(TOO_CHEAP):
+        raise SheetError(f"{sku}: narx sababli rad etilmagan" + (f" ({p.rejected_reason})" if p.rejected_reason else "") + ".")
+    p.min_price_override, p.is_active, p.rejected_reason = True, True, None
+    record_price(session, p)
+    session.flush()
+    return p
 
 
 def check_sourcing_mode(settings: dict) -> None:
@@ -191,7 +230,8 @@ def import_sheet(session: Session, source: str, *, client: httpx.Client | None =
     return import_rows(session, read_rows(source, client), SOURCE)
 
 
-def import_rows(session: Session, raw_rows: list[dict], source: str, first_row: int = 2) -> ImportReport:
+def import_rows(session: Session, raw_rows: list[dict], source: str, first_row: int = 2,
+                allow_cheap_skus: frozenset[str] = frozenset()) -> ImportReport:
     """Validates raw rows (sheet format, one row = one size) and upserts products by style_code.
     Shared by the sheet import and the app-screenshot reader. Flushes, does not commit."""
     cats = config.categories()
@@ -244,6 +284,8 @@ def import_rows(session: Session, raw_rows: list[dict], source: str, first_row: 
             if size not in sizes:
                 ps.available = False
 
+        if sc in allow_cheap_skus:
+            p.min_price_override = True
         low = too_cheap(p, cats[p.category])
         if not blocklist.apply(p):
             report.rejected.append((sc, p.rejected_reason))
@@ -259,6 +301,7 @@ def import_rows(session: Session, raw_rows: list[dict], source: str, first_row: 
             report.skipped.append((sc, p.rejected_reason))
         else:
             (report.created if is_new else report.updated).append(sc)
+            record_price(session, p)
     session.flush()
     return report
 

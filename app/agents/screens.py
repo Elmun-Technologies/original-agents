@@ -119,12 +119,17 @@ def problems(d: dict) -> list[str]:
             low = min(float(x) for x in prices)
         except (TypeError, ValueError):
             low = None
-        floor = cat.get("min_price", {}).get(d.get("currency") or "CNY")
+        floor = sourcing.min_price(cat, d.get("brand"), d.get("currency") or "CNY")
         if low is not None and floor is not None and low < floor:
             sign = CURRENCY_SIGN.get(d.get("currency") or "CNY", "")
-            out.append(f"⚠️ narx juda past: {sign}{low:g} < {sign}{floor} ({cat['label_uz']}) — "
-                       "original boʻlmasligi mumkin, qoʻshilmaydi")
+            out.append(f"{sourcing.TOO_CHEAP}: {sign}{low:g} < {sign}{floor} ({d.get('brand')}, {cat['label_uz']}) — "
+                       "original boʻlmasligi mumkin. Chegara xato boʻlsa: ➕ Baribir qoʻshish")
     return out
+
+
+def only_too_cheap(errs: list[str]) -> bool:
+    """The admin may override a low-price rejection, never a knock-off or replica one."""
+    return bool(errs) and all(e.startswith(sourcing.TOO_CHEAP) for e in errs)
 
 
 def preview_text(d: dict, warnings: list[str] = ()) -> str:
@@ -195,10 +200,13 @@ def card_photos(paths: list[Path], d: dict, folder: Path, prefix: str) -> tuple[
     return out, list(dict.fromkeys(warns))
 
 
-def save(session: Session, d: dict, paths: list[Path], source_url: str | None = None) -> tuple[Product | None, str]:
-    """Saves after the admin's ✅. Returns (product or None, message). Flushes, does not commit."""
-    rep = sourcing.import_rows(session, to_rows(d, source_url), SOURCE, first_row=1)
+def save(session: Session, d: dict, paths: list[Path], source_url: str | None = None,
+         force_cheap: bool = False) -> tuple[Product | None, str]:
+    """Saves after the admin's ✅ (or ➕: force_cheap skips only the min_price check).
+    Returns (product or None, message). Flushes, does not commit."""
     sku = style_code(d)
+    rep = sourcing.import_rows(session, to_rows(d, source_url), SOURCE, first_row=1,
+                               allow_cheap_skus=frozenset({sku}) if force_cheap else frozenset())
     product = session.scalar(select(Product).where(Product.style_code == sku))
     if product is None:
         return None, "❌ Saqlanmadi: " + "; ".join(r for _, r in rep.row_errors)
