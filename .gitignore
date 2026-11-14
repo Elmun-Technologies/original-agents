@@ -11,3 +11,5 @@ data/*
 .vscode/
 .DS_Store
 coolify.env
+design/
+yeppo-handoff.zip
