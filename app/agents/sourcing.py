@@ -173,13 +173,19 @@ def check_sourcing_mode(settings: dict) -> None:
 def import_sheet(session: Session, source: str, *, client: httpx.Client | None = None) -> ImportReport:
     """Imports into the session (flushes, does not commit)."""
     check_sourcing_mode(config.settings())
+    return import_rows(session, read_rows(source, client), SOURCE)
+
+
+def import_rows(session: Session, raw_rows: list[dict], source: str, first_row: int = 2) -> ImportReport:
+    """Validates raw rows (sheet format, one row = one size) and upserts products by style_code.
+    Shared by the sheet import and the app-screenshot reader. Flushes, does not commit."""
     cats = config.categories()
     ranges = config.settings()["sourcing"]["popular_sizes_eu"]
     report = ImportReport()
 
     # 1. Parse rows; group by style_code.
     groups: dict[str, dict] = {}
-    for n, raw in enumerate(read_rows(source, client), start=2):  # row 1 is the header
+    for n, raw in enumerate(raw_rows, start=first_row):  # sheet: row 1 is the header
         r = parse_row(raw, cats)
         if isinstance(r, str):
             report.row_errors.append((n, r))
@@ -201,11 +207,12 @@ def import_sheet(session: Session, source: str, *, client: httpx.Client | None =
     # 2. Upsert products.
     for sc, g in groups.items():
         sizes = g["sizes"]
-        p = session.scalar(select(Product).where(Product.source == SOURCE, Product.style_code == sc))
+        p = session.scalar(select(Product).where(Product.style_code == sc))  # one product per SKU, any source
         is_new = p is None
         if is_new:
-            p = Product(source=SOURCE, style_code=sc, first_seen_at=utcnow())
+            p = Product(source=source, style_code=sc, first_seen_at=utcnow())
             session.add(p)
+        p.source = source
         for k, v in g["fields"].items():
             setattr(p, k, v)
         p.images = g["images"]

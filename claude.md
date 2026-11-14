@@ -128,6 +128,9 @@ tests/
 - **Egasining qarori (2026-11-14):** tovar va rasmlar to'g'ridan-to'g'ri poizon.com'dan olinadi (vositachi va Google Sheet yo'q). Poizon Terms of Use 20.1 (o, p, r) robot va ruxsatsiz dasturlarni taqiqlaydi; bundan kelib chiqadigan xavfni (IP blok, rasmlar bo'yicha shikoyat) do'kon egasi biladi va o'z zimmasiga oladi. `settings.yaml`: `poizon_scraping_enabled: true`. Yuqoridagi robots.txt / tezlik / to'xtash qoidalari o'zgarmaydi.
 - **Texnik holat (2026-11-14 tekshiruvi):** aniq User-Agent bilan (oddiy so'rov ham, Playwright brauzer ham) poizon.com mahsulot ro'yxatini bermaydi: brend, `/trends`, kategoriya sahifalarida va ularning ichki API'sida `spuList` bo'sh ("No results", total 1200). Sitemap faqat maqolalarni beradi. Ma'lumot olish uchun o'zini oddiy brauzer qilib ko'rsatish (soxta UA, headless'ni yashirish) kerak bo'lardi — bu himoyani chetlab o'tish, taqiqlangan. Shuning uchun `poizon_client.py` qurilmagan; `sourcing_mode: poizon_com` kod tomonidan shu sabab bilan rad etiladi. Hozirgi manba — `manual_sheet` (CSV / Sheet, zaxira rejim). Poizon rasmiy API/hamkorlik dasturi yoki sayt bot'ga ma'lumot bera boshlasa — qayta ko'riladi.
 
+- **Asosiy manba (2026-11-14 dan): ilova skrinshotlari** (`agents/screens.py`). Mahsulot sahifasi to'g'ridan-to'g'ri havola bilan ham bot'ga nom/SKU/narx/o'lcham bermaydi (sahifa umumiy sarlavha bilan keladi; `get-index-spu-detail` API bo'sh javob qaytaradi), shuning uchun havola o'qilmaydi. Admin ilovadan 1–3 ta skrinshot yuboradi (izohsiz yoki havola bilan) → Claude vision nom, SKU, narx (yuan), o'lchamlar, sotuv sonini o'qiydi → bot ko'rsatadi, admin **✅ To'g'ri / ✏️ Tuzatish** qiladi → sheet bilan bir xil tekshiruv + blocklist → `products` (`source: poizon_app`, `origin: poizon_com`). Mahsulot rasmi skrinshotdan qirqib olinadi (faqat qirqish) yoki admin SKU izohi bilan rasm yuboradi. SKU ko'rinmasa — nom+rangdan barqaror `PZ-xxxxxxxx` kod. Bir xil tovarning skrinshoti qayta yuborilsa narx yangilanadi.
+- **Narx eskirishi:** manba narxi `max_price_age_days` (3) kundan eski bo'lsa post nashr qilinmaydi va draft bo'lmaydi; kunlik xulosada "Narxni yangilang: …" ro'yxati.
+
 **Har bir mahsulotdan oladigan narsalar:** nom, brend, style code (SKU), rang, kategoriya, har bir o'lcham bo'yicha narx (USD) va mavjudligi, rasm URL'lari, sahifa URL'i.
 
 **Filtrlar:**
@@ -172,7 +175,7 @@ sell_price_uzs          = ceil_to(landed_cost_usd * (1 + markup[category]) * usd
 - Har kuni 10:00 da 3–8 ta yangi `draft` post adminga Telegram botda yuboriladi: rasmlar + matn + narx tafsiloti (tannarx, ustama, foyda) + tugmalar: **✅ Tasdiqlash / ✏️ Tahrirlash / ❌ Rad etish / 🔄 Narxni yangilash**.
 - Tasdiqlangan post belgilangan vaqtlarda (12:00, 19:00, 21:00 — sozlanadi) Telegram kanalga chiqadi.
 - Instagram uchun: tasdiqlangan post rasmlari va matni adminga alohida "Instagram paket" sifatida yuboriladi (admin qo'lda joylaydi). Keyingi bosqichda Meta Graph API orqali avtomatik nashr — faqat admin buni yoqsa.
-- Admin bot buyruqlari: `/today`, `/orders`, `/trend <matn>`, `/rate`, `/pause`, `/resume`, `/report`, `/expense <summa> <turi> <izoh>`, `/drafts` (hozir draft), `/neworder <post_id> <oʻlcham> <ism> <telefon|@username> [ext=<USD>] [novac]`, `/lead <post_id> [oʻlcham]`, `/stockcost <SKU> <summa> [oʻlcham]`.
+- Admin bot buyruqlari: `/today`, `/orders`, `/trend <matn>`, `/rate`, `/pause`, `/resume`, `/report`, `/expense <summa> <turi> <izoh>`, `/drafts` (hozir draft), `/neworder <post_id> <oʻlcham> <ism> <telefon|@username> [ext=<USD>] [novac]`, `/lead <post_id> [oʻlcham]`, `/stockcost <SKU> <summa> [oʻlcham]`, `/buyprice <order_id> <yuan>` (haqiqiy xarid narxi → tannarx va foyda qayta hisoblanadi), `/summary`.
 - Suratlar: admin botga SKU izohi bilan yuboradi (fayl sifatida — sifat saqlanadi), bir SKUga 10 tagacha; suratsiz post tasdiqlanmaydi.
 - Draft tartibi: ombordagi tovar → `/trend`ga mos → posti yoʻq eng yangi; kuniga bir brenddan ≤2, bir modeldan ≤1.
 - Ombor: qoldiq va tannarx **oʻlcham boʻyicha** (`product_sizes.stock_qty`, `stock_cost_uzs`); narx = tannarx × (1 + `stock.markup`); postda "Mavjud · 1 kunda yetkazamiz". Tannarx buyurtma "📦 Omborga" qilinganda uning landed cost'idan olinadi (oʻrtacha), `/stockcost` bilan tuzatiladi.
@@ -207,7 +210,7 @@ Chatplace'ning hujjatlarini o'qing va integratsiyani uning rasmiy usulida qiling
 
 1. Sotuv agenti → `orders` (awaiting_prepayment) → adminga xabar.
 2. Admin to'lovni tekshiradi → botda "To'lov keldi" → `prepayment_status=paid`.
-3. Admin/vositachi Dewu'da xarid qiladi → botda "Sotib olindi" → `buyout_status=bought`.
+3. Bot eslatadi: "Xariddan oldin ilovada joriy narxni tekshiring". Admin/vositachi Dewu'da xarid qiladi, `/buyprice` bilan haqiqiy narxni kiritadi → botda "Sotib olindi" → `buyout_status=bought`.
 4. Kargo bosqichlari qo'lda yangilanadi (`in_china_warehouse` → `shipped` → `in_tashkent` → `delivered`).
 5. Har bir status o'zgarishida mijozga Chatplace orqali avtomatik xabar.
 6. Muammo (o'lcham, kechikish, nuqson) → `problem` maydoni + admin qarori.

@@ -222,3 +222,77 @@ def test_import_job_bad_sheet_goes_to_summary(env, monkeypatch):
     asyncio.run(admin_bot.job_import(ctx, None))
     send(env, "/summary")
     assert "Jadval yuklanmadi" in session.texts()[-1]
+
+
+def screenshot_env(env, monkeypatch, tmp_path, answers):
+    import json
+    from aiogram.types import PhotoSize
+    from app import config
+    from tests.test_screens import DATA
+    monkeypatch.setitem(config.settings()["content"], "photos_dir", str(tmp_path / "photos"))
+    monkeypatch.setattr(config, "DATA_DIR", tmp_path / "data")
+
+    async def fake_download(self, file, destination=None, **kw):
+        Image.new("RGB", (1000, 2000), (200, 200, 200)).save(destination)
+    monkeypatch.setattr(Bot, "download", fake_download)
+    replies = iter(answers)
+    env[3].llm = FakeLlm(lambda user: json.dumps(DATA | next(replies)))
+
+    def photo(uid, caption=None, group=None):
+        return Message(message_id=uid, date=datetime.now(timezone.utc), chat=Chat(id=ADMIN, type="private"),
+                       from_user=User(id=ADMIN, is_bot=False, first_name="A"), caption=caption, media_group_id=group,
+                       photo=[PhotoSize(file_id=f"f{uid}", file_unique_id=f"u{uid}", width=20, height=20)])
+    return photo
+
+
+def buttons(env):
+    return [b.callback_data for row in env[2].sent[-1].reply_markup.inline_keyboard for b in row]
+
+
+def test_screenshots_album_preview_confirm(env, db, tmp_path, monkeypatch):
+    photo = screenshot_env(env, monkeypatch, tmp_path, [{}])
+    dp, bot, session, ctx = env
+
+    async def album():
+        await asyncio.gather(dp.feed_update(bot, Update(update_id=20, message=photo(1, "https://dw4.co/t/A/x", "g"))),
+                             dp.feed_update(bot, Update(update_id=21, message=photo(2, None, "g"))))
+    asyncio.run(album())
+    assert len(ctx.llm.calls) == 1                                  # one read for the whole album
+    assert "Toʻgʻrimi" in session.texts()[-1]
+    ok = buttons(env)[0]
+    assert ok.startswith("scr:ok:")
+    press(env, ok)
+    from app.db.models import Product
+    p = db.scalar(select(Product).where(Product.style_code == "MR530SG"))
+    assert p is not None and p.source_url == "https://dw4.co/t/A/x"
+    assert any(t.startswith("✓ qoʻshildi: New Balance 530") for t in session.texts())
+
+
+def test_screenshot_fix_flow(env, db, tmp_path, monkeypatch):
+    photo = screenshot_env(env, monkeypatch, tmp_path, [{"style_code": None, "size_system": "US"}, {}])
+    dp, bot, session, ctx = env
+    asyncio.run(dp.feed_update(bot, Update(update_id=30, message=photo(5))))
+    assert "Saqlab boʻlmaydi" in session.texts()[-1] and not any(b.startswith("scr:ok") for b in buttons(env))
+    press(env, [b for b in buttons(env) if b.startswith("scr:fix")][0])
+    send(env, "SKU MR530SG, oʻlchamlar EU")
+    assert "Admin correction (apply it): SKU MR530SG" in ctx.llm.calls[-1][1]
+    assert "Toʻgʻrimi" in session.texts()[-1]
+
+
+def test_link_gets_explanation(env):
+    send(env, "https://www.poizon.com/product/new-balance-530-582868624")
+    assert "skrinshot" in env[2].texts()[-1]
+
+
+def test_buyprice_recalculates_profit(env, db, tmp_path):
+    post = published_post(db, tmp_path)
+    send(env, f"/neworder {post.id} 41 Ali Valiyev +998 90 123 45 67")
+    press(env, env[2].sent[-1].reply_markup.inline_keyboard[0][0].callback_data)
+    assert any("Xariddan oldin ilovada joriy narxni tekshiring" in t for t in env[2].texts())
+    o = db.scalar(select(Order))
+    send(env, f"/buyprice {o.id} 520")
+    db.refresh(o)
+    assert o.buy_price_cny == 520 and o.buy_cost_uzs > 0
+    assert "Foyda:" in env[2].texts()[-1] and "rejada" in env[2].texts()[-1]
+    send(env, "/buyprice x")
+    assert env[2].texts()[-1].startswith("❌")

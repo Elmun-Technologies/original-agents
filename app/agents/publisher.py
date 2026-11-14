@@ -78,6 +78,22 @@ def trend_score(product: Product, terms: list[set[str]]) -> int:
     return best
 
 
+def price_age_days(product: Product, now: datetime) -> float | None:
+    """Days since the source price was last checked (newest available size); None = no price."""
+    seen = [ps.checked_at for ps in product.sizes if ps.available]
+    return (now - max(seen)).total_seconds() / 86400 if seen else None
+
+
+def stale_price(product: Product, now: datetime) -> bool:
+    age = price_age_days(product, now)
+    return age is not None and age > config.settings()["publishing"]["max_price_age_days"]
+
+
+def stale_message(product: Product, now: datetime) -> str:
+    return (f"{product.style_code}: narx {price_age_days(product, now):.0f} kun oldin olingan — ilovadan "
+            "skrinshotni qayta yuboring (narxni yangilang).")
+
+
 def rank_score(product: Product, terms: list[set[str]], now: datetime, fx: dict[str, Rate] | None) -> float:
     """"Solishtiruvchi": weighted sum of parts in 0..1 (weights in settings.ranking)."""
     s = config.settings()
@@ -127,7 +143,8 @@ def pick_products(session: Session, now: datetime, limit: int,
     replica = lambda pr: (pr.rejected_reason or "").startswith("replika")
     stock = [pr for pr in products if pr.in_stock and not replica(pr)
              and pr.id not in open_post and pr.id not in recent_stock_post]
-    fresh = [pr for pr in products if pr.is_active and pr.id not in has_post and pr not in stock]
+    fresh = [pr for pr in products if pr.is_active and pr.id not in has_post and pr not in stock
+             and not stale_price(pr, now)]
     ranked = sorted(fresh, key=lambda pr: -rank_score(pr, terms, now, fx))  # stable: newest first on a tie
 
     picked: list[tuple[Product, bool]] = []
@@ -260,6 +277,8 @@ def approve(session: Session, post_id: int, admin_id: int | None, fx: dict[str, 
         return Outcome(False, f"Post #{post_id} ({product.style_code}): surat yoʻq — tasdiqlab boʻlmaydi. "
                               f"Botga SKU {product.style_code} izohi bilan surat yuboring"
                               + (" yoki jadvalga image_urls qoʻshing." if product.images == [] else "."))
+    if not post.is_stock and stale_price(product, now):
+        return Outcome(False, f"Post #{post_id} " + stale_message(product, now))
     threshold = config.settings()["publishing"]["price_change_alert_pct"]
     old, new, notes = refresh_post(session, post, fx, now=now, out_root=out_root)  # re-render with photos
     exceeded, lines = change_report(old, new, threshold)
@@ -306,7 +325,13 @@ def next_to_publish(session: Session) -> Post | None:
 
 def prepare_publish(session: Session, post: Post, fx: dict[str, Rate], now: datetime, out_root=None) -> Outcome:
     """Fresh quotes right before posting, so the 24h price window starts at publication.
-    A big change sends the post back to draft for the admin."""
+    A big change or a stale source price sends the post back to draft."""
+    product = session.get(Product, post.product_id)
+    if not post.is_stock and stale_price(product, now):
+        post.status = "draft"
+        msg = f"Post #{post.id} nashr qilinmadi: " + stale_message(product, now)
+        note_problem(session, msg, now)
+        return Outcome(False, msg)
     threshold = config.settings()["publishing"]["price_change_alert_pct"]
     old, new, notes = refresh_post(session, post, fx, now=now, out_root=out_root)
     exceeded, lines = change_report(old, new, threshold)
@@ -363,6 +388,10 @@ def daily_summary(session: Session, now: datetime) -> str:
     if to_confirm or to_buy:
         lines.append(f"Sizdan kutilmoqda: toʻlovni tasdiqlash — {len(to_confirm)} ta, xarid — {len(to_buy)} ta (/orders)")
     lines.append(f"Nashr navbatida: {queued} ta · AI xarajati: ${spent_usd(session, now.astimezone(TZ).date()):.2f}")
+    stale = [pr for pr in session.scalars(select(Product).where(Product.is_active)) if stale_price(pr, now)]
+    if stale:
+        lines += ["", f"Narxni yangilang ({len(stale)} ta, skrinshotni qayta yuboring):"]
+        lines += [f"  • {pr.brand} {display_model(pr)} · {pr.style_code}" for pr in stale[:15]]
     if problems:
         lines += ["", "Chiqmadi / muammolar:"] + [f"  • {x}" for x in problems]
     else:

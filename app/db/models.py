@@ -212,6 +212,9 @@ class Order(Base):
     shipping_status: Mapped[str] = mapped_column(String(32), default="pending")
     delivered_at: Mapped[datetime | None]
     cancelled_at: Mapped[datetime | None]
+    # Real purchase price entered with /buyprice, and the landed cost it gives (for profit and reports)
+    buy_price_cny: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
+    buy_cost_uzs: Mapped[int | None] = mapped_column(BigInteger)
     problem: Mapped[str | None] = mapped_column(Text)  # e.g. size issue
     notes: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(default=utcnow, index=True)

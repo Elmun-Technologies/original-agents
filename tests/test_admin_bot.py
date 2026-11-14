@@ -78,4 +78,4 @@ def test_keyboards(db, tmp_path):
 def test_router_builds(db):
     ctx = admin_bot.Ctx(factory=sessionmaker(bind=db.get_bind()), admin_ids={1}, channel_id=None)
     router = admin_bot.create_router(ctx, tg=None)
-    assert len(router.message.handlers) >= 15 and len(router.callback_query.handlers) == 3
+    assert len(router.message.handlers) >= 15 and len(router.callback_query.handlers) == 4

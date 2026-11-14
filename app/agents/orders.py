@@ -302,11 +302,50 @@ def order_text(session: Session, o: Order) -> str:
     p = session.get(Product, o.product_id)
     state = "❌ BEKOR QILINGAN" if o.cancelled_at else (
         f"{STATUS_UZ[o.prepayment_status]} · {STATUS_UZ[o.buyout_status]} · {STATUS_UZ[o.shipping_status]}")
-    return (f"📦 Buyurtma #{o.id}{' · OMBORDAN' if o.from_stock else ''}\n"
+    text = (f"📦 Buyurtma #{o.id}{' · OMBORDAN' if o.from_stock else ''}\n"
             f"{p.brand} {p.model_name} · {p.style_code} · {o.size}\n"
             f"Mijoz: {o.customer_name}, {o.customer_contact}\n"
             f"Narx: {format_uzs(o.sell_price_uzs)}\n"
             f"Holat: {state}" + (f"\nIzoh: {o.notes}" if o.notes else ""))
+    if o.buy_cost_uzs is not None:
+        text += (f"\nXarid: ¥{o.buy_price_cny:g}, tannarx {format_uzs(o.buy_cost_uzs)}, "
+                 f"foyda {format_uzs(o.sell_price_uzs - o.buy_cost_uzs)}")
+    elif not o.cancelled_at and not o.from_stock and o.buyout_status == "pending":
+        text += (f"\n⚠️ Xariddan oldin ilovada joriy narxni tekshiring. Sotib olgach: "
+                 f"/buyprice {o.id} <yuan>")
+    return text
+
+
+def set_buy_price(session: Session, args: str | None, fx: dict[str, Rate] | None, now: datetime) -> str:
+    """/buyprice <order_id> <yuan>: real purchase price -> landed cost and profit recalculated
+    (same customs month aggregation as the order)."""
+    t = (args or "").replace(",", ".").split()
+    try:
+        order_id, price = int(t[0]), Decimal(t[1])
+    except (IndexError, ValueError, ArithmeticError):
+        raise OrderError("Format: /buyprice <buyurtma_id> <yuan>, masalan /buyprice 12 489")
+    if price <= 0:
+        raise OrderError("Narx musbat boʻlsin.")
+    o = session.get(Order, order_id)
+    if o is None:
+        raise OrderError(f"Buyurtma #{order_id} topilmadi.")
+    if o.from_stock:
+        raise OrderError(f"Buyurtma #{order_id} ombordan — xarid narxi yoʻq.")
+    if fx is None:
+        raise OrderError("Kurs yoʻq — keyinroq urinib koʻring.")
+    product = session.get(Product, o.product_id)
+    planned = session.get(Quote, o.quote_id).breakdown.get("profit_uzs")
+    prior_v, prior_w = month_totals(session, o.customer_contact, now, exclude_id=o.id)
+    calc = quote_from_source(price, "CNY", product.category, fx, now=now,
+                             prior_month_value_usd=prior_v + o.external_parcels_usd,
+                             prior_month_weight_kg=prior_w, vacuum_packing=o.vacuum_packing)
+    o.buy_price_cny, o.buy_cost_uzs = price, int(calc.landed_cost_usd * calc.usd_rate)
+    session.flush()
+    profit = o.sell_price_uzs - o.buy_cost_uzs
+    log.info("order #%s: buy price set", o.id)
+    return (f"🛒 Buyurtma #{o.id}: xarid ¥{price:g}, tannarx {format_uzs(o.buy_cost_uzs)}\n"
+            f"Foyda: {format_uzs(profit)}" + (f" (rejada {format_uzs(planned)})" if planned is not None else "")
+            + ("\n⚠️ Zarar!" if profit < 0 else ""))
 
 
 def open_orders(session: Session) -> list[Order]:

@@ -23,7 +23,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from app import config
-from app.agents import orders, publisher, sourcing
+from app.agents import orders, publisher, screens, sourcing
 from app.agents.content import ContentError, own_photos, photo_dir
 from app.config import TZ
 from app.db.models import Order, Post, Product
@@ -44,12 +44,19 @@ HELP = """Buyruqlar:
 /neworder <post_id> <oʻlcham> <ism> <telefon|@username> [ext=<USD>] [novac]
 /lead <post_id> [oʻlcham] — DMda narx soʻrashdi
 /stockcost <SKU> <summa> [oʻlcham]
+/buyprice <buyurtma_id> <yuan> — haqiqiy xarid narxi, foyda qayta hisoblanadi
 /trend <matn>
 /rate — CBU kurslari
 /expense <summa> <reklama|ai|server|menejer|boshqa> <izoh>
 /pause, /resume — avtomatik ishni (yuklash, draft, nashr) toʻxtatish/yoqish
 /cancel — tahrirlashni bekor qilish
-Surat: SKUni izohga yozib yuboring (yaxshisi fayl sifatida), bitta SKUga 10 tagacha."""
+Yangi tovar: ilovadan mahsulot sahifasining 1–3 ta skrinshotini izohsiz yuboring (havolani izohga yozish mumkin).
+Narxni yangilash: shu tovarning skrinshotini qayta yuboring.
+Tovar surati: SKUni izohga yozib yuboring (yaxshisi fayl sifatida), bitta SKUga 10 tagacha."""
+
+LINK_REPLY = ("🔗 Havoladan oʻqib boʻlmaydi: poizon.com bot'ga nom, narx va oʻlchamlarni bermaydi. "
+              "Ilovadan mahsulot sahifasining 1–3 ta skrinshotini yuboring (nom, SKU, narx, oʻlchamlar, "
+              "sotilgan soni koʻrinsin). Havolani skrinshot izohiga yozsangiz, manba sifatida saqlanadi.")
 
 
 @dataclass
@@ -62,6 +69,10 @@ class Ctx:
     pending_edit: dict[int, int] = field(default_factory=dict)          # admin -> post_id
     pending_orders: dict[str, tuple[orders.NewOrderRequest, int]] = field(default_factory=dict)  # token -> (req, shown price)
     album_sku: dict[str, str] = field(default_factory=dict)            # media_group_id -> SKU
+    album_url: dict[str, str] = field(default_factory=dict)            # media_group_id -> link from caption
+    screen_groups: dict[str, list[Path]] = field(default_factory=dict) # album being collected
+    pending_screens: dict[str, tuple[list[Path], dict, str | None]] = field(default_factory=dict)  # token -> (paths, data, url)
+    pending_fix: dict[int, str] = field(default_factory=dict)          # admin -> screen token
 
 
 def now() -> datetime:
@@ -135,9 +146,13 @@ def rate_text(at: datetime) -> str:
     return "\n".join(lines) + f"\nNarxlarda USD buferi: +{buf:.1%}"
 
 
+def caption_url(caption: str | None) -> str | None:
+    return next((w for w in (caption or "").split() if w.startswith(("http://", "https://"))), None)
+
+
 def resolve_sku(caption: str | None, media_group_id: str | None, album_sku: dict[str, str]) -> str | None:
-    """SKU from the caption; in an album only the first photo has it."""
-    sku = (caption or "").strip().split()[0] if (caption or "").strip() else None
+    """SKU from the caption; in an album only the first photo has it. A link is not a SKU."""
+    sku = (caption or "").strip().split()[0] if (caption or "").strip() and not caption_url(caption) else None
     if media_group_id:
         if sku:
             album_sku[media_group_id] = sku
@@ -523,22 +538,24 @@ def create_router(ctx: Ctx, tg: Tg) -> Router:
         if m.document and not (m.document.mime_type or "").startswith("image/"):
             await m.answer("Faqat rasm fayllari (JPG/PNG/WEBP) qabul qilinadi.")
             return
+        url = caption_url(m.caption)
+        if url and m.media_group_id:
+            ctx.album_url[m.media_group_id] = url
         sku = resolve_sku(m.caption, m.media_group_id, ctx.album_sku)
         for _ in range(15):  # album items are handled in parallel; wait for the captioned one
-            if sku or not m.media_group_id:
+            if sku or not m.media_group_id or url or m.media_group_id in ctx.album_url:
                 break
             await asyncio.sleep(0.2)
             sku = ctx.album_sku.get(m.media_group_id)
         kind = f"document {m.document.mime_type}" if m.document else "photo"
-        if not sku:
-            log.info("photo rejected: no SKU (%s, album=%s)", kind, bool(m.media_group_id))
-            await m.answer("Izohga SKU yozing (masalan: MR530SG).")
-            return
         if m.document:  # sent as a file: original quality
             file_id, unique = m.document.file_id, m.document.file_unique_id
             ext = Path(m.document.file_name or "").suffix.lower() or "." + m.document.mime_type.split("/")[-1]
         else:           # compressed by Telegram: take the largest size
             file_id, unique, ext = m.photo[-1].file_id, m.photo[-1].file_unique_id, ".jpg"
+        if not sku:     # no SKU: app screenshots of a new product (or a price update)
+            await screenshot(m, file_id, unique, ext)
+            return
         if ext not in PHOTO_EXTS:
             log.info("photo rejected: format %s (%s) sku=%s", ext, kind, sku)
             await m.answer(f"{ext} format qabul qilinmaydi — JPG/PNG/WEBP/HEIC yuboring.")
@@ -562,11 +579,91 @@ def create_router(ctx: Ctx, tg: Tg) -> Router:
         await m.answer(f"✓ {sku}: surat saqlandi ({count}/{config.settings()['publishing']['photos_max_per_sku']})"
                        + ("" if m.document else ". Maslahat: sifat uchun fayl sifatida yuboring."))
 
+    async def screenshot(m: Message, file_id: str, unique: str, ext: str):
+        gid = m.media_group_id or f"single{m.message_id}"
+        if ext not in PHOTO_EXTS:
+            await m.answer(f"{ext} format qabul qilinmaydi — JPG/PNG/WEBP/HEIC yuboring.")
+            return
+        target = config.DATA_DIR / "screens" / gid / f"{unique}{ext}"
+        target.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            await m.bot.download(file_id, destination=target)
+        except Exception as e:
+            log.warning("screenshot download failed: %r", e)
+            await m.answer("❌ Skrinshot yuklab olinmadi.")
+            return
+        path = await asyncio.to_thread(check_image, target)
+        if path is None:
+            await m.answer("❌ Fayl rasm sifatida ochilmadi.")
+            return
+        group = ctx.screen_groups.setdefault(gid, [])
+        group.append(path)
+        if len(group) > 1:
+            return          # the first item of the album processes the whole group
+        seen = 0
+        while seen != len(group):  # let the rest of the album arrive: wait until it stops growing
+            seen = len(group)
+            await asyncio.sleep(1.5)
+        paths = ctx.screen_groups.pop(gid)
+        if len(paths) > 3:
+            await m.answer(f"Faqat birinchi 3 ta skrinshot oʻqiladi ({len(paths)} ta keldi).")
+        await read_and_preview(m, paths[:3], ctx.album_url.pop(gid, None) or caption_url(m.caption))
+
+    async def read_and_preview(m: Message, paths: list[Path], url: str | None,
+                               previous: dict | None = None, correction: str | None = None):
+        await m.answer("🔎 Skrinshot oʻqilmoqda…")
+        try:
+            data = await asyncio.to_thread(screens.read_screens, ctx.llm, paths, now(), previous, correction)
+        except Exception as e:  # LLM error, budget, unreadable answer
+            log.warning("screens read failed: %r", e)
+            await m.answer(f"❌ {e}")
+            await tg.flush_alerts()
+            return
+        token = secrets.token_hex(6)
+        ctx.pending_screens[token] = (paths, data, url)
+        crop = await asyncio.to_thread(screens.crop_photo, paths, data,
+                                       config.DATA_DIR / "screens" / f"preview_{token}.jpg")
+        if crop:
+            await m.answer_photo(FSInputFile(crop), caption="Kartochka uchun qirqilgan rasm")
+        row = ([] if screens.problems(data) else [("✅ Toʻgʻri", f"scr:ok:{token}")]) + [
+            ("✏️ Tuzatish", f"scr:fix:{token}"), ("❌ Bekor", f"scr:no:{token}")]
+        await m.answer(screens.preview_text(data), reply_markup=kb([row]))
+
+    @r.callback_query(F.data.startswith("scr:"))
+    async def screen_action(call: CallbackQuery):
+        _, action, token = call.data.split(":")
+        await call.answer()
+        await call.message.edit_reply_markup(reply_markup=None)
+        if token not in ctx.pending_screens:
+            await call.message.answer("Bu soʻrov eskirgan — skrinshotlarni qayta yuboring.")
+            return
+        if action == "fix":
+            ctx.pending_fix[call.from_user.id] = token
+            await call.message.answer("Nimani tuzatish kerak? Yozing, masalan: «SKU MR530SG», «42 oʻlcham narxi 509», "
+                                      "«US 9 = EU 42.5», «kategoriya hoodie».")
+            return
+        paths, data, url = ctx.pending_screens.pop(token)
+        if action == "no":
+            await call.message.answer("Bekor qilindi.")
+            return
+        _, msg = await db(lambda s: screens.save(s, data, paths, url))
+        log.info("screens saved: %s", screens.style_code(data))
+        await call.message.answer(msg)
+
+    @r.message(Command("buyprice"))
+    async def buyprice(m: Message, command: CommandObject):
+        await safe(m, lambda s: orders.set_buy_price(s, command.args, fx_now(now())[0], now()))
+
     @r.message(F.text & ~F.text.startswith("/"))
     async def text(m: Message):
+        token = ctx.pending_fix.pop(m.from_user.id, None)
+        if token in ctx.pending_screens:
+            paths, data, url = ctx.pending_screens.pop(token)
+            await read_and_preview(m, paths, url, data, m.text)
+            return
         post_id = ctx.pending_edit.pop(m.from_user.id, None)
         if post_id is None:
-            await m.answer(HELP)
+            await m.answer(LINK_REPLY if screens.has_link(m.text) else HELP)
             return
 
         def run(s):

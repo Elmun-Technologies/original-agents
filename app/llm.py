@@ -11,6 +11,7 @@
 - Every call is recorded in llm_calls (tokens + cost, no text); rollup_expenses() writes the
   daily total into expenses (type "ai").
 """
+import base64
 import logging
 import math
 import re
@@ -153,8 +154,10 @@ class Llm:
             self.alert(msg)
 
     def complete(self, purpose: str, system: str, user: str, *, now: datetime | None = None,
-                 max_tokens: int | None = None, effort: str | None = None) -> str:
-        """system: stable instructions (cached). user: per-call data. Returns response text."""
+                 max_tokens: int | None = None, effort: str | None = None,
+                 images: list[tuple[bytes, str]] = ()) -> str:
+        """system: stable instructions (cached). user: per-call data. Returns response text.
+        images: [(bytes, media_type)] sent before the text (the PII guard checks text only)."""
         model = self.model_for(purpose)
         prices = self.cfg["prices_per_mtok"]
         if model not in prices:
@@ -180,7 +183,10 @@ class Llm:
             model=model,
             max_tokens=max_tokens or self.cfg["max_tokens"],
             system=[{"type": "text", "text": system, "cache_control": {"type": "ephemeral"}}],
-            messages=[{"role": "user", "content": user}],
+            messages=[{"role": "user", "content": [
+                *({"type": "image", "source": {"type": "base64", "media_type": mt,
+                                               "data": base64.b64encode(data).decode()}} for data, mt in images),
+                {"type": "text", "text": user}] if images else user}],
             output_config={"effort": effort or self.cfg["effort"]},
             **kw,
         )

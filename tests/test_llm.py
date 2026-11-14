@@ -251,3 +251,12 @@ def test_model_per_purpose(env, factory, db):
 def test_real_settings_content_uses_sonnet(env):
     assert llm.Llm(lambda: None).model_for("content") == "claude-sonnet-5-5"
     assert llm.Llm(lambda: None).model_for("demand") == "claude-opus-5-5"   # from env
+
+
+
+def test_images_go_before_text(env, factory):
+    c = FakeClient(response("{}"))
+    make(factory, c).complete("screens", "SYS", "Category keys", now=NOW, images=[(b"\xff\xd8", "image/jpeg")])
+    content = c.calls[0]["messages"][0]["content"]
+    assert content[0] == {"type": "image", "source": {"type": "base64", "media_type": "image/jpeg", "data": "/9g="}}
+    assert content[1] == {"type": "text", "text": "Category keys"}

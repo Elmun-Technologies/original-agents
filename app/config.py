@@ -27,7 +27,7 @@ REQUIRED = {
     "content": ["badge", "delivery_days", "cta", "hashtags", "max_body_chars", "llm_retries", "caption_max_chars",
                 "photos_dir", "cards_max"],
     "stock": ["markup", "delivery_text"],
-    "publishing": ["daily_drafts", "price_change_alert_pct",
+    "publishing": ["daily_drafts", "price_change_alert_pct", "max_price_age_days",
                    "per_brand_daily_max", "per_model_daily_max", "stock_repost_after_days",
                    "trend_days", "photos_max_per_sku"],
     "category": ["weight_kg", "package_cm", "markup", "winter", "size_type", "label_uz", "hashtag"],
