@@ -84,7 +84,7 @@ export default async function OrderPage({ params, searchParams }: { params: Prom
           <h3 className="h" style={{ fontSize: '20px', marginTop: paid ? '26px' : 0 }} id={paid ? undefined : 'tr-h'}>{tr('Tarkibi')}</h3>
           {o.items.map((it) => (
             <div key={it.sku} style={{ display: 'flex', gap: '14px', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid #EFE9E3' }}>
-              {it.img && <img src={it.img} alt="" style={{ width: '64px', height: '64px', borderRadius: '12px', objectFit: 'cover' }} />}
+              {it.img && <img loading="lazy" decoding="async" src={it.img} alt="" style={{ width: '64px', height: '64px', borderRadius: '12px', objectFit: 'cover' }} />}
               <span style={{ flex: 1, fontSize: '14px' }}><Link href={L(`/mahsulot/${it.slug}`)} style={{ textDecoration: 'none' }}><b style={{ fontWeight: 600 }}>{it.brand}</b> {it.name}</Link><br /><span className="muted">{[it.volume, tn(lang, '[N] dona', it.qty)].filter(Boolean).join(' · ')}</span></span>
               <span className="num" style={{ fontSize: '16px' }}>{fmt(it.price * it.qty)} {sum(lang)}</span>
             </div>
@@ -100,7 +100,7 @@ export default async function OrderPage({ params, searchParams }: { params: Prom
         {paid && (
           <aside style={{ flex: '1 1 360px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
             <div className="card" style={{ padding: '24px', background: '#2A211E', color: '#FBFAF7', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <span style={{ display: 'flex', gap: '10px', alignItems: 'center' }}><span style={{ width: '40px', height: '40px', borderRadius: '50%', overflow: 'hidden' }}><img className="ph" src="/img/face-touch.jpg" alt="" style={{ objectPosition: '50% 25%' }} /></span><b style={{ fontWeight: 600 }}>{tr('Kelganda qanday ishlatasiz')}</b></span>
+              <span style={{ display: 'flex', gap: '10px', alignItems: 'center' }}><span style={{ width: '40px', height: '40px', borderRadius: '50%', overflow: 'hidden' }}><img loading="lazy" decoding="async" className="ph" src="/img/face-touch.jpg" alt="" style={{ objectPosition: '50% 25%' }} /></span><b style={{ fontWeight: 600 }}>{tr('Kelganda qanday ishlatasiz')}</b></span>
               <ol style={{ margin: 0, paddingLeft: '20px', lineHeight: 1.7, fontSize: '15px', color: '#E9E1DC' }}>
                 <li>{tr('Ertalab: yuvish → toner → serum → krem → SPF')}</li>
                 <li>{tr('Kechqurun: yuvish → toner → serum → krem')}</li>

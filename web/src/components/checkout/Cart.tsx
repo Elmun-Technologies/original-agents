@@ -96,7 +96,7 @@ export function CartView({ lang }: { lang: Lang }) {
           )}
           {lines.map((l) => (
             <div key={l.sku} style={{ padding: '12px', borderRadius: '20px', background: '#FBFAF7', display: 'flex', gap: '12px' }}>
-              <img src={l.img} alt="" style={{ width: '84px', height: '84px', borderRadius: '14px', objectFit: 'cover' }} />
+              <img loading="lazy" decoding="async" src={l.img} alt="" style={{ width: '84px', height: '84px', borderRadius: '14px', objectFit: 'cover' }} />
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '6px', minWidth: 0 }}>
                 <span style={{ fontSize: '13px', lineHeight: 1.3 }}><b style={{ fontWeight: 600 }}>{l.brand}</b> {l.name}</span>
                 <span style={{ display: 'flex', gap: '6px', alignItems: 'baseline' }}><b className="num" style={{ fontSize: '16px', fontWeight: 500 }}>{fmt(l.line)} {sum(lang)}</b>{l.old && <span className="old" style={{ fontSize: '12px' }}>{fmt(l.lineOld)}</span>}</span>
@@ -106,7 +106,7 @@ export function CartView({ lang }: { lang: Lang }) {
           ))}
           {suggest && (
             <div style={{ padding: '14px', borderRadius: '20px', background: '#F2D6D0', display: 'flex', gap: '12px', alignItems: 'center' }}>
-              <img src={suggest.img} alt="" style={{ width: '56px', height: '56px', borderRadius: '12px', objectFit: 'cover' }} />
+              <img loading="lazy" decoding="async" src={suggest.img} alt="" style={{ width: '56px', height: '56px', borderRadius: '12px', objectFit: 'cover' }} />
               <span style={{ flex: 1, fontSize: '13px', lineHeight: 1.4 }}>{suggest.reason === 'spf' ? tr('Serum bor, SPF yoʻq. Usiz dogʻlar qaytadi —') : `${suggest.brand} ${suggest.name} —`} <b>{fmt(suggest.price)} {sum(lang)}</b></span>
               <button className="pill dark" style={{ minHeight: '38px', fontSize: '13px' }} onClick={() => shop.add(toCard(suggest))}>{tr('Qoʻshish')}</button>
             </div>
@@ -141,7 +141,7 @@ export function CartView({ lang }: { lang: Lang }) {
             )}
             {lines.map((l) => (
               <article key={l.sku} className="card" style={{ padding: '12px 16px 12px 12px', borderRadius: '20px', display: 'flex', gap: '16px', alignItems: 'center', flexWrap: 'wrap' }}>
-                <Link href={L(`/mahsulot/${l.slug}`)} style={{ width: '112px', height: '112px', borderRadius: '14px', overflow: 'hidden', flex: 'none' }}><img className="ph" src={l.img} alt={l.name} /></Link>
+                <Link href={L(`/mahsulot/${l.slug}`)} style={{ width: '112px', height: '112px', borderRadius: '14px', overflow: 'hidden', flex: 'none' }}><img loading="lazy" decoding="async" className="ph" src={l.img} alt={l.name} /></Link>
                 <div style={{ flex: '1 1 220px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
                   <Link href={L(`/mahsulot/${l.slug}`)} style={{ textDecoration: 'none', fontSize: '15px', lineHeight: 1.35 }}><b style={{ fontWeight: 600 }}>{l.brand}</b> {l.name}</Link>
                   <span className="muted" style={{ fontSize: '13px' }}>{[l.volume, l.capped ? tn(lang, 'Omborda faqat [N] ta', l.stock) : tr('Omborda bor')].filter(Boolean).join(' · ')}</span>
@@ -163,7 +163,7 @@ export function CartView({ lang }: { lang: Lang }) {
                 <span className="muted" style={{ fontSize: '14px', display: 'block', marginTop: '4px' }}>{reason}</span>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '8px', marginTop: '14px' }}>
                   <div style={{ display: 'flex', gap: '12px', alignItems: 'center', padding: '8px', borderRadius: '14px', background: '#F6F3EF' }}>
-                    <img src={suggest.img} alt="" style={{ width: '60px', height: '60px', borderRadius: '10px', objectFit: 'cover' }} />
+                    <img loading="lazy" decoding="async" src={suggest.img} alt="" style={{ width: '60px', height: '60px', borderRadius: '10px', objectFit: 'cover' }} />
                     <span style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '2px', fontSize: '13px' }}><span><b style={{ fontWeight: 600 }}>{suggest.brand}</b> {suggest.name}</span><span className="num" style={{ fontSize: '15px' }}>{fmt(suggest.price)} {sum(lang)}</span></span>
                     <button className="ib" style={{ background: '#2A211E', color: '#FBFAF7' }} aria-label={tr('Savatga qoʻshish')} onClick={() => shop.add(toCard(suggest))}><Icon name="plus" size={16} sw={2} /></button>
                   </div>

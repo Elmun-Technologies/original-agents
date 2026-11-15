@@ -17,7 +17,7 @@ export function Hero({ lang, slides, giftFrom }: { lang: Lang; slides: Slide[]; 
     <section className="wrap" style={{ marginTop: '16px', display: 'flex', gap: '12px', flexWrap: 'wrap' }} aria-label={tr('Aksiyalar')}>
       {s && (
         <div className="card" style={{ flex: '999 1 640px', minWidth: 0, minHeight: '460px', background: s.bg || '#F2D6D0' }}>
-          <img className="ph" src={s.img} alt={s.alt} style={{ position: 'absolute', right: 0, top: 0, width: '52%', height: '100%', objectFit: 'cover', objectPosition: s.pos || '50% 50%' }} />
+          <img loading="lazy" className="ph" src={s.img} alt={s.alt} style={{ position: 'absolute', right: 0, top: 0, width: '52%', height: '100%', objectFit: 'cover', objectPosition: s.pos || '50% 50%' }} />
           <div className="pad-m hero-txt" style={{ position: 'relative', width: '52%', minWidth: '300px', boxSizing: 'border-box', padding: '44px', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '24px', minHeight: '460px' }}>
             {s.tag ? <span className={`chip ${s.tagStyle || 'tag-sale'}`} style={{ alignSelf: 'flex-start', height: '30px', fontSize: '13px' }}>{s.tag}</span> : <span />}
             <div>
@@ -40,7 +40,7 @@ export function Hero({ lang, slides, giftFrom }: { lang: Lang; slides: Slide[]; 
       )}
       <div style={{ flex: '1 1 380px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
         <Link href={L('/maslahatchi')} className="card zoom" style={{ flex: 1, minHeight: '224px', textDecoration: 'none', background: '#2A211E', color: '#FBFAF7', display: 'flex' }}>
-          <img src="/img/face-serum.jpg" alt="" style={{ position: 'absolute', right: 0, top: 0, width: '44%', height: '100%', objectFit: 'cover', objectPosition: '40% 30%' }} />
+          <img loading="lazy" src="/img/face-serum.jpg" alt="" style={{ position: 'absolute', right: 0, top: 0, width: '44%', height: '100%', objectFit: 'cover', objectPosition: '40% 30%' }} />
           <span style={{ position: 'relative', width: '60%', padding: '24px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '12px', boxSizing: 'border-box' }}>
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: '#F2D6D0' }}><Icon name="spark" size={15} /> {tr('AI maslahatchi')}</span>
             <span className="h" style={{ fontSize: '24px', lineHeight: 1.15 }}>{tr('Nima olishni bilmayapsizmi? Yozing — 1 daqiqada tanlab beraman')}</span>
@@ -48,7 +48,7 @@ export function Hero({ lang, slides, giftFrom }: { lang: Lang; slides: Slide[]; 
           </span>
         </Link>
         <Link href={L('/sovgalar')} className="card zoom" style={{ flex: 1, minHeight: '224px', textDecoration: 'none', background: '#F2D6D0' }}>
-          <img className="ph" src="/img/p-flatlay-pink.jpg" alt={tr('Serumlar toʻplami')} style={{ position: 'absolute', inset: 0 }} />
+          <img loading="lazy" className="ph" src="/img/p-flatlay-pink.jpg" alt={tr('Serumlar toʻplami')} style={{ position: 'absolute', inset: 0 }} />
           <span className="glass" style={{ position: 'absolute', left: '12px', bottom: '12px', right: '12px', borderRadius: '16px', padding: '14px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
             <span style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
               <b style={{ font: "600 17px 'Inter Tight', sans-serif" }}>{tr('Sovgʻa toʻplamlari')}</b>

@@ -57,7 +57,7 @@ export function FavoritesPage({ lang, products, telegram }: { lang: Lang; produc
             const c = chip(p)
             return (
               <div key={p.slug} className="card" data-g="fav" style={{ padding: '14px', display: 'grid', gap: '20px', alignItems: 'center' }}>
-                <Link href={L(`/mahsulot/${p.slug}`)} className="zoom" style={{ display: 'block', width: '120px', height: '120px', borderRadius: '18px', overflow: 'hidden' }}><img className="ph" src={p.img} alt={`${p.brand} ${p.name}`} /></Link>
+                <Link href={L(`/mahsulot/${p.slug}`)} className="zoom" style={{ display: 'block', width: '120px', height: '120px', borderRadius: '18px', overflow: 'hidden' }}><img loading="lazy" decoding="async" className="ph" src={p.img} alt={`${p.brand} ${p.name}`} /></Link>
                 <span style={{ display: 'flex', flexDirection: 'column', gap: '6px', minWidth: 0 }}>
                   {c && <span className="chip" style={{ alignSelf: 'flex-start', background: c[1], color: c[2] }}>{c[0]}</span>}
                   <Link href={L(`/mahsulot/${p.slug}`)} style={{ textDecoration: 'none', fontSize: '17px' }}><b style={{ fontWeight: 600 }}>{p.brand}</b> {p.name}</Link>

@@ -73,7 +73,7 @@ export function AccountPage({ lang, d, products }: { lang: Lang; d: AccData; pro
 
           {tab === 'Buyurtmalar' && (d.orders.length ? d.orders.map((o) => (
             <div key={o.number} style={row}>
-              <span style={{ display: 'flex' }}>{o.items.slice(0, 3).map((i) => <img key={i.sku} src={i.img} alt="" style={{ width: '56px', height: '56px', borderRadius: '14px', objectFit: 'cover', border: '2px solid #FBFAF7', marginRight: '-12px' }} />)}</span>
+              <span style={{ display: 'flex' }}>{o.items.slice(0, 3).map((i) => <img loading="lazy" decoding="async" key={i.sku} src={i.img} alt="" style={{ width: '56px', height: '56px', borderRadius: '14px', objectFit: 'cover', border: '2px solid #FBFAF7', marginRight: '-12px' }} />)}</span>
               <span style={{ flex: '1 1 240px', marginLeft: '14px', display: 'flex', flexDirection: 'column', gap: '2px' }}><Link href={L(`/buyurtma/${o.number}?t=${o.token}`)} style={{ textDecoration: 'none' }}><b style={{ fontWeight: 600 }}>№ {o.number} · {new Date(o.date).toLocaleDateString(lang === 'ru' ? 'ru-RU' : 'uz-UZ', { day: 'numeric', month: 'long', timeZone: 'Asia/Tashkent' })}</b></Link><span className="muted" style={{ fontSize: '13px' }}>{[...new Set(o.items.map((i) => i.brand))].join(', ')}</span></span>
               <span className="chip" style={{ background: STATUS[o.status]?.[1] }}>{tr(STATUS[o.status]?.[0] ?? o.status)}</span>
               <span className="num" style={{ fontSize: '18px', minWidth: '120px', textAlign: 'right' }}>{fmt(o.total)} {sum(lang)}</span>
@@ -83,7 +83,7 @@ export function AccountPage({ lang, d, products }: { lang: Lang; d: AccData; pro
 
           {tab === 'Sevimlilar' && (favs.length ? favs.map((p) => (
             <div key={p.slug} style={row}>
-              <img src={p.img} alt="" style={{ width: '56px', height: '56px', borderRadius: '14px', objectFit: 'cover' }} />
+              <img loading="lazy" decoding="async" src={p.img} alt="" style={{ width: '56px', height: '56px', borderRadius: '14px', objectFit: 'cover' }} />
               <Link href={L(`/mahsulot/${p.slug}`)} style={{ flex: '1 1 240px', textDecoration: 'none' }}><b style={{ fontWeight: 600 }}>{p.brand}</b> {p.name}</Link>
               <span className="num" style={{ fontSize: '18px' }}>{fmt(p.price)} {sum(lang)}</span>
               {p.stock > 0 && <button className="pill line" style={{ minHeight: '42px' }} onClick={() => shop.add(p)}>{tr('Savatga')}</button>}
@@ -103,7 +103,7 @@ export function AccountPage({ lang, d, products }: { lang: Lang; d: AccData; pro
 
           {tab === 'Saqlangan rutina' && (picks.length ? (
             <>
-              {picks.map(([k, p]) => <div key={k} style={row}><span className="muted" style={{ minWidth: '90px' }}>{tr(k.startsWith('am') ? 'Ertalab' : 'Kechqurun')}</span><img src={p!.img} alt="" style={{ width: '56px', height: '56px', borderRadius: '14px', objectFit: 'cover' }} /><Link href={L(`/mahsulot/${p!.slug}`)} style={{ flex: '1 1 240px', textDecoration: 'none' }}><b style={{ fontWeight: 600 }}>{p!.brand}</b> {p!.name}</Link></div>)}
+              {picks.map(([k, p]) => <div key={k} style={row}><span className="muted" style={{ minWidth: '90px' }}>{tr(k.startsWith('am') ? 'Ertalab' : 'Kechqurun')}</span><img loading="lazy" decoding="async" src={p!.img} alt="" style={{ width: '56px', height: '56px', borderRadius: '14px', objectFit: 'cover' }} /><Link href={L(`/mahsulot/${p!.slug}`)} style={{ flex: '1 1 240px', textDecoration: 'none' }}><b style={{ fontWeight: 600 }}>{p!.brand}</b> {p!.name}</Link></div>)}
               <span style={{ display: 'flex', gap: '8px', marginTop: '16px', flexWrap: 'wrap' }}><Link href={L('/rutina')} className="pill line">{tr('Oʻzgartirish')}</Link>{!d.routine && <button className="pill dark" onClick={() => save({ routine: { pick: routine } }, 'routine')}>{tr('Kabinetga saqlash')}</button>}{ok('routine')}</span>
             </>
           ) : <p className="muted" style={{ marginTop: '14px' }}>{tr('Rutina hali saqlanmagan.')} <Link href={L('/rutina')}>{tr('Rutina konstruktori')}</Link></p>)}

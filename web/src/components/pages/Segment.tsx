@@ -39,7 +39,7 @@ export function SegmentPage({ lang, tabs, seg }: { lang: Lang; tabs: SegTab[]; s
           {seg.say && <p style={{ margin: 0, fontSize: '17px', lineHeight: 1.6, color: '#4A3F3A', maxWidth: '560px' }}>{seg.say}</p>}
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '4px' }}>{seg.set.length > 1 && <a href="#set" className="pill dark">{tr('Tayyor toʻplamni koʻrish')}</a>}<Link href={L('/maslahatchi')} className="pill">{tr('Maslahat soʻrash')}</Link></div>
         </div>
-        {seg.img && <div style={{ flex: '1 1 420px', minHeight: '340px', position: 'relative' }}><img className="ph" src={seg.img} alt="" style={{ position: 'absolute', inset: 0, objectPosition: seg.pos }} /></div>}
+        {seg.img && <div style={{ flex: '1 1 420px', minHeight: '340px', position: 'relative' }}><img loading="lazy" decoding="async" className="ph" src={seg.img} alt="" style={{ position: 'absolute', inset: 0, objectPosition: seg.pos }} /></div>}
       </section>
       {seg.set.length > 1 && (
         <section id="set" className="card pad-m" style={{ marginTop: '16px', padding: '28px' }} aria-labelledby="set-h">
@@ -54,7 +54,7 @@ export function SegmentPage({ lang, tabs, seg }: { lang: Lang; tabs: SegTab[]; s
             <ol style={{ flex: '2 1 520px', listStyle: 'none', margin: 0, padding: 0, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '10px' }}>
               {seg.set.map((x) => (
                 <li key={x.p.sku}><Link href={L(`/mahsulot/${x.p.slug}`)} style={{ display: 'flex', flexDirection: 'column', gap: '8px', textDecoration: 'none' }}>
-                  <span className="zoom" style={{ display: 'block', aspectRatio: '1/1', borderRadius: '16px', overflow: 'hidden', position: 'relative' }}><img className="ph" src={x.p.img} alt="" />{x.step && <span className="chip glass" style={{ position: 'absolute', top: '8px', left: '8px' }}>{x.step}</span>}</span>
+                  <span className="zoom" style={{ display: 'block', aspectRatio: '1/1', borderRadius: '16px', overflow: 'hidden', position: 'relative' }}><img loading="lazy" decoding="async" className="ph" src={x.p.img} alt="" />{x.step && <span className="chip glass" style={{ position: 'absolute', top: '8px', left: '8px' }}>{x.step}</span>}</span>
                   <span style={{ fontSize: '13px', lineHeight: 1.35 }}><b style={{ fontWeight: 600 }}>{x.p.brand}</b> {x.p.name}</span>
                   {x.why && <span className="muted" style={{ fontSize: '12px' }}>{x.why}</span>}
                 </Link></li>

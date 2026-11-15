@@ -29,7 +29,7 @@ export function MobileHome({ lang, slides, hits, cutoff }: { lang: Lang; slides:
       </div>
       {s && (
         <Link href={L(s.link || '/aksiyalar')} style={{ display: 'block', position: 'relative', height: '220px', borderRadius: '24px', overflow: 'hidden', textDecoration: 'none' }}>
-          <img className="ph" src={s.img} alt="" style={{ position: 'absolute', inset: 0, objectPosition: s.pos }} />
+          <img className="ph" src={s.img} alt="" fetchPriority="high" style={{ position: 'absolute', inset: 0, objectPosition: s.pos }} />
           <span style={{ position: 'absolute', inset: 0, background: 'linear-gradient(90deg, rgba(42,33,30,.62), rgba(42,33,30,0) 75%)' }} />
           <span style={{ position: 'absolute', left: '18px', top: '18px', bottom: '18px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', color: '#FBFAF7', maxWidth: '220px' }}>
             {s.tag ? <span className="chip" style={{ alignSelf: 'flex-start', background: 'rgba(251,250,247,.2)', color: '#FBFAF7' }}>{s.tagShort || s.tag}</span> : <span />}
@@ -49,7 +49,7 @@ export function MobileHome({ lang, slides, hits, cutoff }: { lang: Lang; slides:
       <div className="hs" style={{ gap: '12px', margin: '0 -16px', padding: '0 16px' }}>
         {CATS.map(([label, p, img]) => (
           <Link key={label} href={L(p)} style={{ flex: 'none', width: '68px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', textDecoration: 'none', fontSize: '11px', textAlign: 'center' }}>
-            <span style={{ width: '64px', height: '64px', borderRadius: '50%', overflow: 'hidden' }}><img className="ph" src={`/img/${img}.jpg`} alt="" /></span>{tr(label)}
+            <span style={{ width: '64px', height: '64px', borderRadius: '50%', overflow: 'hidden' }}><img loading="lazy" decoding="async" className="ph" src={`/img/${img}.jpg`} alt="" /></span>{tr(label)}
           </Link>
         ))}
       </div>

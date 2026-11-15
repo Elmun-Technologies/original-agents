@@ -87,7 +87,7 @@ export function RatingPage({ lang, deals, top, bySales, endsAt, promo, month }: 
           {tl.map((p, i) => (
             <li key={p.slug} data-g="top" style={{ display: 'grid', gap: '18px', alignItems: 'center', padding: '14px 0', borderTop: '1px solid #EFE9E3' }}>
               <span className="num" style={{ fontSize: '40px', color: '#A8475C' }}>{i + 1}</span>
-              <Link href={L(`/mahsulot/${p.slug}`)} className="zoom" style={{ display: 'block', width: '88px', height: '88px', borderRadius: '16px', overflow: 'hidden' }}><img className="ph" src={p.img} alt={`${p.brand} ${p.name}`} /></Link>
+              <Link href={L(`/mahsulot/${p.slug}`)} className="zoom" style={{ display: 'block', width: '88px', height: '88px', borderRadius: '16px', overflow: 'hidden' }}><img loading="lazy" decoding="async" className="ph" src={p.img} alt={`${p.brand} ${p.name}`} /></Link>
               <span style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: 0 }}>
                 <Link href={L(`/mahsulot/${p.slug}`)} style={{ textDecoration: 'none', fontSize: '16px' }}><b style={{ fontWeight: 600 }}>{p.brand}</b> {p.name}</Link>
                 {p.need && <span className="muted" style={{ fontSize: '14px' }}>{p.need}</span>}
@@ -102,7 +102,7 @@ export function RatingPage({ lang, deals, top, bySales, endsAt, promo, month }: 
         </ol>
       </section>
       <section className="card pad-m" style={{ marginTop: '16px', padding: '28px', display: 'flex', gap: '20px', flexWrap: 'wrap', alignItems: 'center', background: '#F2D6D0' }}>
-        <span style={{ width: '56px', height: '56px', borderRadius: '50%', overflow: 'hidden', flex: 'none' }}><img className="ph" src="/img/face-white.jpg" alt="" style={{ objectPosition: '50% 25%' }} /></span>
+        <span style={{ width: '56px', height: '56px', borderRadius: '50%', overflow: 'hidden', flex: 'none' }}><img loading="lazy" decoding="async" className="ph" src="/img/face-white.jpg" alt="" style={{ objectPosition: '50% 25%' }} /></span>
         <span style={{ flex: '1 1 420px', fontSize: '16px', lineHeight: 1.55 }}><b style={{ fontWeight: 600 }}>{tr('Top-10 hammaga ham mos emas.')}</b> {tr('Teringiz turini aytsangiz, roʻyxatdan aynan sizga mos 2–3 tasini ajratib beraman.')}</span>
         <Link href={L('/maslahatchi')} className="pill dark"><Icon name="spark" size={16} /> {tr('Menga moslarini koʻrsat')}</Link>
       </section>

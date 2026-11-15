@@ -68,7 +68,7 @@ export function ArticlePage({ lang, a }: { lang: Lang; a: ArticleData }) {
                     <li key={i} className="card" style={{ padding: '16px', display: 'flex', gap: '16px', alignItems: 'center', fontSize: '15px', lineHeight: 1.5, flexWrap: 'wrap' }}>
                       <span className="num" style={{ fontSize: '28px', color: '#A8475C', width: '36px' }}>{String(i + 1).padStart(2, '0')}</span>
                       <span style={{ flex: '1 1 200px' }}><b style={{ fontWeight: 600 }}>{s.t}</b><br /><span className="muted">{s.d}</span></span>
-                      {s.p && <><img src={s.p.img} alt="" style={{ width: '64px', height: '64px', borderRadius: '14px', objectFit: 'cover' }} />
+                      {s.p && <><img loading="lazy" decoding="async" src={s.p.img} alt="" style={{ width: '64px', height: '64px', borderRadius: '14px', objectFit: 'cover' }} />
                         <button className="pill line" style={{ minHeight: '42px', fontSize: '14px' }} onClick={() => shop.add(s.p!)}>{shop.inCart(s.p.sku) ? tr('Savatda ✓') : tr('Savatga')}</button></>}
                     </li>
                   ))}
@@ -110,7 +110,7 @@ export function ArticlePage({ lang, a }: { lang: Lang; a: ArticleData }) {
             {set.length >= 2 && (
               <div className="card" style={{ padding: '22px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <b style={{ fontWeight: 600 }}>{tr('Maqoladagi toʻplam')}</b>
-                <img src={set[1]?.img ?? set[0].img} alt="" style={{ width: '100%', aspectRatio: '4/3', borderRadius: '16px', objectFit: 'cover' }} />
+                <img loading="lazy" decoding="async" src={set[1]?.img ?? set[0].img} alt="" style={{ width: '100%', aspectRatio: '4/3', borderRadius: '16px', objectFit: 'cover' }} />
                 <span style={{ fontSize: '14px' }}>{a.steps.filter((s) => s.p).map((s) => s.t).join(' + ')} · <b className="num">{fmt(setNew)} {sum(lang)}</b> <span className="old">{fmt(setSum)}</span></span>
                 <button className="pill dark" onClick={() => { set.forEach((p) => shop.add(p)); setSetAdded(true) }}>{setAdded ? tr('Toʻplam savatda ✓') : tr('Toʻplamni savatga')}</button>
               </div>
@@ -122,7 +122,7 @@ export function ArticlePage({ lang, a }: { lang: Lang; a: ArticleData }) {
         <section className="wrap" style={{ marginTop: '48px' }} aria-labelledby="more-h">
           <h2 id="more-h" className="h h2" style={{ fontSize: '30px', marginBottom: '16px' }}>{tr('Yana oʻqing')}</h2>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '12px' }}>
-            {a.more.map((m) => <Link key={m.slug} href={L(`/jurnal/${m.slug}`)} className="card zoom" style={{ textDecoration: 'none', overflow: 'hidden' }}><span style={{ display: 'block', aspectRatio: '16/10', overflow: 'hidden' }}>{m.cover && <img className="ph" src={m.cover} alt="" />}</span><span style={{ display: 'block', padding: '18px', fontSize: '17px', fontWeight: 600 }}>{m.title}</span></Link>)}
+            {a.more.map((m) => <Link key={m.slug} href={L(`/jurnal/${m.slug}`)} className="card zoom" style={{ textDecoration: 'none', overflow: 'hidden' }}><span style={{ display: 'block', aspectRatio: '16/10', overflow: 'hidden' }}>{m.cover && <img loading="lazy" decoding="async" className="ph" src={m.cover} alt="" />}</span><span style={{ display: 'block', padding: '18px', fontSize: '17px', fontWeight: 600 }}>{m.title}</span></Link>)}
           </div>
         </section>
       )}

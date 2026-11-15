@@ -50,7 +50,7 @@ export function Chooser({ lang, products }: { lang: Lang; products: PickProduct[
         <div style={{ display: 'flex', gap: '28px', flexWrap: 'wrap' }}>
           <div style={{ flex: '1 1 340px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
-              <span style={{ width: '44px', height: '44px', borderRadius: '50%', overflow: 'hidden', flex: 'none', background: '#F2D6D0' }}><img className="ph" src="/img/face-touch.jpg" alt="" style={{ objectPosition: '50% 25%' }} /></span>
+              <span style={{ width: '44px', height: '44px', borderRadius: '50%', overflow: 'hidden', flex: 'none', background: '#F2D6D0' }}><img loading="lazy" decoding="async" className="ph" src="/img/face-touch.jpg" alt="" style={{ objectPosition: '50% 25%' }} /></span>
               <div style={bubble}>
                 <b id="pick-h" style={{ fontWeight: 600 }}>{tr('Salom! Keling, birga tanlaymiz.')}</b><br />{tr('Teringiz qanaqa? Bittasini bosing — pastda sizga mos mahsulotlar chiqadi.')}
               </div>

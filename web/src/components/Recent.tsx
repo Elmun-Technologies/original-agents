@@ -38,7 +38,7 @@ export function RecentlyViewed({ lang, exclude }: { lang: Lang; exclude?: string
       <div className="hs">
         {list.map((p) => (
           <Link key={p.slug} href={href(lang, `/mahsulot/${p.slug}`)} className="card" style={{ flex: 'none', width: '260px', padding: '8px', display: 'flex', gap: '12px', alignItems: 'center', textDecoration: 'none', borderRadius: '18px' }}>
-            <img src={p.img} alt="" style={{ width: '72px', height: '72px', borderRadius: '12px', objectFit: 'cover' }} />
+            <img loading="lazy" decoding="async" src={p.img} alt="" style={{ width: '72px', height: '72px', borderRadius: '12px', objectFit: 'cover' }} />
             <span style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '13px', lineHeight: 1.3 }}>
               <span><b style={{ fontWeight: 600 }}>{p.brand}</b> {p.name}</span>
               <span className="num" style={{ fontSize: '15px' }}>{fmt(p.price)} {sum(lang)}</span>

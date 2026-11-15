@@ -42,7 +42,7 @@ export function SkinBar({ lang }: { lang: Lang }) {
   const tr = (s: string) => t(lang, s)
   return (
     <div className="card d-only" style={{ marginTop: '14px', padding: '14px 18px', display: 'flex', gap: '14px', alignItems: 'center', flexWrap: 'wrap', background: '#F2D6D0' }}>
-      <span style={{ width: '40px', height: '40px', borderRadius: '50%', overflow: 'hidden', flex: 'none' }}><img className="ph" src="/img/face-touch.jpg" alt="" style={{ objectPosition: '50% 25%' }} /></span>
+      <span style={{ width: '40px', height: '40px', borderRadius: '50%', overflow: 'hidden', flex: 'none' }}><img loading="lazy" decoding="async" className="ph" src="/img/face-touch.jpg" alt="" style={{ objectPosition: '50% 25%' }} /></span>
       <span style={{ flex: '1 1 260px', fontSize: '15px', lineHeight: 1.45 }}><b style={{ fontWeight: 600 }}>{tr('Qaysi birini olishni bilmayapsizmi?')}</b> {tr('Teringizni tanlang — mos mahsulotlarni yuqoriga chiqaraman.')}</span>
       <span style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
         {SKINS.map(([id, label]) => {

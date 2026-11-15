@@ -201,7 +201,7 @@ export function CheckoutView({ lang, store }: { lang: Lang; store: CheckoutStore
           {errors.form && <span role="alert" style={{ color: '#A8475C', fontSize: '14px' }}>{tr(errors.form)}</span>}
           {q && (
             <div style={{ padding: '16px', borderRadius: '22px', background: '#FBFAF7', display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '14px' }}>
-              <div style={{ display: 'flex', gap: '6px' }}>{q.lines.slice(0, 4).map((l) => <img key={l.sku} src={l.img} alt="" style={{ width: '44px', height: '44px', borderRadius: '10px', objectFit: 'cover' }} />)}<span className="muted" style={{ alignSelf: 'center', marginLeft: '4px' }}>{tn(lang, '[N] ta mahsulot', q.count)}</span></div>
+              <div style={{ display: 'flex', gap: '6px' }}>{q.lines.slice(0, 4).map((l) => <img loading="lazy" decoding="async" key={l.sku} src={l.img} alt="" style={{ width: '44px', height: '44px', borderRadius: '10px', objectFit: 'cover' }} />)}<span className="muted" style={{ alignSelf: 'center', marginLeft: '4px' }}>{tn(lang, '[N] ta mahsulot', q.count)}</span></div>
               {summaryRows}
             </div>
           )}
@@ -245,7 +245,7 @@ export function CheckoutView({ lang, store }: { lang: Lang; store: CheckoutStore
             <b className="h" style={{ fontSize: '24px' }}>{tr('Buyurtmangiz')}</b>
             {q?.lines.map((l) => (
               <div key={l.sku} style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                <span style={{ position: 'relative' }}><img src={l.img} alt="" style={{ width: '56px', height: '56px', borderRadius: '12px', objectFit: 'cover' }} /><span className="badge" style={{ top: '-6px', right: '-6px' }}>{l.qty}</span></span>
+                <span style={{ position: 'relative' }}><img loading="lazy" decoding="async" src={l.img} alt="" style={{ width: '56px', height: '56px', borderRadius: '12px', objectFit: 'cover' }} /><span className="badge" style={{ top: '-6px', right: '-6px' }}>{l.qty}</span></span>
                 <span style={{ flex: 1, fontSize: '13px', lineHeight: 1.35 }}><b style={{ fontWeight: 600 }}>{l.brand}</b> {l.name}</span><span className="num" style={{ fontSize: '14px', whiteSpace: 'nowrap' }}>{fmt(l.line)}</span>
               </div>
             ))}

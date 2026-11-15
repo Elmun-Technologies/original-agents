@@ -43,7 +43,7 @@ export function JournalPage({ lang, articles, ingredients, telegramUrl }: { lang
         <div data-g="3" style={{ display: 'grid', gap: '12px' }}>
           {list.map((a) => (
             <Link key={a.slug} href={L(`/jurnal/${a.slug}`)} className="card zoom" style={{ textDecoration: 'none', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-              <span style={{ display: 'block', aspectRatio: '16/10', overflow: 'hidden' }}>{a.cover && <img className="ph" src={a.cover} alt="" style={{ objectPosition: a.pos }} />}</span>
+              <span style={{ display: 'block', aspectRatio: '16/10', overflow: 'hidden' }}>{a.cover && <img loading="lazy" decoding="async" className="ph" src={a.cover} alt="" style={{ objectPosition: a.pos }} />}</span>
               <span style={{ padding: '18px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 <span style={{ display: 'flex', gap: '6px' }}><span className="chip">{tr(a.catLabel)}</span><span className="chip">{tn(lang, '[N] daqiqa', a.minutes)}</span></span>
                 <b style={{ fontWeight: 600, fontSize: '18px', lineHeight: 1.3 }}>{a.title}</b>

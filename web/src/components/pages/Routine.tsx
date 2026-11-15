@@ -70,7 +70,7 @@ export function RoutinePage({ lang, products }: { lang: Lang; products: HomeCard
                   const on = p.slug === s.sel?.slug
                   return (
                     <button key={p.slug} role="radio" aria-checked={on} onClick={() => { setPick({ ...pick, [s.key]: p.slug }); setSaved(false) }} style={{ display: 'flex', gap: '10px', alignItems: 'center', padding: '10px', borderRadius: '16px', border: `1.5px solid ${on ? '#2A211E' : '#E2DAD2'}`, background: on ? '#F6F3EF' : '#fff', cursor: 'pointer', textAlign: 'left', font: 'inherit', color: '#2A211E', opacity: p.stock === 0 ? 0.55 : 1 }}>
-                      <img src={p.img} alt="" style={{ width: '52px', height: '52px', borderRadius: '12px', objectFit: 'cover' }} />
+                      <img loading="lazy" decoding="async" src={p.img} alt="" style={{ width: '52px', height: '52px', borderRadius: '12px', objectFit: 'cover' }} />
                       <span style={{ flex: 1, fontSize: '13px', lineHeight: 1.35 }}><b style={{ fontWeight: 600 }}>{p.brand}</b> {p.name}<br /><span className="num" style={{ fontSize: '14px' }}>{fmt(p.price)} {sum(lang)}</span></span>
                     </button>
                   )
@@ -83,7 +83,7 @@ export function RoutinePage({ lang, products }: { lang: Lang; products: HomeCard
         <aside style={{ flex: '1 1 340px', display: 'flex', flexDirection: 'column', gap: '12px', position: 'sticky', top: '20px' }}>
           <div className="card" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
             <b className="h" style={{ fontSize: '22px' }}>{tr(tab === 'am' ? 'Ertalabki rutinangiz' : 'Kechki rutinangiz')}</b>
-            {chosen.map((p, i) => <span key={p.slug} style={{ display: 'flex', gap: '10px', alignItems: 'center', fontSize: '13px' }}><span className="num muted">{String(i + 1).padStart(2, '0')}</span><img src={p.img} alt="" style={{ width: '36px', height: '36px', borderRadius: '10px', objectFit: 'cover' }} /><span style={{ flex: 1 }}><b style={{ fontWeight: 600 }}>{p.brand}</b> {p.name}</span></span>)}
+            {chosen.map((p, i) => <span key={p.slug} style={{ display: 'flex', gap: '10px', alignItems: 'center', fontSize: '13px' }}><span className="num muted">{String(i + 1).padStart(2, '0')}</span><img loading="lazy" decoding="async" src={p.img} alt="" style={{ width: '36px', height: '36px', borderRadius: '10px', objectFit: 'cover' }} /><span style={{ flex: 1 }}><b style={{ fontWeight: 600 }}>{p.brand}</b> {p.name}</span></span>)}
             {warns.length
               ? warns.map((w) => <span key={w} role="alert" style={{ padding: '12px 14px', borderRadius: '14px', background: '#F2D6D0', fontSize: '13px', lineHeight: 1.5, color: '#6B2433' }}>{tr(w)}</span>)
               : <span style={{ padding: '12px 14px', borderRadius: '14px', background: '#E8F0E4', fontSize: '13px', lineHeight: 1.5, color: '#2F3A2B' }}>{tick} {tn(lang, 'Tarkiblar bir-biriga mos. Taxminan [N] daqiqa.', chosen.length + 1)}</span>}
@@ -99,7 +99,7 @@ export function RoutinePage({ lang, products }: { lang: Lang; products: HomeCard
           <h2 id="cmp-h" className="h h2" style={{ fontSize: '30px' }}>{tr('Ikkisidan qaysi biri? Solishtiramiz')}</h2>
           <div data-g="cmp" style={{ display: 'grid', marginTop: '18px', fontSize: '14px' }}>
             <span />
-            {cmp.map((p) => <span key={p.slug} style={{ padding: '0 12px 14px', display: 'flex', gap: '12px', alignItems: 'center' }}><img src={p.img} alt="" style={{ width: '64px', height: '64px', borderRadius: '14px', objectFit: 'cover' }} /><span><b style={{ fontWeight: 600 }}>{p.brand}</b><br />{p.name}</span></span>)}
+            {cmp.map((p) => <span key={p.slug} style={{ padding: '0 12px 14px', display: 'flex', gap: '12px', alignItems: 'center' }}><img loading="lazy" decoding="async" src={p.img} alt="" style={{ width: '64px', height: '64px', borderRadius: '14px', objectFit: 'cover' }} /><span><b style={{ fontWeight: 600 }}>{p.brand}</b><br />{p.name}</span></span>)}
             {([
               ['Kimga', (p: HomeCard) => p.skin.map((s) => label(SKIN, lang, s)).join(', ') || '—'],
               ['Nimaga yordam beradi', (p: HomeCard) => p.concerns.map((c) => label(CONCERNS, lang, c)).join(', ') || '—'],

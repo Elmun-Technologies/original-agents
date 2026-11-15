@@ -76,7 +76,7 @@ export function Toast({ lang }: { lang: Lang }) {
   if (!toast) return null
   return (
     <div className="toast" role="status">
-      <img src={toast.img} alt="" style={{ width: '56px', height: '56px', borderRadius: '12px', objectFit: 'cover' }} />
+      <img loading="lazy" decoding="async" src={toast.img} alt="" style={{ width: '56px', height: '56px', borderRadius: '12px', objectFit: 'cover' }} />
       <span style={{ display: 'flex', flexDirection: 'column', gap: '2px', flex: 1, minWidth: 0 }}>
         <b style={{ fontSize: '14px', fontWeight: 600 }}>{t(lang, 'Savatga qoʻshildi')}</b>
         <span style={{ fontSize: '13px', color: '#D9CFC9', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{toast.name}</span>
