@@ -1,0 +1,10 @@
+*
+!pyproject.toml
+!uv.lock
+!app/__init__.py
+!app/config.py
+!app/scraping
+!config
+!prompts
+!yeppo_agents
+**/__pycache__

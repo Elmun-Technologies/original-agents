@@ -1,0 +1,34 @@
+# Yeppo marketing agents — separate from the Poizon stack (own network/volume names, no published ports).
+# Coolify: Docker Compose build pack with this file; fill the ${...} variables in Environment Variables.
+# Local:   docker compose -f docker-compose.yeppo-agents.yml up -d --build
+# NOTE: TELEGRAM_BOT_TOKEN (@Originalpobot) can be polled by ONE process — keep the Poizon bot paused,
+#       or give Yeppo its own bot token.
+services:
+  yeppo-agents:
+    build:
+      context: .
+      dockerfile: Dockerfile.yeppo-agents
+    restart: unless-stopped
+    environment:
+      YEPPO_API_URL: ${YEPPO_API_URL}               # the site, e.g. https://yeppo.uz
+      YEPPO_SITE_URL: ${YEPPO_SITE_URL}             # public links in captions
+      YEPPO_API_EMAIL: ${YEPPO_API_EMAIL}           # site admin user for the agent
+      YEPPO_API_PASSWORD: ${YEPPO_API_PASSWORD}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      YEPPO_LLM_MODEL: ${YEPPO_LLM_MODEL:-}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      TELEGRAM_ADMIN_IDS: ${TELEGRAM_ADMIN_IDS}
+      SCRAPER_CONTACT_EMAIL: ${SCRAPER_CONTACT_EMAIL:-}
+      DRY_RUN: ${DRY_RUN:-true}
+    mem_limit: 768m                                 # ffmpeg renders 1080x1920
+    networks: [egress]
+    volumes:
+      - yeppo_agents_data:/app/data/yeppo           # state DB, cache, rendered posts
+
+networks:
+  egress:
+    name: yeppo-agents-egress
+
+volumes:
+  yeppo_agents_data:
+    name: yeppo-agents-data

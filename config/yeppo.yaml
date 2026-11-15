@@ -1,0 +1,133 @@
+# Yeppo (Korean cosmetics) marketing agents — every business number lives here, not in code.
+# Lines marked TODO(admin) are safe guesses: replace them with real numbers.
+
+source:
+  name: q-depot
+  base_url: https://www.q-depot.com
+  # Listing pages the sourcing agent may read (robots.txt allows them; /search and ?sort are disallowed).
+  listings: [best-sellers, new-arrivals, skincare, sun-care, mask, cleansing, set]
+  pages_per_listing: 3          # 12 products per page
+  detail_pages_per_run: 25      # product pages opened per run (only the best-scored)
+  delay_seconds: [5, 10]        # random pause between requests
+  cache_hours: 12
+  daily_page_limit: 300
+  # Blocked for bots (checked 2026-11-15) — never worked around, see docs/yeppo_agents.md
+  blocked: {olive_young_global: "Access restricted", coupang: "Cloudflare block", gmarket: "product pages 403"}
+
+pricing:
+  ship_rate_per_kg_usd: 9.0     # TODO(admin): Korea -> Tashkent cargo, $ per kg
+  weight_kg_default: 0.25       # TODO(admin): product + package
+  weight_kg_by_category: {serum: 0.15, essensiya: 0.25, toner: 0.35, spf: 0.12, krem: 0.15, tozalash: 0.2, niqoblar: 0.3, toplamlar: 0.6}
+  customs_pct: 0.0              # TODO(admin): duty + VAT share of (price + shipping); ask the accountant
+  local_delivery_usd: 0.0       # included in the site's delivery fee
+  markup: 0.35                  # TODO(admin): our margin on landed cost
+  usd_rate_buffer_pct: 1.5
+  round_to_uzs: 1000            # site prices look like 219 000
+  max_sell_price_uzs: 1500000   # do not propose products above this
+  min_sell_price_uzs: 50000
+
+demand:
+  # month (1-12) -> extra weight for our category slugs (Tashkent climate)
+  seasons:
+    winter: {months: [11, 12, 1, 2], boost: {krem: 3, essensiya: 2, niqoblar: 1, toplamlar: 2}}
+    spring: {months: [3, 4, 5], boost: {spf: 2, tozalash: 2, toner: 1, serum: 1}}
+    summer: {months: [6, 7, 8], boost: {spf: 3, tozalash: 2, toner: 2}}
+    autumn: {months: [9, 10], boost: {serum: 2, krem: 1, essensiya: 1}}
+  holidays:   # gift sets before holidays (MM-DD, days before)
+    - {date: "12-31", before: 21, boost: {toplamlar: 3}}
+    - {date: "03-08", before: 21, boost: {toplamlar: 3}}
+  search_log_days: 30
+  trend_days: 14
+
+# English words in Q-Depot product names -> our category slug. Checked in this order, whole words.
+category_words:
+  spf: [sun, spf, uv, sunscreen]
+  tozalash: [cleanser, cleansing, foam, "cleansing oil", "cleansing balm"]
+  niqoblar: [mask, masks, "sheet mask", patch, patches]
+  toplamlar: [set, kit]
+  toner: [toner, pad, pads, mist]
+  serum: [serum, ampoule, ampule]
+  essensiya: [essence]
+  krem: [cream, moisturizer, "gel cream", lotion, emulsion]
+
+# Customer words (site search, /trend; uz + ru) -> English words found in source product names
+query_words:
+  krem: [cream]
+  крем: [cream]
+  serum: [serum, ampoule]
+  сыворотк: [serum, ampoule]
+  ampula: [ampoule]
+  toner: [toner]
+  тонер: [toner]
+  spf: [sun, spf]
+  quyosh: [sun, spf]
+  солнц: [sun, spf]
+  niqob: [mask]
+  maska: [mask]
+  маск: [mask]
+  yuvish: [cleanser, foam]
+  tozala: [cleanser, foam, cleansing]
+  умыван: [cleanser, foam]
+  пенк: [foam]
+  husnbuzar: [acne, cica, "tea tree", centella, trouble]
+  sivilce: [acne, cica, "tea tree", centella, trouble]
+  akne: [acne, cica, "tea tree", centella]
+  акне: [acne, cica, "tea tree", centella]
+  прыщ: [acne, cica, "tea tree", centella]
+  pigment: [brightening, niacinamide, "vita c", "vitamin c"]
+  dog: [brightening, niacinamide]
+  пигмент: [brightening, niacinamide, "vitamin c"]
+  ajin: [wrinkle, retinol, peptide, collagen]
+  морщин: [wrinkle, retinol, peptide, collagen]
+  quruq: [hyaluronic, moisture, hydrating, ceramide]
+  сух: [hyaluronic, moisture, hydrating, ceramide]
+  yogli: [pore, sebum, "tea tree", bha]
+  жирн: [pore, sebum, bha]
+  teshik: [pore]
+  пор: [pore]
+  sezgir: [cica, centella, calming, sensitive]
+  чувствит: [cica, centella, calming, sensitive]
+  ko'z: [eye]
+  глаз: [eye]
+  salyangoz: [snail]
+  улитк: [snail]
+skip_words: [tint, lip, cushion, foundation, eyeliner, mascara, pencil, nail, hair, shampoo, perfume, brush, puff, men's shaver]
+
+content:
+  daily_posts: 3                # TODO(admin)
+  repost_after_days: 14
+  per_brand_daily_max: 1
+  utm: {source: instagram, medium: social, campaign: agent}
+  originality:   # TODO(admin): wording about where goods come from
+    uz: "Koreyadan keltirilgan original mahsulot. Partiya raqami va yaroqlilik muddati sayt sahifasida."
+    ru: "Оригинальная продукция из Кореи. Номер партии и срок годности — на странице товара."
+  cta:
+    uz: "Buyurtma: saytda (havola profilda) yoki Direct'ga yozing."
+    ru: "Заказ: на сайте (ссылка в профиле) или пишите в Direct."
+  category_hashtag: {serum: "#serum", essensiya: "#essensiya", toner: "#toner", spf: "#spf", krem: "#yuzkremi", tozalash: "#yuzyuvish", niqoblar: "#niqob", toplamlar: "#sovga"}
+  hashtags_base: ["#yeppo", "#koreyskosmetika", "#koreyakosmetika", "#kbeauty", "#teriparvarishi", "#toshkent"]
+  max_body_chars: 600
+  card: {w: 1080, h: 1350}
+  story: {w: 1080, h: 1920}
+  reels: {w: 1080, h: 1920, fps: 30, scene_seconds: 3.2, xfade_seconds: 0.5}
+
+schedule:   # Asia/Tashkent
+  sourcing: "06:00"
+  sourcing_days: [mon, thu]
+  content: "10:00"
+
+llm:
+  model: claude-sonnet-5-5      # captions; YEPPO_LLM_MODEL in .env overrides
+  max_tokens: 4000
+  effort: low                   # short marketing text
+  daily_budget_usd: 2.0
+  prices_per_mtok:
+    claude-opus-5-5:   {input: 4, output: 20, cache_write: 5, cache_read: 0.2}
+    claude-sonnet-5-5: {input: 2, output: 10, cache_write: 2.5, cache_read: 0.1}
+    claude-haiku-5-5:  {input: 0.1, output: 0.5, cache_write: 0.125, cache_read: 0.01}
+
+forbidden_claims:   # never in captions (honest-terms rules)
+  - "(?i)rasmiy\\s*(diler|do\\S?kon|vakil|distribyutor)|официальн"
+  - "(?i)faqat\\s*\\d+\\s*(ta|dona)\\s*qol|shoshiling|oxirgi(si|lari)\\b|осталось|последн"
+  - "(?i)davolaydi|shifo|tibbiy|kasallik|лечит|вылечит"
+  - "(?i)100\\s*%\\s*(natija|kafolat)|гарантир"
