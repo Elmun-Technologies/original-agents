@@ -74,18 +74,19 @@ export function ConsultantPage({ lang, products, brands, telegram, hours, signed
   const fact = (k: string, v?: string) => <span style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', fontSize: '14px', padding: '6px 0', borderTop: '1px solid #EFE9E3' }}><span className="muted">{tr(k)}</span><b style={{ fontWeight: 600, textAlign: 'right' }}>{v ?? '—'}</b></span>
   return (
     <div className="wrap" style={{ marginTop: '20px', display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'flex-start' }}>
-      <section className="card" style={{ flex: '999 1 760px', minWidth: 0, display: 'flex', flexDirection: 'column', minHeight: '760px' }} aria-label={tr('Maslahatchi bilan suhbat')}>
+      <section className="card no-phone-hdr" data-g="ai" style={{ flex: '999 1 760px', minWidth: 0, display: 'flex', flexDirection: 'column', minHeight: '760px' }} aria-label={tr('Maslahatchi bilan suhbat')}>
         <div style={{ display: 'flex', gap: '12px', alignItems: 'center', padding: '18px 24px', borderBottom: '1px solid #EFE9E3' }}>
+          <button className="ib phone-only" aria-label={tr('Orqaga')} onClick={() => (history.length > 1 ? history.back() : location.assign(href(lang, '/')))}>‹</button>
           <span style={{ width: '44px', height: '44px', borderRadius: '50%', overflow: 'hidden' }}><img className="ph" src="/img/face-white.jpg" alt="" style={{ objectPosition: '50% 25%' }} /></span>
           <span style={{ flex: 1 }}><h1 style={{ fontWeight: 600, fontSize: 'inherit', margin: 0, display: 'inline' }}>{tr('Yeppo maslahatchisi')}</h1><br /><span className="muted" style={{ fontSize: '13px' }}>{tr('Avtomatik tanlovchi · tibbiy tashxis qoʻymaydi')}</span></span>
-          <button className="pill ghost" style={{ minHeight: '40px' }} onClick={restart}>↺ {tr('Boshidan')}</button>
+          <button className="pill ghost" style={{ minHeight: '40px' }} onClick={restart} aria-label={tr('Boshidan')}>↺<span className="hide-m">{tr('Boshidan')}</span></button>
         </div>
         <div aria-live="polite" style={{ flex: 1, padding: '24px', display: 'flex', flexDirection: 'column', gap: '14px', background: '#F6F3EF' }}>
           {msgs.map(bubble)}
           {plan.length > 0 && <div className="pgrid">{plan.map((p) => <ProductCard key={p.slug} p={p} lang={lang} />)}</div>}
         </div>
         <div style={{ padding: '16px 24px', borderTop: '1px solid #EFE9E3', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          {options.length > 0 && <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>{options.map(([l, v]) => <button key={v} className="pill line" style={{ minHeight: '44px' }} onClick={() => pick(v, tr(l))}>{tr(l)}</button>)}</div>}
+          {options.length > 0 && <div data-g="ai-opts" style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>{options.map(([l, v]) => <button key={v} className="pill line" style={{ minHeight: '44px' }} onClick={() => pick(v, tr(l))}>{tr(l)}</button>)}</div>}
           {step < 3 && (
             <form onSubmit={send} style={{ display: 'flex', gap: '8px', alignItems: 'center', padding: '6px 6px 6px 18px', borderRadius: '999px', background: '#fff', border: '1px solid #E2DAD2' }}>
               <input className="inp" value={text} onChange={(e) => setText(e.target.value)} placeholder={tr('Yoki oʻz soʻzingiz bilan yozing…')} aria-label={tr('Xabar')} style={{ border: 'none', background: 'transparent', flex: 1, minHeight: 0, padding: '10px 0' }} />
@@ -96,7 +97,7 @@ export function ConsultantPage({ lang, products, brands, telegram, hours, signed
         </div>
       </section>
 
-      <aside style={{ flex: '1 1 320px', display: 'flex', flexDirection: 'column', gap: '12px', position: 'sticky', top: '20px' }}>
+      <aside className="hide-m" style={{ flex: '1 1 320px', display: 'flex', flexDirection: 'column', gap: '12px', position: 'sticky', top: '20px' }}>
         <div className="card" style={{ padding: '22px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
           <b style={{ fontWeight: 600 }}>{tr('Siz haqingizda tushunganim')}</b>
           {fact('Teri turi', label(SKIN, lang, skin))}{fact('Asosiy muammo', label(CONCERNS, lang, concern))}{fact('Vaqt', time !== undefined ? tr(Q3[time][0]) : undefined)}

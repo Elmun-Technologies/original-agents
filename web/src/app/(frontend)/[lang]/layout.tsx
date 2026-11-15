@@ -6,7 +6,7 @@ import '../styles.css'
 import { Footer, MobileTabBar, Toast } from '@/components/Footer'
 import { Header } from '@/components/Header'
 import { ShopProvider } from '@/components/shop'
-import { getStore } from '@/lib/catalog'
+import { categoryCounts, getStore } from '@/lib/catalog'
 import { isLang, t } from '@/lib/i18n'
 
 // Pages are rendered on first request (no DB during the Docker build) and refreshed every minute,
@@ -30,13 +30,13 @@ export async function generateMetadata({ params }: { params: Promise<{ lang: str
 export default async function LangLayout({ children, params }: { children: React.ReactNode; params: Promise<{ lang: string }> }) {
   const { lang } = await params
   if (!isLang(lang)) notFound()
-  const store = await getStore()
+  const [store, cats] = await Promise.all([getStore(), categoryCounts()])
   const info = { tashkentDays: store.tashkentDays, freeDeliveryFrom: store.freeDeliveryFrom, telegramUrl: store.telegramUrl }
   return (
     <html lang={lang}>
       <body>
         <ShopProvider>
-          <Header lang={lang} store={info} />
+          <Header lang={lang} store={info} cats={cats} />
           <main>{children}</main>
           <Footer lang={lang} telegramUrl={store.telegramUrl} />
           <MobileTabBar lang={lang} />

@@ -203,3 +203,19 @@ export async function salesBySku(from: Date) {
   for (const o of res.docs) for (const it of o.items ?? []) out.set(it.sku, (out.get(it.sku) ?? 0) + it.qty)
   return out
 }
+
+/** category slug -> number of products in it (header menu: hide empty/missing categories, show counts) */
+export const categoryCounts = cache(async (): Promise<Record<string, number>> => {
+  const p = await payload()
+  const [cats, products] = await Promise.all([
+    p.find({ collection: 'categories', depth: 0, limit: 200, pagination: false, select: { slug: true } }),
+    p.find({ collection: 'products', depth: 0, limit: 5000, pagination: false, select: { category: true } }),
+  ])
+  const byId = new Map(cats.docs.map((c) => [c.id, c.slug]))
+  const out: Record<string, number> = Object.fromEntries(cats.docs.map((c) => [c.slug, 0]))
+  for (const pr of products.docs) {
+    const slug = byId.get(typeof pr.category === 'object' ? pr.category.id : pr.category)
+    if (slug) out[slug]++
+  }
+  return out
+})

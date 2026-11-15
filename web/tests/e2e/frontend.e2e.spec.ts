@@ -284,3 +284,48 @@ test('favourites: heart on a card -> list -> remove', async ({ page }) => {
   await page.getByRole('button', { name: 'Oʻchirish' }).first().click()
   await expect(page.getByText('Hali hech narsa saqlanmagan')).toBeVisible()
 })
+
+test('no broken internal links (crawl from both home pages)', async ({ request }) => {
+  test.setTimeout(240_000)
+  const seen = new Set<string>(), bad: string[] = []
+  const queue = ['/uz', '/ru']
+  while (queue.length && seen.size < 220) {
+    const path = queue.shift()!
+    if (seen.has(path)) continue
+    seen.add(path)
+    const r = await request.get(`${BASE}${path}`, { maxRedirects: 3 })
+    if (r.status() >= 400) { bad.push(`${r.status()} ${path}`); continue }
+    if (!(r.headers()['content-type'] ?? '').includes('text/html')) continue
+    for (const m of (await r.text()).matchAll(/href="(\/(?:uz|ru)[^"#]*)"/g)) {
+      const u = m[1].replace(/&amp;/g, '&')
+      // personal/transactional pages and filter permutations are covered by their own tests
+      if (/\/(kabinet|buyurtma|tolov|rasmiylashtirish)/.test(u) || u.includes('?')) continue
+      if (!seen.has(u)) queue.push(u)
+    }
+  }
+  expect(bad).toEqual([])
+  expect(seen.size).toBeGreaterThan(40)
+})
+
+test('phone: search, consultant and cabinet use their own top bar (design Mobile*)', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.goto(`${BASE}/uz/qidiruv?q=${encodeURIComponent('quruq teri uchun krem')}`)
+  await expect(page.locator('.hdr')).toBeHidden()
+  await expect(page.locator('.m-top').getByRole('button', { name: 'Orqaga' })).toBeVisible()
+  await expect(page.locator('.m-top').getByText('Tushundim:')).toBeVisible()
+  await page.goto(`${BASE}/uz/maslahatchi`)
+  await expect(page.locator('.hdr')).toBeHidden()
+  await expect(page.getByRole('button', { name: 'Orqaga' })).toBeVisible()
+  // cabinet: menu list -> section -> back
+  await page.goto(`${BASE}/uz/kirish`)
+  await page.getByLabel('Telefon raqam').fill(`+998 ${phone()}`)
+  await page.getByRole('button', { name: 'Kod olish' }).click()
+  const code = (await page.getByText('Sinov rejimi: SMS yuborilmadi. Kod:').locator('b').textContent())!.trim()
+  await page.getByLabel('Kod', { exact: true }).fill(code)
+  await page.getByRole('button', { name: 'Kirish', exact: true }).click()
+  await expect(page).toHaveURL(/\/uz\/kabinet/)
+  await page.getByRole('button', { name: /Teri profilim/ }).click()
+  await expect(page.getByRole('heading', { name: 'Teri profilim' })).toBeVisible()
+  await page.getByRole('button', { name: 'Orqaga' }).click()
+  await expect(page.getByRole('button', { name: /Buyurtmalarim/ })).toBeVisible()
+})

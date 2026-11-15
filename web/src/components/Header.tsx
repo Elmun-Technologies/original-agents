@@ -10,6 +10,8 @@ import { Icon } from './icons'
 import { useShop } from './shop'
 
 export type StoreInfo = { tashkentDays: number; freeDeliveryFrom: number; telegramUrl: string }
+/** category slug -> products in it (from the layout); a nav/menu link to a missing category is hidden */
+export type CatCounts = Record<string, number>
 
 const NAV: [string, string, string][] = [
   ['/yuz-parvarishi', 'Yuz parvarishi', 'face'],
@@ -22,27 +24,30 @@ const NAV: [string, string, string][] = [
   ['/brendlar', 'Brendlar', 'brand'],
 ]
 
-type MegaItem = [string, string, number | string]
+type MegaItem = [string, string]
 const MEGA: [string, MegaItem[]][] = [
   ['Yuz parvarishi', [
-    ['Tozalovchilar', '/katalog/tozalash', ''], ['Tonerlar va padlar', '/katalog/toner', ''], ['Essensiyalar', '/katalog/essensiya', ''],
-    ['Serum va ampulalar', '/katalog/serum', ''], ['Kremlar', '/katalog/krem', ''], ['Quyoshdan himoya', '/katalog/spf', ''], ['Niqoblar', '/katalog/niqoblar', ''],
+    ['Tozalovchilar', '/katalog/tozalash'], ['Tonerlar va padlar', '/katalog/toner'], ['Essensiyalar', '/katalog/essensiya'],
+    ['Serum va ampulalar', '/katalog/serum'], ['Kremlar', '/katalog/krem'], ['Quyoshdan himoya', '/katalog/spf'], ['Niqoblar', '/katalog/niqoblar'],
   ]],
   ['Muammo boʻyicha', [
-    ['Toshma va qizarish', '/katalog/serum?muammo=acne', ''], ['Kengaygan poralar', '/katalog/serum?muammo=pores', ''], ['Pigment dogʻlar', '/katalog/serum?muammo=pigment', ''],
-    ['Quruqlik, tortishish', '/katalog/krem?muammo=dryness', ''], ['Birinchi ajinlar', '/katalog/serum?muammo=wrinkles', ''], ['Xira rang', '/katalog/serum?muammo=dull', ''],
+    ['Toshma va qizarish', '/katalog/serum?muammo=acne'], ['Kengaygan poralar', '/katalog/serum?muammo=pores'], ['Pigment dogʻlar', '/katalog/serum?muammo=pigment'],
+    ['Quruqlik, tortishish', '/katalog/krem?muammo=dryness'], ['Birinchi ajinlar', '/katalog/serum?muammo=wrinkles'], ['Xira rang', '/katalog/serum?muammo=dull'],
   ]],
   ['Teri turi va kimga', [
-    ['Quruq teri', '/katalog/krem?teri=dry', ''], ['Yogʻli teri', '/katalog/serum?teri=oily', ''], ['Sezgir teri', '/katalog/serum?teri=sens', ''],
-    ['Erkaklar uchun', '/kim-uchun/erkaklar', ''], ['Boʻlajak onalar', '/kim-uchun/onalar', ''], ['35+ yosh', '/kim-uchun/35', ''],
+    ['Quruq teri', '/katalog/krem?teri=dry'], ['Yogʻli teri', '/katalog/serum?teri=oily'], ['Sezgir teri', '/katalog/serum?teri=sens'],
+    ['Erkaklar uchun', '/kim-uchun/erkaklar'], ['Boʻlajak onalar', '/kim-uchun/onalar'], ['35+ yosh', '/kim-uchun/35'],
   ]],
   ['Brendlar', [
-    ['SKIN1004', '/brend/skin1004', ''], ['Beauty of Joseon', '/brend/beauty-of-joseon', ''], ['Round Lab', '/brend/round-lab', ''],
-    ['Torriden', '/brend/torriden', ''], ['Mediheal', '/brend/mediheal', ''], ['Barcha brendlar →', '/brendlar', ''],
+    ['SKIN1004', '/brend/skin1004'], ['Beauty of Joseon', '/brend/beauty-of-joseon'], ['Round Lab', '/brend/round-lab'],
+    ['Torriden', '/brend/torriden'], ['Mediheal', '/brend/mediheal'], ['Barcha brendlar →', '/brendlar'],
   ]],
 ]
 
-export function Header({ lang, store, active = '' }: { lang: Lang; store: StoreInfo; active?: string }) {
+/** /katalog/<slug> links only when that category exists (brands and segments always exist in the menu data) */
+const linkOk = (p: string, cats: CatCounts) => !p.startsWith('/katalog/') || p.slice(9).split('?')[0] in cats
+
+export function Header({ lang, store, cats = {}, active = '' }: { lang: Lang; store: StoreInfo; cats?: CatCounts; active?: string }) {
   const [mega, setMega] = useState(false)
   const shop = useShop()
   const path = usePathname() || `/${lang}`
@@ -123,19 +128,19 @@ export function Header({ lang, store, active = '' }: { lang: Lang; store: StoreI
           </nav>
         </div>
         <nav aria-label={tr('Katalog')} className="wrap hide-m" style={{ display: 'flex', alignItems: 'center', gap: '2px', minHeight: '52px', overflowX: 'auto' }}>
-          {NAV.map(([p, label, k]) => <Link key={k} href={L(p)} className={`navlink${k === current ? ' on' : ''}`}>{tr(label)}</Link>)}
+          {NAV.filter(([p]) => linkOk(p, cats)).map(([p, label, k]) => <Link key={k} href={L(p)} className={`navlink${k === current ? ' on' : ''}`}>{tr(label)}</Link>)}
           <span style={{ flex: 1 }} />
           <Link href={L('/aksiyalar')} className={`navlink${current === 'sale' ? ' on' : ''}`} style={{ color: '#A8475C', fontWeight: 600 }}>{tr('Aksiyalar')}</Link>
           <Link href={L('/aksiyalar#top')} className={`navlink${active === 'top' ? ' on' : ''}`}>Top-10</Link>
           <Link href={L('/maslahatchi')} className={`navlink${current === 'ai' ? ' on' : ''}`} style={{ gap: '6px' }}><Icon name="spark" size={15} /> {tr('AI maslahatchi')}</Link>
         </nav>
-        {mega && <MegaMenu lang={lang} />}
+        {mega && <MegaMenu lang={lang} cats={cats} />}
       </header>
     </>
   )
 }
 
-function MegaMenu({ lang }: { lang: Lang }) {
+function MegaMenu({ lang, cats }: { lang: Lang; cats: CatCounts }) {
   const tr = (s: string) => t(lang, s)
   return (
     <div id="mega" role="region" aria-label={tr('Katalog')} style={{ position: 'absolute', left: 0, right: 0, top: '100%', background: '#FBFAF7', borderBottom: '1px solid #ECE6E0', boxShadow: '0 30px 60px rgba(42,33,30,.14)', zIndex: 30, maxHeight: 'calc(100vh - 140px)', overflowY: 'auto' }}>
@@ -143,9 +148,9 @@ function MegaMenu({ lang }: { lang: Lang }) {
         {MEGA.map(([title, items]) => (
           <div key={title} style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0 }}>
             <span className="eyebrow" style={{ marginBottom: '8px' }}>{tr(title)}</span>
-            {items.map(([label, p, n]) => (
+            {items.filter(([, p]) => linkOk(p, cats)).map(([label, p]) => (
               <Link key={label} href={href(lang, p)} style={{ textDecoration: 'none', fontSize: '15px', padding: '5px 0', display: 'flex', justifyContent: 'space-between', gap: '8px' }}>
-                {tr(label)}<span className="muted" style={{ fontSize: '13px' }}>{n}</span>
+                {tr(label)}{p.startsWith('/katalog/') && !p.includes('?') && <span className="muted" style={{ fontSize: '13px' }}>{cats[p.slice(9)]}</span>}
               </Link>
             ))}
           </div>

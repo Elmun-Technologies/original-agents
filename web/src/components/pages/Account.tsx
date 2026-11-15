@@ -5,6 +5,8 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 
+import { Icon } from '@/components/icons'
+
 import { CONCERNS, SKIN } from '@/collections/catalog'
 import { useShop } from '@/components/shop'
 import type { HomeCard } from '@/lib/catalog'
@@ -35,6 +37,8 @@ export function AccountPage({ lang, d, products }: { lang: Lang; d: AccData; pro
   const [addrs, setAddrs] = useState(d.addresses)
   const [routine, setRoutine] = useState(d.routine)
   const [saved, setSaved] = useState('')
+  // phone (design MobileAccount): a menu list first, a section opens on tap
+  const [mOpen, setMOpen] = useState(false)
   // eslint-disable-next-line react-hooks/set-state-in-effect -- read the browser copy after hydration
   useEffect(() => { if (!d.routine) try { setRoutine(JSON.parse(localStorage.getItem('yeppo-routine') || '{}').pick ?? null) } catch {} }, [d.routine])
   const save = async (body: object, what: string) => {
@@ -52,9 +56,23 @@ export function AccountPage({ lang, d, products }: { lang: Lang; d: AccData; pro
   )
   const row = { display: 'flex', gap: '16px', alignItems: 'center', flexWrap: 'wrap', padding: '18px 0', borderTop: '1px solid #EFE9E3', marginTop: '14px' } as const
   const ok = (w: string) => saved === w && <span style={{ color: '#2F5228', fontSize: '14px' }}>{tr('Saqlandi ✓')}</span>
+  const label = (list: { value: string; label: { uz: string; ru: string } }[], v: string) => list.find((x) => x.value === v)?.label[lang] ?? v
+  const sub: Record<string, string> = {
+    'Teri profilim': [skin && label(SKIN, skin), ...concerns.slice(0, 1).map((c) => label(CONCERNS, c))].filter(Boolean).join(', '),
+    'Saqlangan rutina': picks.length ? tr('Ertalab · kechqurun') : '',
+  }
+  const open = (x: (typeof TABS)[number]) => { setTab(x); setSaved(''); setMOpen(true); window.scrollTo(0, 0) }
+  const mRow = { display: 'flex', alignItems: 'center', gap: '10px', minHeight: '56px', padding: '0 16px', border: 'none', borderTop: '1px solid #EFE9E3', background: 'none', width: '100%', font: '500 16px Inter, sans-serif', color: '#2A211E', textDecoration: 'none', textAlign: 'left', cursor: 'pointer' } as const
   return (
     <div className="wrap" style={{ marginTop: '20px', display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'flex-start' }}>
-      <aside className="card" style={{ flex: '1 1 280px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '6px', position: 'sticky', top: '20px' }}>
+      {/* phone top bar: greeting on the menu, back + title inside a section */}
+      <div className="m-top m-only" style={{ alignItems: 'center', gap: '12px', margin: '-20px -12px 0', width: 'calc(100% + 24px)' }}>
+        {mOpen
+          ? <><button className="ib" aria-label={tr('Orqaga')} onClick={() => setMOpen(false)}><Icon name="left" /></button><h1 className="h" style={{ fontSize: '22px', margin: 0 }}>{tr(tab === 'Buyurtmalar' ? 'Buyurtmalarim' : tab)}</h1></>
+          : <><span style={{ width: '48px', height: '48px', borderRadius: '50%', background: '#F2D6D0', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', font: "500 20px 'Inter Tight'", color: '#A8475C', flex: 'none' }}>{(d.name || 'Y')[0].toUpperCase()}</span>
+            <span><b className="h" style={{ fontSize: '20px' }}>{d.name ? tn(lang, 'Salom, [N]', d.name) : tr('Salom!')}</b><br /><span className="muted" style={{ fontSize: '13px' }}>{d.points?.tier ? `${d.points.tier} · ${d.points.percent}% ${tr('ball')}` : mask(d.phone)}</span></span></>}
+      </div>
+      <aside className="card hide-m" style={{ flex: '1 1 280px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '6px', position: 'sticky', top: '20px' }}>
         <span style={{ display: 'flex', gap: '12px', alignItems: 'center', marginBottom: '12px' }}><span style={{ width: '52px', height: '52px', borderRadius: '50%', background: '#F2D6D0', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', font: "500 22px 'Inter Tight'" }}>{(d.name || 'Y')[0].toUpperCase()}</span><span><b style={{ fontWeight: 600, fontSize: '17px' }}>{d.name ? tn(lang, 'Salom, [N]', d.name) : tr('Salom!')}</b><br /><span className="muted" style={{ fontSize: '13px' }}>{mask(d.phone)}</span></span></span>
         <nav role="tablist" aria-orientation="vertical" style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>{TABS.map(tabBtn)}</nav>
         <a href={`${d.telegram}${d.telegram.includes('?') ? '&' : '?'}start=account`} className="pill line" style={{ marginTop: '12px' }} target="_blank" rel="noopener">{tr('Telegram botni ulash')}</a>
@@ -62,14 +80,31 @@ export function AccountPage({ lang, d, products }: { lang: Lang; d: AccData; pro
       </aside>
 
       <div style={{ flex: '999 1 760px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: '12px' }}>
-        <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px' }}>
+        <section className={mOpen ? 'hide-m' : ''} data-g="acc-sum" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px' }}>
           {d.points && <div className="card" style={{ padding: '22px', background: '#F2D6D0', display: 'flex', flexDirection: 'column', gap: '4px' }}><span className="eyebrow" style={{ color: '#2A211E' }}>{tr('Bonus ballar')}</span><span className="num" style={{ fontSize: '36px' }}>{fmt(d.points.balance)}</span><span style={{ fontSize: '13px' }}>{tr('1 ball = 1 soʻm · keyingi xaridda ishlatasiz')}</span><Link href={L('/bonus')} style={{ fontSize: '13px', fontWeight: 600 }}>{d.points.tier ? `${d.points.tier} · ${d.points.percent}% ›` : tr('Bonus dasturi ›')}</Link></div>}
           {live && <div className="card" style={{ padding: '22px', display: 'flex', flexDirection: 'column', gap: '4px' }}><span className="eyebrow">{tr('Yoʻldagi buyurtma')}</span><b style={{ fontWeight: 600, fontSize: '18px' }}>№ {live.number} · {tr(STATUS[live.status][0])}</b><Link href={L(`/buyurtma/${live.number}?t=${live.token}`)} style={{ fontSize: '14px', fontWeight: 600 }}>{tr('Kuzatish ›')}</Link></div>}
           {!skin && <div className="card" style={{ padding: '22px', display: 'flex', flexDirection: 'column', gap: '4px', background: '#E8F0E4' }}><span className="eyebrow" style={{ color: '#2F5228' }}>{tr('Eslatma')}</span><b style={{ fontWeight: 600, fontSize: '16px' }}>{tr('Teri turingizni belgilang — mos mahsulotlarni tezroq topasiz')}</b><button className="pill dark" style={{ alignSelf: 'flex-start', minHeight: '40px', marginTop: '6px' }} onClick={() => setTab('Teri profilim')}>{tr('Belgilash')}</button></div>}
         </section>
 
-        <section className="card pad-m" style={{ padding: '28px' }} aria-labelledby="t-h">
-          <h1 id="t-h" className="h" style={{ fontSize: '30px' }}>{tr(tab === 'Buyurtmalar' ? 'Buyurtmalarim' : tab)}</h1>
+        {!mOpen && (
+          <nav className="card m-only" aria-label={tr('Kabinet')} style={{ flexDirection: 'column', padding: 0 }}>
+            {TABS.map((x, i) => (
+              <button key={x} onClick={() => open(x)} style={{ ...mRow, borderTop: i ? mRow.borderTop : 'none' }}>
+                <span style={{ flex: 1 }}>{tr(x === 'Buyurtmalar' ? 'Buyurtmalarim' : x)}</span>
+                <span className="muted" style={{ fontSize: '14px' }}>{sub[x] ?? count[x] ?? ''}</span><Icon name="right" size={16} />
+              </button>
+            ))}
+            <Link href={L('/yordam/yetkazish')} style={mRow}><span style={{ flex: 1 }}>{tr('Yordam')}</span><Icon name="right" size={16} /></Link>
+          </nav>
+        )}
+        {!mOpen && (
+          <div className="m-only" style={{ flexDirection: 'column', gap: '8px' }}>
+            <a href={`${d.telegram}${d.telegram.includes('?') ? '&' : '?'}start=account`} className="pill line" target="_blank" rel="noopener"><Icon name="tg" size={16} /> {tr('Telegram botni ulash')}</a>
+            <button className="pill ghost" onClick={async () => { await fetch('/api/auth/logout', { method: 'POST' }); router.replace(L('/')); router.refresh() }}>{tr('Chiqish')}</button>
+          </div>
+        )}
+        <section className={`card pad-m${mOpen ? '' : ' hide-m'}`} style={{ padding: '28px' }} aria-labelledby="t-h">
+          <h1 id="t-h" className="h hide-m" style={{ fontSize: '30px' }}>{tr(tab === 'Buyurtmalar' ? 'Buyurtmalarim' : tab)}</h1>
 
           {tab === 'Buyurtmalar' && (d.orders.length ? d.orders.map((o) => (
             <div key={o.number} style={row}>
