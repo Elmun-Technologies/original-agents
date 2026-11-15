@@ -4,3 +4,6 @@ import type { Lang } from './i18n'
 export const fmt = (n: number) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ')
 
 export const sum = (lang: Lang) => (lang === 'ru' ? 'сум' : 'soʻm')
+/** Time helpers kept out of components (React's purity lint flags Date.now in render bodies). */
+export const nowMs = () => Date.now()
+export const daysAgo = (n: number) => new Date(Date.now() - n * 86_400_000)

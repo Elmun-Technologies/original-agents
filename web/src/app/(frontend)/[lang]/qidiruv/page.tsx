@@ -5,6 +5,7 @@ import { SearchPage } from '@/components/pages/Search'
 import { homeCards, payload, salesBySku } from '@/lib/catalog'
 import { isLang, t } from '@/lib/i18n'
 import { normalize, rank, understand } from '@/lib/search'
+import { daysAgo } from '@/lib/format'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { robots: { index: false, follow: true } }
@@ -21,7 +22,7 @@ export default async function Page({ params, searchParams }: { params: Promise<{
     homeCards(lang),
     p.find({ collection: 'brands', depth: 0, limit: 500, pagination: false, select: { slug: true, name: true } }),
     p.find({ collection: 'categories', locale: lang, depth: 0, limit: 100, pagination: false, select: { slug: true, title: true } }),
-    salesBySku(new Date(Date.now() - 30 * 86_400_000)),
+    salesBySku(daysAgo(30)),
     p.find({ collection: 'search-log', where: { missed: { equals: false } }, sort: '-count', limit: 5, depth: 0, overrideAccess: true }),
   ])
   const items = cards.map((c) => ({ ...c, brandSlug: brands.docs.find((b) => b.name === c.brand)?.slug ?? '', stock: 1, sold: sales.get(c.sku) ?? 0, reviews: c.reviews ?? 0 }))

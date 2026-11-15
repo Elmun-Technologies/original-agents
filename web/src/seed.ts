@@ -192,6 +192,12 @@ async function main() {
 
   const routine = (await Promise.all(['toner', 'amp', 'spf'].map(bySku))).filter(Boolean) as number[]
   await payload.updateGlobal({ slug: 'store', data: { homeRoutine: routine } })
+  // bonus tiers from the design — SAMPLE values, only with --demo (the owner sets the real ones in the admin)
+  if (demo && !(await payload.findGlobal({ slug: 'store', depth: 0 })).loyalty?.tiers?.length) {
+    const T = [['Pushti', 'Розовый', 3, 0, [['Tugʻilgan kun sovgʻasi', 'Подарок на день рождения']]], ['Shaftoli', 'Персиковый', 5, 2000000, [['Yangi mahsulotlarga oldindan kirish', 'Ранний доступ к новинкам']]], ['Kakao', 'Какао', 7, 5000000, [['Bepul yetkazish har doim', 'Бесплатная доставка всегда']]]] as const
+    const st = await payload.updateGlobal({ slug: 'store', locale: 'uz', data: { loyalty: { maxUsePct: 30, creditDays: 3, tiers: T.map(([n, , pc, from, perks]) => ({ name: n, percent: pc, from, perks: perks.map(([x]) => ({ text: x })) })) } } })
+    await payload.updateGlobal({ slug: 'store', locale: 'ru', data: { loyalty: { ...st.loyalty, tiers: st.loyalty!.tiers!.map((t, i) => ({ ...t, name: T[i][1], perks: t.perks!.map((x, j) => ({ ...x, text: T[i][4][j][1] })) })) } } })
+  }
 
   // brands: taglines/short notes and covers from the design (Brands.html, Brand.html); Russian from the design dictionary
   const BR: Record<string, { tag?: string; short: string; cover?: string; order?: number }> = {

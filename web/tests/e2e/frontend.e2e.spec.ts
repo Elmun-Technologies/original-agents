@@ -4,6 +4,8 @@ const BASE = process.env.E2E_BASE ?? 'http://localhost:3100'
 const WIDTHS = [360, 390, 600, 834, 1024, 1280, 1440] // HANDOFF §9
 const AMP = '/mahsulot/skin1004-madagascar-centella-ampoule'
 const PAGES = ['/uz', '/ru', '/uz/dev/components', '/uz/katalog/serum', '/ru/katalog/serum?teri=dry', `/uz${AMP}`, `/ru${AMP}`, '/uz/savat', '/uz/rasmiylashtirish']
+// stage-1 content pages: phone, tablet, desktop only (keeps the run short)
+const MORE = ['/uz/yuz-parvarishi', '/uz/aksiyalar', '/uz/brendlar', '/uz/qidiruv?q=krem', '/uz/jurnal', '/uz/yordam/yetkazish', '/ru/sovgalar', '/uz/rutina', '/uz/sevimlilar', '/uz/kirish', '/uz/bonus', '/uz/maslahatchi', '/uz/kim-uchun/erkaklar']
 const phone = () => `90 ${String(Math.floor(Math.random() * 1e7)).padStart(7, '0')}`
 
 test('root redirects to a language', async ({ page }) => {
@@ -230,3 +232,55 @@ for (const path of PAGES) {
     })
   }
 }
+
+for (const path of MORE) {
+  for (const w of [360, 834, 1440]) {
+    test(`page ok, no horizontal scroll ${path} @${w}`, async ({ page }) => {
+      await page.setViewportSize({ width: w, height: 900 })
+      const r = await page.goto(`${BASE}${path}`)
+      expect(r?.status()).toBe(200)
+      await expect(page.locator('h1').first()).toBeVisible()
+      expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(w)
+    })
+  }
+}
+
+test('help sections and unknown pages', async ({ page }) => {
+  for (const s of ['yetkazish', 'tolov', 'qaytarish', 'originallik', 'aloqa']) {
+    expect((await page.goto(`${BASE}/uz/yordam/${s}`))?.status()).toBe(200)
+  }
+  expect((await page.goto(`${BASE}/uz/yordam/yoq`))?.status()).toBe(404)
+  expect((await page.goto(`${BASE}/uz/bunday-sahifa-yoq`))?.status()).toBe(404)
+})
+
+test('cabinet needs login; SMS code login (test mode) -> cabinet -> logout', async ({ page }) => {
+  await page.goto(`${BASE}/uz/kabinet`)
+  await expect(page).toHaveURL(/\/uz\/kirish/)
+  await page.getByLabel('Telefon raqam').fill(`+998 ${phone()}`)
+  await page.getByRole('button', { name: 'Kod olish' }).click()
+  const hint = page.getByText('Sinov rejimi: SMS yuborilmadi. Kod:')
+  await expect(hint).toBeVisible()
+  const code = (await hint.locator('b').textContent())!.trim()
+  await page.getByLabel('Kod', { exact: true }).fill('0000' === code ? '1111' : '0000')
+  await page.getByRole('button', { name: 'Kirish', exact: true }).click()
+  await expect(page.getByText('Kod notoʻgʻri yoki eskirgan')).toBeVisible()
+  await page.getByLabel('Kod', { exact: true }).fill(code)
+  await page.getByRole('button', { name: 'Kirish', exact: true }).click()
+  await expect(page).toHaveURL(/\/uz\/kabinet/)
+  await expect(page.getByRole('heading', { name: 'Buyurtmalarim' })).toBeVisible()
+  await page.getByRole('button', { name: 'Chiqish' }).click()
+  await expect(page).toHaveURL(/\/uz$/)
+  await page.goto(`${BASE}/uz/kabinet`)
+  await expect(page).toHaveURL(/\/uz\/kirish/)
+})
+
+test('favourites: heart on a card -> list -> remove', async ({ page }) => {
+  await page.goto(`${BASE}/uz/katalog/serum`)
+  const card = page.locator('.pc:visible').first()
+  const name = (await card.locator('.pimg').first().getAttribute('aria-label'))!
+  await card.getByRole('button', { name: 'Sevimlilarga' }).click()
+  await page.goto(`${BASE}/uz/sevimlilar`)
+  await expect(page.getByRole('link', { name }).first()).toBeVisible()
+  await page.getByRole('button', { name: 'Oʻchirish' }).first().click()
+  await expect(page.getByText('Hali hech narsa saqlanmagan')).toBeVisible()
+})

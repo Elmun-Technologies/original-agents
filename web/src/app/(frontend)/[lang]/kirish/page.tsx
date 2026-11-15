@@ -1,19 +1,22 @@
 // Login — design/screens/Login.jpg
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 
 import { LoginPage } from '@/components/pages/Login'
-import { kit } from '@/components/pages/kit'
-import { isLang, t } from '@/lib/i18n'
+import { sessionPhone } from '@/lib/customer'
+import { href, isLang, t } from '@/lib/i18n'
+
+export const dynamic = 'force-dynamic'
 
 export async function generateMetadata({ params }: { params: Promise<{ lang: string }> }) {
   const { lang } = await params
-  return isLang(lang) ? { title: `${t(lang, 'Kirish')} — Yeppo` } : {}
+  return isLang(lang) ? { title: `${t(lang, 'Kirish')} — Yeppo`, robots: { index: false } } : {}
 }
 
-export default async function Page({ params }: { params: Promise<{ lang: string }> }) {
+export default async function Page({ params, searchParams }: { params: Promise<{ lang: string }>; searchParams: Promise<{ next?: string }> }) {
   const { lang } = await params
   if (!isLang(lang)) notFound()
-  const cards: never[] = []
-  const k = kit(lang, cards)
-  return <LoginPage tr={k.tr} L={k.L} C={k.C} />
+  const { next: n } = await searchParams
+  const next = n && n.startsWith(`/${lang}/`) && !n.startsWith('//') ? n : href(lang, '/kabinet') // same-site only
+  if (await sessionPhone()) redirect(next)
+  return <LoginPage lang={lang} next={next} />
 }

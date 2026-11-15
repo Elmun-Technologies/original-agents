@@ -227,6 +227,19 @@ export const Store: GlobalConfig = {
     { name: 'pickupHours', type: 'text', defaultValue: '10:00–20:00' },
     { name: 'refundDays', type: 'text', defaultValue: '3–5', admin: { description: 'NAMUNA. Pul kartaga necha ish kunida qaytadi' } },
     { name: 'minShelfMonths', type: 'number', defaultValue: 6, admin: { description: 'NAMUNA. Kamida necha oy yaroqlilik muddati qolgan mahsulot yuboriladi' } },
+    {
+      name: 'loyalty', type: 'group', admin: { description: 'Bonus dasturi. Darajalar boʻsh boʻlsa — dastur saytda koʻrinmaydi. Hammasi NAMUNA, egasi tasdiqlaydi.' },
+      fields: [
+        { name: 'tiers', type: 'array', fields: [
+          { name: 'name', type: 'text', required: true, localized: true }, { name: 'percent', type: 'number', required: true },
+          { name: 'from', type: 'number', defaultValue: 0, admin: { description: 'Jami xarid (soʻm) shu summadan' } },
+          { name: 'perks', type: 'array', fields: [{ name: 'text', type: 'text', required: true, localized: true }] },
+        ] },
+        { name: 'maxUsePct', type: 'number', defaultValue: 30, admin: { description: 'Buyurtma summasining necha % igacha ball bilan' } },
+        { name: 'creditDays', type: 'number', admin: { description: 'Ball yetkazilgandan keyin necha kunda tushadi' } },
+        { name: 'expireMonths', type: 'number', admin: { description: 'Necha oy xarid boʻlmasa ball yonadi (boʻsh = yonmaydi)' } },
+      ],
+    },
     { name: 'cashOnDelivery', type: 'checkbox', defaultValue: false, admin: { description: 'Toshkentda qabul qilganda toʻlash (saytda yoqilsa koʻrsatiladi)' } },
     { name: 'homeRoutine', type: 'relationship', relationTo: 'products', hasMany: true, maxRows: 3,
       admin: { description: 'Bosh sahifadagi «Tayyor rutina»: toner, ampula, SPF (tartib bilan)' } },

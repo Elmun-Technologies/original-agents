@@ -9,12 +9,12 @@ import type { Priced, Quote } from '@/lib/pricing'
 
 export type QuoteResponse = { quote: Quote; suggest: (Priced & { reason: 'spf' | 'toner' }) | null; freeFrom: number }
 
-export function useQuote(lang: Lang, opts: { delivery?: 'tashkent' | 'region'; gift?: boolean; phone?: string } = {}) {
+export function useQuote(lang: Lang, opts: { delivery?: 'tashkent' | 'region'; gift?: boolean; usePoints?: boolean; phone?: string } = {}) {
   const shop = useShop()
   const [data, setData] = useState<QuoteResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const seq = useRef(0)
-  const key = JSON.stringify([shop.lines.map((l) => [l.sku, l.qty]), shop.promo, opts.delivery, opts.gift, opts.phone])
+  const key = JSON.stringify([shop.lines.map((l) => [l.sku, l.qty]), shop.promo, opts.delivery, opts.gift, opts.usePoints, opts.phone])
   useEffect(() => {
     const n = ++seq.current
     const ctl = new AbortController()

@@ -7,7 +7,7 @@ import { useEffect, useState } from 'react'
 import { CONCERNS, SKIN } from '@/collections/catalog'
 import { useShop } from '@/components/shop'
 import type { HomeCard } from '@/lib/catalog'
-import { fmt, sum } from '@/lib/format'
+import { fmt, nowMs, sum } from '@/lib/format'
 import { href, t, tn, type Lang } from '@/lib/i18n'
 
 export const ROUTINE_KEY = 'yeppo-routine'
@@ -30,6 +30,7 @@ export function RoutinePage({ lang, products }: { lang: Lang; products: HomeCard
   const [tab, setTab] = useState<'am' | 'pm'>('am')
   const [pick, setPick] = useState<Record<string, string>>({})
   const [saved, setSaved] = useState(false)
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- read the browser copy after hydration
   useEffect(() => { try { setPick(JSON.parse(localStorage.getItem(ROUTINE_KEY) || '{}').pick ?? {}) } catch {} }, [])
   const steps = STEPS[tab].map(([h, sub, cats], i) => {
     const opts = products.filter((p) => cats.includes(p.category)).slice(0, 6)
@@ -43,7 +44,14 @@ export function RoutinePage({ lang, products }: { lang: Lang; products: HomeCard
   const total = chosen.reduce((s, p) => s + p.price, 0)
   const main = steps.find((s) => s.opts.length > 1 && s.h === 'Asosiy vosita') ?? steps.find((s) => s.opts.length > 1)
   const cmp = main?.opts.slice(0, 2) ?? []
-  const save = () => { try { localStorage.setItem(ROUTINE_KEY, JSON.stringify({ pick, at: Date.now() })) } catch {} setSaved(true) }
+  const save = () => {
+    const all = { ...pick, ...Object.fromEntries(steps.map((s) => [s.key, s.sel!.slug])) } // shown defaults count as chosen
+    setPick(all)
+    try { localStorage.setItem(ROUTINE_KEY, JSON.stringify({ pick: all, at: nowMs() })) } catch {}
+    // signed in -> also on the account (401 when not signed in is fine: the browser copy stays)
+    fetch('/api/account', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ routine: { pick: all } }) }).catch(() => {})
+    setSaved(true)
+  }
   const tick = <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"></path></svg>
   return (
     <div className="wrap" style={{ marginTop: '20px' }}>

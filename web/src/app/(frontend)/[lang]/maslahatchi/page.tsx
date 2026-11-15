@@ -2,18 +2,24 @@
 import { notFound } from 'next/navigation'
 
 import { ConsultantPage } from '@/components/pages/Consultant'
-import { kit } from '@/components/pages/kit'
+import { getStore, homeCards, payload } from '@/lib/catalog'
+import { sessionPhone } from '@/lib/customer'
 import { isLang, t } from '@/lib/i18n'
+
+export const dynamic = 'force-dynamic'
 
 export async function generateMetadata({ params }: { params: Promise<{ lang: string }> }) {
   const { lang } = await params
-  return isLang(lang) ? { title: `${t(lang, 'AI maslahatchi')} — Yeppo` } : {}
+  return isLang(lang) ? { title: `${t(lang, 'Maslahatchi')} — Yeppo`, alternates: { canonical: `/${lang}/maslahatchi` } } : {}
 }
 
 export default async function Page({ params }: { params: Promise<{ lang: string }> }) {
   const { lang } = await params
   if (!isLang(lang)) notFound()
-  const cards: never[] = []
-  const k = kit(lang, cards)
-  return <ConsultantPage tr={k.tr} L={k.L} C={k.C} />
+  const p = await payload()
+  const [products, store, brands, phone] = await Promise.all([
+    homeCards(lang), getStore(),
+    p.find({ collection: 'brands', depth: 0, limit: 500, pagination: false, select: { slug: true, name: true } }), sessionPhone(),
+  ])
+  return <ConsultantPage lang={lang} products={products} brands={brands.docs.map((b) => ({ slug: b.slug, name: b.name }))} telegram={store.telegramBotUrl} hours={store.supportHours ?? ''} signedIn={!!phone} />
 }

@@ -49,11 +49,12 @@ export function CheckoutView({ lang, store }: { lang: Lang; store: CheckoutStore
   const [comment, setComment] = useState('')
   const [pay, setPay] = useState<Pay>('click')
   const [gift, setGift] = useState(false)
+  const [usePoints, setUsePoints] = useState(false)
   const [step, setStep] = useState(0) // phone only
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [sending, setSending] = useState(false)
   const digits = phone.replace(/\D/g, '')
-  const { data } = useQuote(lang, { delivery, gift, phone: digits.length === 12 ? digits : undefined })
+  const { data } = useQuote(lang, { delivery, gift, usePoints, phone: digits.length === 12 ? digits : undefined })
   const q = data?.quote
   const payName = PAYS.find((p) => p[0] === pay)![1]
 
@@ -75,7 +76,7 @@ export function CheckoutView({ lang, store }: { lang: Lang; store: CheckoutStore
         body: JSON.stringify({
           lang, lines: shop.lines.map((l) => ({ sku: l.sku, qty: l.qty })), promo: shop.promo || undefined, name, phone, telegramUpdates: tg,
           delivery, city: delivery === 'tashkent' ? `Toshkent, ${city}` : city, address, slot: delivery === 'tashkent' ? SLOTS[slot] : undefined,
-          comment, payment: pay, gift, consent: true, // the button text states the offer is accepted (design)
+          comment, payment: pay, gift, usePoints, consent: true, // the button text states the offer is accepted (design)
         }),
       })
       const d = await r.json()
@@ -136,6 +137,13 @@ export function CheckoutView({ lang, store }: { lang: Lang; store: CheckoutStore
       {q.discount > 0 && <div style={{ display: 'flex', justifyContent: 'space-between' }}><span className="muted">{q.discountLabel === 'routine' ? tr('Tayyor rutina') : `${tr('Promokod')} ${q.discountLabel}`}</span><span style={{ color: '#A8475C' }}>−{fmt(q.discount)} {sum(lang)}</span></div>}
       <div style={{ display: 'flex', justifyContent: 'space-between' }}><span className="muted">{tr('Yetkazish')}</span><span>{q.deliveryFee ? `${fmt(q.deliveryFee)} ${sum(lang)}` : tr('Bepul')}</span></div>
       {q.giftFee > 0 && <div style={{ display: 'flex', justifyContent: 'space-between' }}><span className="muted">{tr('Sovgʻa qutisi')}</span><span>{fmt(q.giftFee)} {sum(lang)}</span></div>}
+      {q.pointsAvailable > 0 && (
+        <label style={{ display: 'flex', gap: '10px', alignItems: 'center', cursor: 'pointer' }}>
+          <input type="checkbox" checked={usePoints} onChange={() => setUsePoints(!usePoints)} style={{ width: '18px', height: '18px', accentColor: '#2A211E', margin: 0 }} />
+          <span className="muted" style={{ flex: 1 }}>{tn(lang, 'Bonus ballar bilan toʻlash ([N] gacha)', fmt(q.pointsAvailable))}</span>
+          {q.pointsUsed > 0 && <span style={{ color: '#A8475C' }}>−{fmt(q.pointsUsed)} {sum(lang)}</span>}
+        </label>
+      )}
     </>
   )
   const offer = (

@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation'
 import { RatingPage } from '@/components/pages/Rating'
 import { homeCards, payload, salesBySku } from '@/lib/catalog'
 import { isLang, t } from '@/lib/i18n'
+import { daysAgo } from '@/lib/format'
 
 export const revalidate = 300
 
@@ -17,7 +18,7 @@ export default async function Page({ params }: { params: Promise<{ lang: string 
   if (!isLang(lang)) notFound()
   const p = await payload()
   const [cards, sales, banners, promo, needs] = await Promise.all([
-    homeCards(lang), salesBySku(new Date(Date.now() - 30 * 86_400_000)),
+    homeCards(lang), salesBySku(daysAgo(30)),
     p.find({ collection: 'banners', where: { kind: { equals: 'sale' }, active: { equals: true } }, sort: 'order', limit: 1, locale: lang, depth: 0 }),
     p.find({ collection: 'promo-codes', where: { active: { equals: true }, firstOrderOnly: { equals: true } }, limit: 1, locale: lang, depth: 0, overrideAccess: true }),
     p.find({ collection: 'products', locale: lang, depth: 0, limit: 500, pagination: false, select: { slug: true, need: true } }),

@@ -18,6 +18,9 @@ export type CartInput = {
   gift?: boolean
   store: StoreRules
   now?: Date
+  /** signed-in customer's bonus points (1 point = 1 soʻm); spent only when asked and never together with a promo code */
+  points?: { balance: number; maxPct: number }
+  usePoints?: boolean
 }
 
 export type CartLine = Priced & { qty: number; line: number; lineOld: number; capped: boolean }
@@ -36,6 +39,8 @@ export type Quote = {
   deliveryFee: number
   freeLeft: number // how much more for free delivery
   giftFee: number
+  pointsAvailable: number // how many could be spent on this cart (0 = none / promo used)
+  pointsUsed: number
   total: number
 }
 
@@ -86,6 +91,10 @@ export function priceCart(i: CartInput): Quote {
     if (bundle > discount) { discount = bundle; discountLabel = 'routine'; discountNote = undefined }
   }
 
+  const promoUsed = !!discountLabel && discountLabel !== 'routine'
+  const pointsAvailable = i.points && !promoUsed ? Math.max(0, Math.min(i.points.balance, Math.floor(((discountable - discount) * i.points.maxPct) / 100))) : 0
+  const pointsUsed = i.usePoints ? pointsAvailable : 0
+
   const delivery = i.delivery ?? 'tashkent'
   const afterDiscount = subtotal - discount
   const freeLeft = Math.max(0, i.store.freeDeliveryFrom - afterDiscount)
@@ -95,7 +104,7 @@ export function priceCart(i: CartInput): Quote {
   const giftFee = i.gift && lines.length ? i.store.giftBoxPrice : 0
   return {
     lines, missing, count: lines.reduce((a, l) => a + l.qty, 0), subtotal, oldTotal, saleSaving: oldTotal - subtotal,
-    discount, discountLabel, discountNote, promoError, delivery, deliveryFee, freeLeft, giftFee, total: afterDiscount + deliveryFee + giftFee,
+    discount, discountLabel, discountNote, promoError, delivery, deliveryFee, freeLeft, giftFee, pointsAvailable, pointsUsed, total: afterDiscount - pointsUsed + deliveryFee + giftFee,
   }
 }
 

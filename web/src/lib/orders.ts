@@ -9,9 +9,11 @@ export const GIFT_CATEGORY = 'sertifikatlar'
 /** the shop's own brand (gift certificates) — not listed among cosmetics brands */
 export const HOUSE_BRAND = 'yeppo'
 
+import { sessionPhone } from './customer'
+import { loyaltyOf } from './loyalty'
 import { normalizePhone, priceCart, suggestion, type Delivery, type Priced, type Promo, type Quote } from './pricing'
 
-export type CartRequest = { lines: { sku: string; qty: number }[]; promo?: string; delivery?: Delivery; gift?: boolean; phone?: string }
+export type CartRequest = { lines: { sku: string; qty: number }[]; promo?: string; delivery?: Delivery; gift?: boolean; phone?: string; usePoints?: boolean }
 
 /** Current prices, real old prices and stock for the SKUs in a cart (+ category for the suggestion rule). */
 async function loadPriced(skus: string[], lang: Lang) {
@@ -72,7 +74,11 @@ export async function quoteCart(req: CartRequest, lang: Lang) {
   const [store, products, promo] = await Promise.all([getStore(), loadPriced(skus, lang), findPromo(req.promo, lang)])
   const bundles = await readyBundles(store.homeRoutine)
   const phone = req.phone ? normalizePhone(req.phone) : null
+  // bonus points: only the signed-in customer's own, and only for an order on their own phone
+  const me = await sessionPhone()
+  const loyal = me && (!phone || phone === me) ? await loyaltyOf(await payload(), me) : null
   const q = priceCart({
+    points: loyal?.on ? { balance: loyal.balance, maxPct: loyal.maxUsePct } : undefined, usePoints: !!req.usePoints,
     lines, products, promo, promoCode: req.promo?.trim() || undefined, isFirstOrder: await isFirstOrder(phone), bundles,
     delivery: req.delivery === 'region' ? 'region' : 'tashkent', gift: !!req.gift,
     store: { freeDeliveryFrom: store.freeDeliveryFrom, tashkentPrice: store.tashkentPrice, regionPrice: store.regionPrice, giftBoxPrice: store.giftBoxPrice },
@@ -127,7 +133,7 @@ export async function createOrder(req: OrderRequest): Promise<{ order: Order; qu
       name, phone, telegramUpdates: req.telegramUpdates !== false, delivery: quote.delivery, city: clean(req.city, 80), address,
       slot: clean(req.slot, 20), comment: clean(req.comment, 500), gift: !!req.gift,
       items: quote.lines.map((l) => ({ sku: l.sku, slug: l.slug, brand: l.brand, name: l.name, volume: l.volume, img: l.img, price: l.price, qty: l.qty })),
-      subtotal: quote.subtotal, discount: quote.discount, discountLabel: quote.discountLabel, deliveryFee: quote.deliveryFee, giftFee: quote.giftFee, total: quote.total,
+      subtotal: quote.subtotal, discount: quote.discount, discountLabel: quote.discountLabel, deliveryFee: quote.deliveryFee, giftFee: quote.giftFee, total: quote.total, pointsUsed: quote.pointsUsed,
     },
   })
   // short human number from the id: 10001, 10002 …

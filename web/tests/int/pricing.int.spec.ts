@@ -63,6 +63,14 @@ describe('cart pricing', () => {
     const mixed = priceCart({ ...base, products: products2, lines: [{ sku: 'GC-300000-TG', qty: 1 }, { sku: 'spf', qty: 1 }], promo: SALOM10, promoCode: 'SALOM10' })
     expect(mixed.discount).toBe(15000) // 10% of the SPF only
   })
+  it('bonus points: capped by balance and max %, only when asked, never with a promo code', () => {
+    const lines = [{ sku: 'amp', qty: 1 }, { sku: 'revive', qty: 1 }] // 464 000
+    const points = { balance: 500000, maxPct: 20 }
+    expect(priceCart({ ...base, lines, points })).toMatchObject({ pointsAvailable: 92800, pointsUsed: 0, total: 464000 })
+    expect(priceCart({ ...base, lines, points, usePoints: true })).toMatchObject({ pointsUsed: 92800, total: 371200 })
+    expect(priceCart({ ...base, lines, points: { balance: 5000, maxPct: 20 }, usePoints: true }).pointsUsed).toBe(5000)
+    expect(priceCart({ ...base, lines, points, usePoints: true, promo: SALOM10, promoCode: 'SALOM10' })).toMatchObject({ pointsAvailable: 0, pointsUsed: 0, total: 418000 })
+  })
   it('empty cart costs nothing', () => expect(priceCart({ ...base, lines: [] })).toMatchObject({ total: 0, deliveryFee: 0 }))
 })
 

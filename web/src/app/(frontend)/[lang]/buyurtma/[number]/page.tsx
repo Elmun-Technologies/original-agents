@@ -90,6 +90,7 @@ export default async function OrderPage({ params, searchParams }: { params: Prom
             </div>
           ))}
           {(o.discount ?? 0) > 0 && <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '10px', fontSize: '14px' }}><span className="muted">{o.discountLabel === 'routine' ? tr('Tayyor rutina') : `${tr('Promokod')} ${o.discountLabel}`}</span><span style={{ color: '#A8475C' }}>−{fmt(o.discount!)} {sum(lang)}</span></div>}
+          {(o.pointsUsed ?? 0) > 0 && <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '6px', fontSize: '14px' }}><span className="muted">{tr('Bonus ballar')}</span><span style={{ color: '#A8475C' }}>−{fmt(o.pointsUsed!)} {sum(lang)}</span></div>}
           {(o.deliveryFee ?? 0) > 0 && <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '6px', fontSize: '14px' }}><span className="muted">{tr('Yetkazish')}</span><span>{fmt(o.deliveryFee!)} {sum(lang)}</span></div>}
           {(o.giftFee ?? 0) > 0 && <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '6px', fontSize: '14px' }}><span className="muted">{tr('Sovgʻa qutisi')}</span><span>{fmt(o.giftFee!)} {sum(lang)}</span></div>}
           <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '14px', fontSize: '15px' }}>
@@ -114,7 +115,7 @@ export default async function OrderPage({ params, searchParams }: { params: Prom
                 <span className="muted" style={{ fontSize: '13px' }}>{tr('Kodni savatdagi «Promokod» maydoniga kiriting. 12 oy amal qiladi.')}</span>
               </div>
             )}
-            {/* Bonus card ("+[N] ball hisobingizga tushdi") — added with the loyalty programme (stage 2). */}
+            {(o.pointsEarned ?? 0) > 0 && <div className="card" style={{ padding: '24px', background: '#F2D6D0', display: 'flex', flexDirection: 'column', gap: '6px' }}><b className="num" style={{ fontSize: '28px' }}>+{fmt(o.pointsEarned!)}</b><span>{tr('ball hisobingizga tushdi')}</span><Link href={L('/bonus')} style={{ fontSize: '14px', fontWeight: 600 }}>{tr('Bonus dasturi ›')}</Link></div>}
           </aside>
         )}
       </div>

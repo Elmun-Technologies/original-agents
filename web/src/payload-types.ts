@@ -71,6 +71,8 @@ export interface Config {
     payments: Payment;
     'promo-codes': PromoCode;
     'gift-cards': GiftCard;
+    customers: Customer;
+    'login-codes': LoginCode;
     products: Product;
     brands: Brand;
     categories: Category;
@@ -95,6 +97,8 @@ export interface Config {
     payments: PaymentsSelect<false> | PaymentsSelect<true>;
     'promo-codes': PromoCodesSelect<false> | PromoCodesSelect<true>;
     'gift-cards': GiftCardsSelect<false> | GiftCardsSelect<true>;
+    customers: CustomersSelect<false> | CustomersSelect<true>;
+    'login-codes': LoginCodesSelect<false> | LoginCodesSelect<true>;
     products: ProductsSelect<false> | ProductsSelect<true>;
     brands: BrandsSelect<false> | BrandsSelect<true>;
     categories: CategoriesSelect<false> | CategoriesSelect<true>;
@@ -190,6 +194,11 @@ export interface Order {
   deliveryFee?: number | null;
   giftFee?: number | null;
   total: number;
+  pointsUsed?: number | null;
+  /**
+   * Yetkazilganda hisoblanadi
+   */
+  pointsEarned?: number | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -259,6 +268,62 @@ export interface GiftCard {
    */
   validTo?: string | null;
   active?: boolean | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "customers".
+ */
+export interface Customer {
+  id: number;
+  phone: string;
+  name?: string | null;
+  /**
+   * Teri turi (dry/oily/combo/sens/normal)
+   */
+  skin?: string | null;
+  concerns?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  addresses?:
+    | {
+        city?: string | null;
+        address: string;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * Saqlangan rutina (konstruktordan)
+   */
+  routine?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "login-codes".
+ */
+export interface LoginCode {
+  id: number;
+  phone: string;
+  hash: string;
+  expiresAt: string;
+  tries?: number | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -803,6 +868,14 @@ export interface PayloadLockedDocument {
         value: number | GiftCard;
       } | null)
     | ({
+        relationTo: 'customers';
+        value: number | Customer;
+      } | null)
+    | ({
+        relationTo: 'login-codes';
+        value: number | LoginCode;
+      } | null)
+    | ({
         relationTo: 'products';
         value: number | Product;
       } | null)
@@ -936,6 +1009,8 @@ export interface OrdersSelect<T extends boolean = true> {
   deliveryFee?: T;
   giftFee?: T;
   total?: T;
+  pointsUsed?: T;
+  pointsEarned?: T;
   updatedAt?: T;
   createdAt?: T;
 }
@@ -984,6 +1059,38 @@ export interface GiftCardsSelect<T extends boolean = true> {
   form?: T;
   validTo?: T;
   active?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "customers_select".
+ */
+export interface CustomersSelect<T extends boolean = true> {
+  phone?: T;
+  name?: T;
+  skin?: T;
+  concerns?: T;
+  addresses?:
+    | T
+    | {
+        city?: T;
+        address?: T;
+        id?: T;
+      };
+  routine?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "login-codes_select".
+ */
+export interface LoginCodesSelect<T extends boolean = true> {
+  phone?: T;
+  hash?: T;
+  expiresAt?: T;
+  tries?: T;
   updatedAt?: T;
   createdAt?: T;
 }
@@ -1416,6 +1523,40 @@ export interface Store {
    */
   minShelfMonths?: number | null;
   /**
+   * Bonus dasturi. Darajalar boʻsh boʻlsa — dastur saytda koʻrinmaydi. Hammasi NAMUNA, egasi tasdiqlaydi.
+   */
+  loyalty?: {
+    tiers?:
+      | {
+          name: string;
+          percent: number;
+          /**
+           * Jami xarid (soʻm) shu summadan
+           */
+          from?: number | null;
+          perks?:
+            | {
+                text: string;
+                id?: string | null;
+              }[]
+            | null;
+          id?: string | null;
+        }[]
+      | null;
+    /**
+     * Buyurtma summasining necha % igacha ball bilan
+     */
+    maxUsePct?: number | null;
+    /**
+     * Ball yetkazilgandan keyin necha kunda tushadi
+     */
+    creditDays?: number | null;
+    /**
+     * Necha oy xarid boʻlmasa ball yonadi (boʻsh = yonmaydi)
+     */
+    expireMonths?: number | null;
+  };
+  /**
    * Toshkentda qabul qilganda toʻlash (saytda yoqilsa koʻrsatiladi)
    */
   cashOnDelivery?: boolean | null;
@@ -1449,6 +1590,27 @@ export interface StoreSelect<T extends boolean = true> {
   pickupHours?: T;
   refundDays?: T;
   minShelfMonths?: T;
+  loyalty?:
+    | T
+    | {
+        tiers?:
+          | T
+          | {
+              name?: T;
+              percent?: T;
+              from?: T;
+              perks?:
+                | T
+                | {
+                    text?: T;
+                    id?: T;
+                  };
+              id?: T;
+            };
+        maxUsePct?: T;
+        creditDays?: T;
+        expireMonths?: T;
+      };
   cashOnDelivery?: T;
   homeRoutine?: T;
   updatedAt?: T;

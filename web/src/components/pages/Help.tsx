@@ -14,7 +14,8 @@ export type HelpStore = {
   refundDays: string; minShelfMonths: number; pickupAddress?: string; pickupHours: string; supportHours: string
   phone?: string; email?: string; telegramUrl: string; telegramHandle?: string; cashOnDelivery: boolean
 }
-export const HELP_SLUGS = ['yetkazish', 'tolov', 'qaytarish', 'originallik', 'aloqa'] as const
+import { HELP_SLUGS } from '@/lib/help'
+
 
 type Card = [string, string, string] | null
 type Sec = { slug: (typeof HELP_SLUGS)[number]; t: string; h: string; lead: string; cards: Card[]; faq: [string, string][] }

@@ -36,7 +36,7 @@ export default defineConfig({
   // e2e runs against a production build on :3100 (the dev server compiles pages on demand and is too slow
   // for parallel tests). Set E2E_BASE to test another running server.
   webServer: process.env.E2E_BASE ? undefined : {
-    command: 'pnpm build && pnpm start -p 3100',
+    command: 'pnpm build && ADMIN_NOTIFY=off pnpm start -p 3100', // tests never message the admin
     reuseExistingServer: true,
     url: 'http://localhost:3100/uz',
     timeout: 300_000,

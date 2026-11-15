@@ -2,7 +2,8 @@
 import { RichText } from '@payloadcms/richtext-lexical/react'
 import { notFound } from 'next/navigation'
 
-import { HELP_SLUGS, HelpPage } from '@/components/pages/Help'
+import { HelpPage } from '@/components/pages/Help'
+import { HELP_SLUGS } from '@/lib/help'
 import { getStore, payload } from '@/lib/catalog'
 import { isLang, t } from '@/lib/i18n'
 

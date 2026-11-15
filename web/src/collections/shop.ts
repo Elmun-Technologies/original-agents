@@ -59,7 +59,19 @@ export const Orders: CollectionConfig = {
     { name: 'deliveryFee', type: 'number', defaultValue: 0 },
     { name: 'giftFee', type: 'number', defaultValue: 0 },
     { name: 'total', type: 'number', required: true },
+    { name: 'pointsUsed', type: 'number', defaultValue: 0, admin: { readOnly: true } },
+    { name: 'pointsEarned', type: 'number', admin: { readOnly: true, description: 'Yetkazilganda hisoblanadi' } },
   ],
+  hooks: {
+    // bonus points are credited once, when a paid order becomes "delivered"
+    beforeChange: [async ({ data, originalDoc, req, operation }) => {
+      if (operation !== 'update' || data.status !== 'delivered' || originalDoc?.status === 'delivered' || originalDoc?.pointsEarned != null) return data
+      if ((data.paymentStatus ?? originalDoc?.paymentStatus) !== 'paid') return data
+      const { earnedFor } = await import('@/lib/loyalty')
+      data.pointsEarned = await earnedFor(req.payload, { ...originalDoc, ...data })
+      return data
+    }],
+  },
 }
 
 // One row per provider transaction (Click click_trans_id / Payme transaction id). Idempotency + Payme states.
@@ -204,5 +216,33 @@ export const GiftCards: CollectionConfig = {
     { name: 'form', type: 'select', options: [{ value: 'tg', label: 'Telegramga' }, { value: 'card', label: 'Kartochkada' }] },
     { name: 'validTo', type: 'date', admin: { description: '12 oy' } },
     { name: 'active', type: 'checkbox', defaultValue: true },
+  ],
+}
+
+// Customers: created on first SMS login. Personal data — admin-only, never public.
+export const Customers: CollectionConfig = {
+  slug: 'customers',
+  admin: { useAsTitle: 'phone', group: 'Savdo', defaultColumns: ['phone', 'name', 'createdAt'] },
+  access: { read: ({ req }) => !!req.user, create: () => false },
+  fields: [
+    { name: 'phone', type: 'text', required: true, unique: true, index: true },
+    { name: 'name', type: 'text' },
+    { name: 'skin', type: 'text', admin: { description: 'Teri turi (dry/oily/combo/sens/normal)' } },
+    { name: 'concerns', type: 'json' },
+    { name: 'addresses', type: 'array', fields: [{ name: 'city', type: 'text' }, { name: 'address', type: 'text', required: true }] },
+    { name: 'routine', type: 'json', admin: { description: 'Saqlangan rutina (konstruktordan)' } },
+  ],
+}
+
+// One-time SMS codes (hashed). Hidden from the admin menu.
+export const LoginCodes: CollectionConfig = {
+  slug: 'login-codes',
+  admin: { hidden: true },
+  access: { read: () => false, create: () => false, update: () => false, delete: () => false },
+  fields: [
+    { name: 'phone', type: 'text', required: true, index: true },
+    { name: 'hash', type: 'text', required: true },
+    { name: 'expiresAt', type: 'date', required: true },
+    { name: 'tries', type: 'number', defaultValue: 0 },
   ],
 }

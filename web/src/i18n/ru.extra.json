@@ -153,5 +153,6 @@
  "Sertifikat kodlari": "Коды сертификатов",
  "Kodni savatdagi «Promokod» maydoniga kiriting. 12 oy amal qiladi.": "Введите код в поле «Промокод» в корзине. Действует 12 месяцев.",
  "Sertifikat savatda ✓": "Сертификат в корзине ✓",
- "Sovgʻa sertifikati": "Подарочный сертификат"
+ "Sovgʻa sertifikati": "Подарочный сертификат",
+ "Bugun kodlar soni tugadi. Ertaga urinib koʻring yoki Telegramda yozing.": "Лимит кодов на сегодня исчерпан. Попробуйте завтра или напишите в Telegram."
 }

@@ -180,4 +180,4 @@ input.inp,select.inp,textarea.inp{height:50px;border-radius:14px;border:1.5px so
 .rich p{margin:0 0 14px}.rich p:last-child{margin-bottom:0}.rich ul,.rich ol{margin:0 0 14px;padding-left:20px}
 
 /* checkout and the test payment page have their own minimal header (design: Checkout.jpg) */
-body:has(.checkout-page) .ann,body:has(.checkout-page) .hdr,body:has(.checkout-page) footer,body:has(.checkout-page) .mtabs{display:none !important}
+body:has(.checkout-page) .ann,body:has(.checkout-page) .hdr,body:has(.checkout-page) footer,body:has(.checkout-page) .mtabs,body:has(.auth-page) .ann,body:has(.auth-page) .hdr,body:has(.auth-page) footer,body:has(.auth-page) .mtabs,body:has(.auth-page) .m-bar{display:none !important}
