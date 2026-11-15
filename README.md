@@ -1,33 +1,34 @@
-# Poizon → O'zbekiston: savdo agentlari
+# Original Agents — monorepo
 
-Loyiha qoidalari va arxitektura: [claude.md](claude.md).
+Ushbu repoda ikkita alohida loyiha bor:
 
-## Ishga tushirish
+| Papka | Nima | Stack | Holat |
+|---|---|---|---|
+| `web/` | **Yeppo** — O'zbekiston uchun koreys kosmetikasi internet-do'koni (UZ/RU) | Next.js 16 + Payload CMS 3 + Postgres, Docker Compose | Serverda ishlayapti |
+| `app/`, `config/settings.yaml`, root `docker-compose.yml` | **Poizon** — krossovka savdo agent-boti | Python + Postgres + Alembic | Serverda **pauzada**, egasining ruxsatisiz **tutilmaydi** |
+| `yeppo_agents/`, `config/yeppo.yaml` | **Yeppo marketing agentlari** (Q-Depot manba, narx, Instagram, Telegram) | Python + uv | Serverga hali qo'yilmagan |
 
-```bash
-uv sync
-cp .env.example .env              # to'ldiring; DRY_RUN=true — hech narsa kanalga chiqmaydi
-uv run --env-file .env alembic upgrade head
-uv run --env-file .env python -m app.bot.admin_bot   # bot + jadval (APScheduler)
-uv run pytest
-```
+## Qoidalar (buzilmaydi)
 
-## Kundalik ish (admin)
+- Soxta sharh/reyting yoki "faqat 2 ta qoldi" yozilmaydi.
+- Mahsulot rasmlari AI bilan o'zgartirilmaydi.
+- Sirlar (token, parol, kalit) chatga, logga yoki git'ga chiqmaydi — faqat `.env` / Coolify Environment Variables.
+- Yeppo'dan tashqaridagi narsalar (Poizon, boshqa serverdagi # Original Agents — monorepo
 
-- **Yangi tovar / narxni yangilash:** Poizon ilovasidan mahsulot sahifasining 1–3 ta skrinshotini botga
-  izohsiz yuboring → bot o'qib ko'rsatadi → ✅ To'g'ri / ✏️ Tuzatish.
-- **Tovar surati:** SKU izohi bilan (fayl sifatida) yuboring.
-- **Avtomatik:** 09:00 draft + tekshiruv, 12:00/19:00/21:00 kanalga nashr, 21:30 kunlik xulosa,
-  dushanba 09:00 haftalik hisobot + Excel. `/pause` — to'xtatish.
-- **Qo'lda:** to'lovni tasdiqlash (buyurtma tugmalari), xarid (ilovada narxni tekshirib, keyin
-  `/buyprice <id> <yuan>`), muammo: `/problem <id> <oʻlcham|kechikish|nuqson|boshqa> [izoh]`.
-- Hamma buyruqlar: botda `/help`.
+Ushbu repoda ikkita alohida loyiha ir
+Ushbu repoda ikkita alohida ## 
+| Papka | Nima | Stack | Holat |
+|---ME.|---|---|---|---|
+| `web/` | **a | `web/` | **Yepar| `app/`, `config/settings.yaml`, root `docker-compose.yml` | **Poizon** — krossovka sav- `docs/deploy_coolify.md` — Mac'dan serverga (Coolify/Hetzner) chiqarish q| `yeppo_agents/`, `config/yeppo.yaml` | **Yeppo marketing agentlari** (Q-Depot manba, narx, Instagram, Telegram) | Python + uv | Serverga hali qo'yilmagan |
 
-Zaxira manba: CSV / Google Sheet (`python -m app.agents.sourcing <fayl|url>`, namuna
-`data/samples/manual_sheet_sample.csv`, yoki `settings.yaml: sheet_url` — har kuni 05:00).
+## Qoidalar (buzilmaydi)
 
-## Server (Docker)
+- Soxta s
+`
+## Qoidalar (buzilmaydi)
 
-`docker compose up -d --build` — bot + jadval, Postgres, kechki backup (03:00, 7 kun).
-Hetzner + Coolify'ga joylash va Mac'dan maʼlumot koʻchirish: [docs/deploy_coolify.md](docs/deploy_coolify.md).
-Postgres testlari: `TEST_POSTGRES_URL=... uv run pytest -m postgres` (yoʻriqnomada).
+- Soxta sharh/reyting yoki "faqat 2 ta qoldi" yozilmaydi.
+- Mahsulot rasmlari AI bilan o'zgartirilmaydi.
+- Sirlar (token, parol,  he
+- Soxta sharh/reyting nv - Mahsulot rasmlari AI bilan o'zgartirilmaydi.
+- Sirlar st- Sirlar (token, parol, kalit) chatga, log o'zgartirmang.
