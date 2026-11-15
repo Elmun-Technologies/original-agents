@@ -13,7 +13,7 @@ services:
         condition: service_healthy
     environment:
       - SERVICE_FQDN_WEB_3000
-      - SITE_URL=${SERVICE_FQDN_WEB}
+      - SITE_URL=${SERVICE_URL_WEB}
       - DATABASE_URI=postgres://yeppo:${SERVICE_PASSWORD_POSTGRES}@db:5432/yeppo
       - PAYLOAD_SECRET=${SERVICE_BASE64_64_PAYLOAD}
       - SITE_PASSWORD=${SERVICE_PASSWORD_SITE}
