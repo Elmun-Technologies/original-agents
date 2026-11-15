@@ -52,9 +52,11 @@ export function discountPct(price: number, old?: number) {
 }
 
 export async function toCards(products: Product[], lang: Lang): Promise<CardProduct[]> {
-  const first = products.map((pr) => pr.variants[0])
-  const [olds, stats] = await Promise.all([oldPrices(first.map((v) => v.sku)), reviewStats(products.map((pr) => pr.id))])
-  return products.map((pr, i) => {
+  // Variant yo'q mahsulot katalogda ko'rsatilmaydi va sahifani buzmasin ("sku" o'qishda crash bo'lmasin)
+  const list = products.filter((pr) => Array.isArray(pr.variants) && pr.variants.length > 0)
+  const first = list.map((pr) => pr.variants[0])
+  const [olds, stats] = await Promise.all([oldPrices(first.map((v) => v.sku)), reviewStats(list.map((pr) => pr.id))])
+  return list.map((pr, i) => {
     const v = first[i]
     const old = (olds.get(v.sku) ?? 0) > v.price ? olds.get(v.sku) : undefined
     const pct = discountPct(v.price, old)
@@ -87,9 +89,10 @@ export async function homeCards(lang: Lang): Promise<HomeCard[]> {
   const p = await payload()
   // ponytail: catalog order until there are sales; rank by orders (last 30 days) once orders exist
   const res = await p.find({ collection: 'products', where: { 'category.slug': { not_equals: 'sertifikatlar' } }, limit: 200, sort: 'createdAt', locale: lang, depth: 1 })
-  const cards = await toCards(res.docs, lang)
+  const homeList = res.docs.filter((pr) => Array.isArray(pr.variants) && pr.variants.length > 0)
+  const cards = await toCards(homeList, lang)
   return cards.map((c, i) => {
-    const pr = res.docs[i]
+    const pr = homeList[i]
     return { ...c, skin: pr.skin ?? [], concerns: pr.concerns ?? [], category: typeof pr.category === 'object' ? pr.category.slug : '', stock: pr.variants.reduce((a, v) => a + (v.stock ?? 0), 0) }
   })
 }
@@ -120,9 +123,10 @@ export async function catalogData(slug: string, lang: Lang) {
   const ids = [cat.id, ...children.docs.map((c) => c.id)]
   // ponytail: whole category in memory and filtered in JS — fine for hundreds of products; move to SQL if a category grows past ~2000
   const res = await p.find({ collection: 'products', where: { category: { in: ids } }, sort: 'createdAt', locale: lang, depth: 1, limit: 2000, pagination: false })
-  const cards = await toCards(res.docs, lang)
+  const catList = res.docs.filter((pr) => Array.isArray(pr.variants) && pr.variants.length > 0)
+  const cards = await toCards(catList, lang)
   const items: CatalogItem[] = cards.map((c, i) => {
-    const pr = res.docs[i]
+    const pr = catList[i]
     const brand = typeof pr.brand === 'object' ? pr.brand : null
     return {
       ...c, skin: pr.skin ?? [], concerns: pr.concerns ?? [], category: typeof pr.category === 'object' ? pr.category.slug : '',
