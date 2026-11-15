@@ -5,6 +5,7 @@ import { BrandPage } from '@/components/pages/Brand'
 import { findCards, payload } from '@/lib/catalog'
 import { isLang } from '@/lib/i18n'
 import type { Media } from '@/payload-types'
+import { meta } from '@/lib/seo'
 
 type Props = { params: Promise<{ lang: string; slug: string }> }
 
@@ -17,7 +18,7 @@ export async function generateMetadata({ params }: Props) {
   const { lang, slug } = await params
   if (!isLang(lang)) return {}
   const b = await load(lang, slug)
-  return b ? { title: `${b.name} — Yeppo`, description: b.about ?? undefined, alternates: { canonical: `/${lang}/brend/${slug}` } } : {}
+  return b ? meta(lang, `/brend/${slug}`, { title: b.name, description: b.about ?? b.tagline }) : {}
 }
 
 export default async function Page({ params }: Props) {

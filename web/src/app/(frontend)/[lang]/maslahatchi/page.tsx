@@ -5,12 +5,13 @@ import { ConsultantPage } from '@/components/pages/Consultant'
 import { getStore, homeCards, payload } from '@/lib/catalog'
 import { sessionPhone } from '@/lib/customer'
 import { isLang, t } from '@/lib/i18n'
+import { meta } from '@/lib/seo'
 
 export const dynamic = 'force-dynamic'
 
 export async function generateMetadata({ params }: { params: Promise<{ lang: string }> }) {
   const { lang } = await params
-  return isLang(lang) ? { title: `${t(lang, 'Maslahatchi')} — Yeppo`, alternates: { canonical: `/${lang}/maslahatchi` } } : {}
+  return isLang(lang) ? meta(lang, '/maslahatchi', { title: t(lang, 'Maslahatchi'), description: t(lang, 'Bir necha savolga javob bering — teringizga mos parvarishni tanlab beramiz. Tibbiy tashxis emas.') }) : {}
 }
 
 export default async function Page({ params }: { params: Promise<{ lang: string }> }) {

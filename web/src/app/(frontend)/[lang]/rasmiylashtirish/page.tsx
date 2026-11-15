@@ -4,10 +4,11 @@ import { notFound } from 'next/navigation'
 import { CheckoutView } from '@/components/checkout/Checkout'
 import { getStore } from '@/lib/catalog'
 import { isLang, t } from '@/lib/i18n'
+import { meta } from '@/lib/seo'
 
 export async function generateMetadata({ params }: { params: Promise<{ lang: string }> }) {
   const { lang } = await params
-  return isLang(lang) ? { title: `${t(lang, 'Rasmiylashtirish')} — Yeppo`, robots: { index: false } } : {}
+  return isLang(lang) ? meta(lang, '/rasmiylashtirish', { title: t(lang, 'Rasmiylashtirish'), noindex: true }) : {}
 }
 
 export default async function CheckoutPage({ params }: { params: Promise<{ lang: string }> }) {

@@ -5,10 +5,11 @@ import { BrandsPage } from '@/components/pages/Brands'
 import { getStore, payload } from '@/lib/catalog'
 import { isLang, t } from '@/lib/i18n'
 import type { Media } from '@/payload-types'
+import { meta } from '@/lib/seo'
 
 export async function generateMetadata({ params }: { params: Promise<{ lang: string }> }) {
   const { lang } = await params
-  return isLang(lang) ? { title: `${t(lang, 'Brendlar')} — Yeppo` } : {}
+  return isLang(lang) ? meta(lang, '/brendlar', { title: t(lang, 'Brendlar'), description: t(lang, 'Koreys kosmetikasi brendlari A–Z: original mahsulotlar, partiya hujjatlari bilan.') }) : {}
 }
 
 export default async function Page({ params }: { params: Promise<{ lang: string }> }) {

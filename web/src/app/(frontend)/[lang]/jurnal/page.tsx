@@ -6,10 +6,11 @@ import { ARTICLE_CATS } from '@/collections/shop'
 import { getStore, payload } from '@/lib/catalog'
 import { isLang, t } from '@/lib/i18n'
 import type { Media } from '@/payload-types'
+import { meta } from '@/lib/seo'
 
 export async function generateMetadata({ params }: { params: Promise<{ lang: string }> }) {
   const { lang } = await params
-  return isLang(lang) ? { title: `${t(lang, 'Jurnal')} — Yeppo`, alternates: { canonical: `/${lang}/jurnal` } } : {}
+  return isLang(lang) ? meta(lang, '/jurnal', { title: t(lang, 'Jurnal'), description: t(lang, 'Koreys parvarishi haqida maqolalar: tarkiblar, rutina, teri turlari — oddiy tilda.') }) : {}
 }
 
 export default async function Page({ params }: { params: Promise<{ lang: string }> }) {

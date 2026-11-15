@@ -9,6 +9,8 @@ import { getStore, productData } from '@/lib/catalog'
 import { href, isLang, t } from '@/lib/i18n'
 import type { Media } from '@/payload-types'
 import { siteUrl } from '@/lib/payments/config'
+import { fmt, sum } from '@/lib/format'
+import { meta } from '@/lib/seo'
 
 type Props = { params: Promise<{ lang: string; slug: string }> }
 
@@ -17,12 +19,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!isLang(lang)) return {}
   const d = await productData(slug, lang)
   if (!d) return {}
-  return {
-    title: `${d.brand?.name ?? ''} ${d.pr.name} — Yeppo`,
-    description: d.pr.summary ?? d.pr.need ?? undefined,
-    alternates: { canonical: `/${lang}/mahsulot/${slug}`, languages: { uz: `/uz/mahsulot/${slug}`, ru: `/ru/mahsulot/${slug}` } },
-    openGraph: { images: d.images[0] ? [d.images[0].url] : undefined },
-  }
+  const price = Math.min(...d.variants.map((v) => v.price))
+  return meta(lang, `/mahsulot/${slug}`, {
+    title: `${d.brand?.name ?? ''} ${d.pr.name}`.trim(),
+    // the snippet carries what people search for: what it does + price
+    description: [d.pr.need ?? d.pr.summary, `${t(lang, 'Narxi')}: ${fmt(price)} ${sum(lang)}`].filter(Boolean).join(' · '),
+    image: d.images[0]?.url,
+  })
 }
 
 export default async function ProductPage({ params }: Props) {
@@ -49,7 +52,7 @@ export default async function ProductPage({ params }: Props) {
   const ld = [{
     '@context': 'https://schema.org', '@type': 'Product', name: `${d.brand?.name ?? ''} ${pr.name}`.trim(), sku: d.variants[0]?.sku,
     brand: d.brand ? { '@type': 'Brand', name: d.brand.name } : undefined, image: d.images.map((i) => site + i.url), description: pr.summary ?? undefined,
-    offers: d.variants.map((v) => ({ '@type': 'Offer', sku: v.sku, price: v.price, priceCurrency: 'UZS', availability: v.stock > 0 ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock', url: `${site}/${lang}/mahsulot/${slug}` })),
+    offers: d.variants.map((v) => ({ '@type': 'Offer', sku: v.sku, price: v.price, priceCurrency: 'UZS', availability: v.stock > 0 ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock', itemCondition: 'https://schema.org/NewCondition', seller: { '@type': 'Organization', name: 'Yeppo' }, url: `${site}/${lang}/mahsulot/${slug}` })),
     // only real, verified reviews
     ...(d.stats ? { aggregateRating: { '@type': 'AggregateRating', ratingValue: d.stats.avg.toFixed(1), reviewCount: d.stats.count } } : {}),
   }, {
@@ -92,7 +95,7 @@ export default async function ProductPage({ params }: Props) {
           </section>
         )}
       </div>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(ld) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(ld).replace(/</g, '\\u003c') }} />
     </>
   )
 }

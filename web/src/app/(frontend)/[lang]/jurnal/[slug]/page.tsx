@@ -6,6 +6,7 @@ import { payload, toCards } from '@/lib/catalog'
 import { isLang } from '@/lib/i18n'
 import { siteUrl } from '@/lib/payments/config'
 import type { Media, Product } from '@/payload-types'
+import { meta } from '@/lib/seo'
 
 type Props = { params: Promise<{ lang: string; slug: string }> }
 const load = async (lang: 'uz' | 'ru', slug: string) =>
@@ -15,7 +16,7 @@ export async function generateMetadata({ params }: Props) {
   const { lang, slug } = await params
   if (!isLang(lang)) return {}
   const a = await load(lang, slug)
-  return a ? { title: `${a.title} — Yeppo`, description: a.shortAnswer ?? a.excerpt ?? undefined, alternates: { canonical: `/${lang}/jurnal/${slug}` } } : {}
+  return a ? meta(lang, `/jurnal/${slug}`, { title: a.title, description: a.shortAnswer ?? a.excerpt, type: 'article', image: typeof a.cover === 'object' ? a.cover?.url : undefined }) : {}
 }
 
 export default async function Page({ params }: Props) {
@@ -48,7 +49,7 @@ export default async function Page({ params }: Props) {
         ingredients: (a.ingredients ?? []).map((x) => ({ name: x.name ?? undefined, d: x.d ?? undefined })), faq: (a.faq ?? []).map((f) => ({ q: f.q, a: f.a })),
         more: more.docs.map((m) => ({ slug: m.slug, title: m.title, cover: (m.cover as Media | null)?.url ?? undefined })),
       }} />
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(ld) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(ld).replace(/</g, '\\u003c') }} />
     </>
   )
 }

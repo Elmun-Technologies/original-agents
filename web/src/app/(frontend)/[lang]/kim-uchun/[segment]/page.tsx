@@ -5,6 +5,7 @@ import { SegmentPage } from '@/components/pages/Segment'
 import { payload, toCards } from '@/lib/catalog'
 import { isLang } from '@/lib/i18n'
 import type { Media, Product } from '@/payload-types'
+import { meta } from '@/lib/seo'
 
 type Props = { params: Promise<{ lang: string; segment: string }> }
 
@@ -16,7 +17,7 @@ export async function generateMetadata({ params }: Props) {
   const { lang, segment } = await params
   if (!isLang(lang)) return {}
   const s = (await segments(lang)).docs.find((d) => d.slug === segment)
-  return s ? { title: `${s.title} — Yeppo`, description: s.say ?? undefined, alternates: { canonical: `/${lang}/kim-uchun/${segment}` } } : {}
+  return s ? meta(lang, `/kim-uchun/${segment}`, { title: s.title, description: s.say }) : {}
 }
 
 export default async function Page({ params }: Props) {

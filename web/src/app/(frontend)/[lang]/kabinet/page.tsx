@@ -6,12 +6,13 @@ import { getStore, homeCards, payload } from '@/lib/catalog'
 import { currentCustomer } from '@/lib/customer'
 import { href, isLang, t } from '@/lib/i18n'
 import { loyaltyOf } from '@/lib/loyalty'
+import { meta } from '@/lib/seo'
 
 export const dynamic = 'force-dynamic'
 
 export async function generateMetadata({ params }: { params: Promise<{ lang: string }> }) {
   const { lang } = await params
-  return isLang(lang) ? { title: `${t(lang, 'Kabinet')} — Yeppo`, robots: { index: false } } : {}
+  return isLang(lang) ? meta(lang, '/kabinet', { title: t(lang, 'Kabinet'), noindex: true }) : {}
 }
 
 export default async function Page({ params }: { params: Promise<{ lang: string }> }) {

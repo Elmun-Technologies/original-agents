@@ -6,10 +6,11 @@ import { ConcernTabs } from '@/components/pages/ConcernTabs'
 import { kit } from '@/components/pages/kit'
 import { homeCards } from '@/lib/catalog'
 import { isLang, t } from '@/lib/i18n'
+import { meta } from '@/lib/seo'
 
 export async function generateMetadata({ params }: { params: Promise<{ lang: string }> }) {
   const { lang } = await params
-  return isLang(lang) ? { title: `${t(lang, 'Yuz parvarishi')} — Yeppo`, alternates: { canonical: `/${lang}/yuz-parvarishi` } } : {}
+  return isLang(lang) ? meta(lang, '/yuz-parvarishi', { title: t(lang, 'Yuz parvarishi'), description: t(lang, 'Yuz parvarishi: serumlar, tonerlar, kremlar, SPF va niqoblar — teri turi va muammo boʻyicha tanlang.') }) : {}
 }
 
 export default async function Page({ params }: { params: Promise<{ lang: string }> }) {

@@ -181,3 +181,41 @@ input.inp,select.inp,textarea.inp{height:50px;border-radius:14px;border:1.5px so
 
 /* checkout and the test payment page have their own minimal header (design: Checkout.jpg) */
 body:has(.checkout-page) .ann,body:has(.checkout-page) .hdr,body:has(.checkout-page) footer,body:has(.checkout-page) .mtabs,body:has(.auth-page) .ann,body:has(.auth-page) .hdr,body:has(.auth-page) footer,body:has(.auth-page) .mtabs,body:has(.auth-page) .m-bar{display:none !important}
+
+/* ---- Motion & interaction layer (soft, quick; off for prefers-reduced-motion) ---- */
+:root{--ease:cubic-bezier(.2,.7,.2,1);--shadow-hover:0 16px 40px rgba(42,33,30,.08)}
+html{-webkit-tap-highlight-color:transparent;scroll-behavior:smooth}
+:focus-visible{outline:2px solid #A8475C;outline-offset:3px;border-radius:12px}
+.inp{transition:border-color .2s,box-shadow .2s}
+.inp:focus{border-color:#2A211E;box-shadow:0 0 0 4px rgba(42,33,30,.06);outline:none}
+.pill{transition:background .2s,color .2s,border-color .2s,transform .15s var(--ease),box-shadow .2s}
+.pill:active{transform:scale(.97)}
+.pill.dark:hover{box-shadow:0 8px 22px rgba(42,33,30,.18)}
+.ib{transition:background .2s,transform .15s var(--ease)}
+.ib:active{transform:scale(.92)}
+.pc{transition:box-shadow .3s var(--ease),transform .3s var(--ease)}
+@media (hover:hover){
+  .pc:hover{transform:translateY(-4px);box-shadow:var(--shadow-hover)}
+  a.card,.card.zoom{transition:transform .3s var(--ease),box-shadow .3s var(--ease)}
+  a.card:hover,.card.zoom:hover{transform:translateY(-3px);box-shadow:var(--shadow-hover)}
+  .fav:hover{transform:scale(1.08)}
+  .chip{transition:background .2s}
+}
+.fav{transition:transform .2s var(--ease),color .2s}
+.fav.on svg{animation:heart .45s var(--ease)}
+@keyframes heart{0%{transform:scale(1)}30%{transform:scale(1.35)}60%{transform:scale(.9)}100%{transform:scale(1)}}
+.navlink{transition:background .2s,color .2s}
+.toast{animation:toast-in .35s var(--ease)}
+@keyframes toast-in{from{opacity:0;transform:translateY(16px) scale(.98)}to{opacity:1;transform:none}}
+details>summary{cursor:pointer}
+details[open]>*:not(summary){animation:fade-in .3s var(--ease)}
+@keyframes fade-in{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+@keyframes rise{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:none}}
+/* sections below the fold rise in as they scroll into view (browsers with scroll-driven animations) */
+@supports (animation-timeline:view()){
+  main section:not(:first-of-type){animation:rise linear both;animation-timeline:view();animation-range:entry 0% entry 30%}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms !important;animation-iteration-count:1 !important;transition-duration:.01ms !important;scroll-behavior:auto !important}
+  main section{animation:none !important}
+}

@@ -5,10 +5,11 @@ import { GiftsPage } from '@/components/pages/Gifts'
 import { homeCards, payload } from '@/lib/catalog'
 import { isLang, t } from '@/lib/i18n'
 import type { Media } from '@/payload-types'
+import { meta } from '@/lib/seo'
 
 export async function generateMetadata({ params }: { params: Promise<{ lang: string }> }) {
   const { lang } = await params
-  return isLang(lang) ? { title: `${t(lang, 'Sovgʻalar')} — Yeppo`, alternates: { canonical: `/${lang}/sovgalar` } } : {}
+  return isLang(lang) ? meta(lang, '/sovgalar', { title: t(lang, 'Sovgʻalar'), description: t(lang, 'Sovgʻa gʻoyalari va sovgʻa sertifikatlari: kim uchun va qancha byudjetga — tez tanlang.') }) : {}
 }
 
 export default async function Page({ params }: { params: Promise<{ lang: string }> }) {

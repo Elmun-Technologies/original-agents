@@ -5,12 +5,13 @@ import { RatingPage } from '@/components/pages/Rating'
 import { homeCards, payload, salesBySku } from '@/lib/catalog'
 import { isLang, t } from '@/lib/i18n'
 import { daysAgo } from '@/lib/format'
+import { meta } from '@/lib/seo'
 
 export const revalidate = 300
 
 export async function generateMetadata({ params }: { params: Promise<{ lang: string }> }) {
   const { lang } = await params
-  return isLang(lang) ? { title: `${t(lang, 'Aksiyalar')} — Yeppo`, alternates: { canonical: `/${lang}/aksiyalar` } } : {}
+  return isLang(lang) ? meta(lang, '/aksiyalar', { title: t(lang, 'Aksiyalar'), description: t(lang, 'Koreys kosmetikasiga chegirmalar va eng koʻp sotilayotgan mahsulotlar.') }) : {}
 }
 
 export default async function Page({ params }: { params: Promise<{ lang: string }> }) {

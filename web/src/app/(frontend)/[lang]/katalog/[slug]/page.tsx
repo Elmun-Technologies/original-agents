@@ -10,6 +10,7 @@ import { RecentlyViewed } from '@/components/Recent'
 import { catalogData } from '@/lib/catalog'
 import { applyFilters, parseFilters } from '@/lib/filters'
 import { href, isLang, t, tn } from '@/lib/i18n'
+import { meta } from '@/lib/seo'
 
 // reads searchParams on every request (the layout is ISR otherwise)
 export const dynamic = 'force-dynamic'
@@ -22,13 +23,8 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
   const data = await catalogData(slug, lang)
   if (!data) return {}
   const filtered = Object.keys(await searchParams).length > 0
-  return {
-    title: `${data.cat.title} — Yeppo`,
-    description: data.cat.seoText?.slice(0, 160),
-    alternates: { canonical: `/${lang}/katalog/${slug}`, languages: { uz: `/uz/katalog/${slug}`, ru: `/ru/katalog/${slug}` } },
-    // filter combinations are for people, the plain category page is for search engines
-    robots: filtered ? { index: false, follow: true } : undefined,
-  }
+  // filter combinations are for people, the plain category page is for search engines
+  return meta(lang, `/katalog/${slug}`, { title: data.cat.title, description: data.cat.seoText, noindex: filtered, follow: true })
 }
 
 export default async function Catalog({ params, searchParams }: Props) {

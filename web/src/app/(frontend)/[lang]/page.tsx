@@ -11,6 +11,13 @@ import { getStore, homeCards, payload } from '@/lib/catalog'
 import { fmt } from '@/lib/format'
 import { href, isLang, t, tn as tnL } from '@/lib/i18n'
 import type { Media } from '@/payload-types'
+import { meta } from '@/lib/seo'
+import { siteUrl } from '@/lib/site'
+
+export async function generateMetadata({ params }: { params: Promise<{ lang: string }> }) {
+  const { lang } = await params
+  return isLang(lang) ? meta(lang, '/', { title: t(lang, 'Koreys kosmetikasi internet doʻkoni'), description: t(lang, 'Original koreys kosmetikasi Toshkentda: serumlar, kremlar, SPF va toʻplamlar. Har partiyaning hujjati bor, tez yetkazib beramiz.') }) : {}
+}
 
 export default async function Home({ params }: { params: Promise<{ lang: string }> }) {
   const { lang } = await params
@@ -41,6 +48,13 @@ export default async function Home({ params }: { params: Promise<{ lang: string 
     [tr('Qachon yetkazasizlar?'), tn('Toshkent boʻylab [N] kunda, viloyatlarga [N] kunda. Buyurtma yoʻlga chiqqanda Telegram bot xabar beradi.', store.tashkentDays, store.regionDays)],
     [tr('Mos kelmasa, qaytarsa boʻladimi?'), tn('Ochilmagan mahsulotni [N] kun ichida qaytarishingiz mumkin. Ochilgan boʻlsa ham yozing — birga yechim topamiz.', store.returnDays)],
     [tr('Qanday toʻlayman?'), tr('Click, Payme, Uzcard yoki Humo kartasi bilan — saytda yoki botda.')],
+  ]
+  const site = siteUrl()
+  const orgLd = [
+    { '@context': 'https://schema.org', '@type': 'OnlineStore', name: 'Yeppo', url: site, logo: `${site}/apple-icon`, areaServed: 'UZ', currenciesAccepted: 'UZS',
+      sameAs: [store.telegramUrl].filter((u) => u && u !== 'https://t.me/'), ...(store.phone ? { telephone: store.phone } : {}) },
+    { '@context': 'https://schema.org', '@type': 'WebSite', name: 'Yeppo', url: `${site}/${lang}`, inLanguage: lang,
+      potentialAction: { '@type': 'SearchAction', target: `${site}/${lang}/qidiruv?q={search_term_string}`, 'query-input': 'required name=search_term_string' } },
   ]
   const faqLd = {
     '@context': 'https://schema.org', '@type': 'FAQPage',
@@ -74,7 +88,7 @@ export default async function Home({ params }: { params: Promise<{ lang: string 
       <Journal tr={tr} tn={tn} L={L} />
       <TelegramCta tr={tr} L={L} />
       <SeoFaq tr={tr} faq={<Faq items={faq} />} />
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify([...orgLd, faqLd]).replace(/</g, '\\u003c') }} />
     </>
   )
 }

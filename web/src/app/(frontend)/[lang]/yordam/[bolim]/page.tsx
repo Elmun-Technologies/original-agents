@@ -6,12 +6,13 @@ import { HelpPage } from '@/components/pages/Help'
 import { HELP_SLUGS } from '@/lib/help'
 import { getStore, payload } from '@/lib/catalog'
 import { isLang, t } from '@/lib/i18n'
+import { meta } from '@/lib/seo'
 
 type Props = { params: Promise<{ lang: string; bolim: string }> }
 
 export async function generateMetadata({ params }: Props) {
   const { lang, bolim } = await params
-  return isLang(lang) ? { title: `${t(lang, 'Yordam')} — Yeppo`, alternates: { canonical: `/${lang}/yordam/${bolim}` } } : {}
+  return isLang(lang) ? meta(lang, `/yordam/${bolim}`, { title: t(lang, 'Yordam'), description: t(lang, 'Yetkazish, toʻlov, qaytarish va originallik haqida savollarga javoblar.') }) : {}
 }
 
 export default async function Page({ params }: Props) {

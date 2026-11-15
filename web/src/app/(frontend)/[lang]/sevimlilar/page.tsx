@@ -4,10 +4,11 @@ import { notFound } from 'next/navigation'
 import { FavoritesPage } from '@/components/pages/Favorites'
 import { getStore, homeCards } from '@/lib/catalog'
 import { isLang, t } from '@/lib/i18n'
+import { meta } from '@/lib/seo'
 
 export async function generateMetadata({ params }: { params: Promise<{ lang: string }> }) {
   const { lang } = await params
-  return isLang(lang) ? { title: `${t(lang, 'Sevimlilar')} — Yeppo`, robots: { index: false } } : {}
+  return isLang(lang) ? meta(lang, '/sevimlilar', { title: t(lang, 'Sevimlilar'), noindex: true }) : {}
 }
 
 export default async function Page({ params }: { params: Promise<{ lang: string }> }) {

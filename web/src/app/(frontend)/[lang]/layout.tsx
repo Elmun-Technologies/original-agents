@@ -20,8 +20,10 @@ export async function generateMetadata({ params }: { params: Promise<{ lang: str
   return {
     // the site address: one setting, NEXT_PUBLIC_SITE_URL (e.g. https://yeppo.uz)
     metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'),
+    // defaults only; every page sets its own canonical + hreflang through lib/seo meta()
     title: t(lang, 'Yeppo — koreys kosmetikasi internet doʻkoni'),
-    alternates: { languages: { uz: '/uz', ru: '/ru' } },
+    applicationName: 'Yeppo',
+    formatDetection: { telephone: false },
   }
 }
 
