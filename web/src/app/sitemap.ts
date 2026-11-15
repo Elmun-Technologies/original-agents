@@ -4,7 +4,7 @@ import { payload } from '@/lib/catalog'
 import { HELP_SLUGS } from '@/lib/help'
 import { siteUrl } from '@/lib/site'
 
-export const revalidate = 3600
+export const dynamic = 'force-dynamic' // reads the database (not available while the Docker image builds)
 
 type Entry = MetadataRoute.Sitemap[number]
 const STATIC = ['/', '/yuz-parvarishi', '/aksiyalar', '/brendlar', '/jurnal', '/sovgalar', '/rutina', '/bonus', '/maslahatchi', ...HELP_SLUGS.map((s) => `/yordam/${s}`)]

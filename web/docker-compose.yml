@@ -1,0 +1,81 @@
+# Yeppo site on Coolify (Docker Compose build pack, base directory /web).
+# - Coolify fills SERVICE_* variables itself: the temporary https address (SERVICE_FQDN_WEB) and random secrets
+#   (SERVICE_PASSWORD_*, SERVICE_BASE64_*). They are visible only in Coolify's Environment Variables tab.
+# - Separate from other projects on the server: no published ports, own volumes, memory limits on every service.
+# - Closed test site while SITE_PASSWORD is set: password (user "yeppo") + noindex everywhere.
+# - Payments stay in mock mode: no real money is accepted.
+services:
+  web:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      - SERVICE_FQDN_WEB_3000
+      - SITE_URL=${SERVICE_FQDN_WEB}
+      - DATABASE_URI=postgres://yeppo:${SERVICE_PASSWORD_POSTGRES}@db:5432/yeppo
+      - PAYLOAD_SECRET=${SERVICE_BASE64_64_PAYLOAD}
+      - SITE_PASSWORD=${SERVICE_PASSWORD_SITE}
+      - SITE_NOINDEX=1
+      - PAYMENTS_MODE=mock
+      - SMS_MODE=mock # closed test site only: the login code is shown on screen
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
+      - TELEGRAM_ADMIN_IDS=${TELEGRAM_ADMIN_IDS:-}
+    volumes:
+      - media:/app/media
+    mem_limit: 768m
+
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    command: postgres -c shared_buffers=64MB -c max_connections=30 -c work_mem=4MB
+    environment:
+      - POSTGRES_USER=yeppo
+      - POSTGRES_PASSWORD=${SERVICE_PASSWORD_POSTGRES}
+      - POSTGRES_DB=yeppo
+      - TZ=Asia/Tashkent
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U yeppo -d yeppo"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    mem_limit: 384m
+
+  backup:
+    build: ./deploy/backup
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      - PGHOST=db
+      - PGUSER=yeppo
+      - PGPASSWORD=${SERVICE_PASSWORD_POSTGRES}
+      - PGDATABASE=yeppo
+      - TZ=Asia/Tashkent
+      - BACKUP_HOUR=03
+      - OFFSITE_PATH=yeppo
+      # off-site target (fill in Coolify; examples in deploy/README.md): S3 or Hetzner Storage Box (sftp)
+      - RCLONE_CONFIG_OFFSITE_TYPE=${OFFSITE_TYPE:-}
+      - RCLONE_CONFIG_OFFSITE_PROVIDER=${OFFSITE_PROVIDER:-}
+      - RCLONE_CONFIG_OFFSITE_ENDPOINT=${OFFSITE_ENDPOINT:-}
+      - RCLONE_CONFIG_OFFSITE_ACCESS_KEY_ID=${OFFSITE_ACCESS_KEY_ID:-}
+      - RCLONE_CONFIG_OFFSITE_SECRET_ACCESS_KEY=${OFFSITE_SECRET_ACCESS_KEY:-}
+      - RCLONE_CONFIG_OFFSITE_HOST=${OFFSITE_HOST:-}
+      - RCLONE_CONFIG_OFFSITE_PORT=${OFFSITE_PORT:-}
+      - RCLONE_CONFIG_OFFSITE_USER=${OFFSITE_USER:-}
+      - RCLONE_CONFIG_OFFSITE_PASS=${OFFSITE_PASS_OBSCURED:-}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
+      - TELEGRAM_ADMIN_IDS=${TELEGRAM_ADMIN_IDS:-}
+    volumes:
+      - pg_backups:/backups
+      - media:/media:ro
+    mem_limit: 128m
+
+volumes:
+  media:
+  pg_data:
+  pg_backups:

@@ -22,6 +22,8 @@ export default defineConfig({
   reporter: 'html',
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
+    // closed test site (SITE_PASSWORD): E2E_PASSWORD gives the tests the Basic-auth password
+    ...(process.env.E2E_PASSWORD ? { httpCredentials: { username: 'yeppo', password: process.env.E2E_PASSWORD } } : {}),
     /* Base URL to use in actions like `await page.goto('/')`. */
     // baseURL: 'http://localhost:3000',
 

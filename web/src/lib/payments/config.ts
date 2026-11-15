@@ -27,7 +27,7 @@ export const paymeConfig = () => ({
 })
 
 /** The site's public address — the one setting to change for the domain (yeppo.uz). */
-export const siteUrl = () => (process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000').replace(/\/$/, '')
+export { siteUrl } from '@/lib/site'
 
 /** Uzcard / Humo card payment goes through this provider's hosted page (both accept the cards). */
 export const cardProvider = (): 'payme' | 'click' => (process.env.CARD_PROVIDER === 'click' ? 'click' : 'payme')

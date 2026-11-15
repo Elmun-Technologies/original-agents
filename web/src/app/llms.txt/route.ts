@@ -2,7 +2,7 @@
 import { getStore, payload } from '@/lib/catalog'
 import { siteUrl } from '@/lib/site'
 
-export const revalidate = 3600
+export const dynamic = 'force-dynamic' // reads the database (not available while the Docker image builds)
 
 export async function GET() {
   const site = siteUrl()

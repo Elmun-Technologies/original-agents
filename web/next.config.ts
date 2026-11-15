@@ -7,6 +7,10 @@ const __filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(__filename)
 
 const nextConfig: NextConfig = {
+  output: 'standalone', // Docker image (Dockerfile)
+  poweredByHeader: false,
+  // the Docker build skips the type check (tsc runs locally and in tests) to save server time and memory
+  typescript: { ignoreBuildErrors: process.env.SKIP_TYPECHECK === '1' },
   images: {
     localPatterns: [
       {

@@ -1,0 +1,12 @@
+node_modules
+.next
+media
+.env
+.env.*
+!.env.example
+test-results
+playwright-report
+tests
+compare
+*.log
+.git
