@@ -74,8 +74,25 @@ def rounded(img: Image.Image, r: int) -> Image.Image:
     return out
 
 
+def readable(data: bytes) -> bool:
+    try:
+        Image.open(io.BytesIO(data)).verify()
+        return True
+    except Exception:
+        return False
+
+
+def load(data: bytes) -> Image.Image:
+    """Decode only. A transparent PNG/WebP is laid on white, as a browser shows it (plain convert() makes it black)."""
+    im = ImageOps.exif_transpose(Image.open(io.BytesIO(data)))
+    if im.mode in ("RGBA", "LA", "PA") or "transparency" in im.info:
+        im = im.convert("RGBA")
+        im = Image.alpha_composite(Image.new("RGBA", im.size, "white"), im)
+    return im.convert("RGB")
+
+
 def photo(data: bytes, size: tuple[int, int], mode: str = "cover") -> Image.Image:
-    im = ImageOps.exif_transpose(Image.open(io.BytesIO(data))).convert("RGB")
+    im = load(data)
     if mode == "cover":
         return ImageOps.fit(im, size, Image.LANCZOS, centering=(0.5, 0.45))
     # contain on a soft surface — packshots on white keep their whole shape
@@ -87,7 +104,7 @@ def photo(data: bytes, size: tuple[int, int], mode: str = "cover") -> Image.Imag
 
 def is_packshot(data: bytes) -> bool:
     """White/plain background product shot -> show whole (contain); lifestyle photo -> cover."""
-    im = Image.open(io.BytesIO(data)).convert("L").resize((64, 64))
+    im = load(data).convert("L").resize((64, 64))
     edge = [im.getpixel((x, y)) for x in range(64) for y in (0, 63)] + [im.getpixel((x, y)) for y in range(64) for x in (0, 63)]
     return sum(p > 235 for p in edge) / len(edge) > 0.8
 
@@ -255,7 +272,7 @@ def reels(it: Item, out: Path) -> Path:
         for i, sc in enumerate(scenes):
             p = Path(tmp) / f"s{i}.png"
             sc.save(p)
-            inputs += ["-loop", "1", "-framerate", str(fps), "-t", f"{sec}", "-i", str(p)]
+            inputs += ["-i", str(p)]  # one still; zoompan makes the frames (a looped input only fills ffmpeg's queues)
             filters.append(
                 f"[{i}:v]scale={W * 2}:{H * 2},zoompan=z='min(1+0.0009*on,1.06)':d={frames}"
                 f":x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s={W}x{H}:fps={fps},setsar=1,format=yuv420p[v{i}]")
@@ -265,10 +282,20 @@ def reels(it: Item, out: Path) -> Path:
             filters.append(f"[{last}][v{i}]xfade=transition=fade:duration={xf}:offset={offset:.2f}[x{i}]")
             last = f"x{i}"
         total = sec * len(scenes) - xf * (len(scenes) - 1)
+        # Thread and lookahead caps keep ffmpeg's memory flat (~0.4 GB) whatever the host's core count;
+        # with the defaults a 4-core host needs >1 GB and the container is OOM-killed (compose mem_limit).
         cmd = ["ffmpeg", "-y", "-loglevel", "error", *inputs,
                "-f", "lavfi", "-t", f"{total:.2f}", "-i", "anullsrc=channel_layout=stereo:sample_rate=44100",
-               "-filter_complex", ";".join(filters), "-map", f"[{last}]", "-map", f"{len(scenes)}:a",
+               "-filter_complex_threads", "1", "-filter_complex", ";".join(filters),
+               "-map", f"[{last}]", "-map", f"{len(scenes)}:a",
                "-c:v", "libx264", "-preset", "medium", "-crf", "20", "-pix_fmt", "yuv420p", "-r", str(fps),
+               "-threads", "2", "-x264-params", "rc-lookahead=5:sync-lookahead=0:bframes=0:ref=1",
                "-c:a", "aac", "-b:a", "96k", "-shortest", "-movflags", "+faststart", str(out)]
-        subprocess.run(cmd, check=True, timeout=600)
+        try:
+            r = subprocess.run(cmd, capture_output=True, text=True, errors="replace", timeout=600)
+        except subprocess.TimeoutExpired:
+            raise RuntimeError("ffmpeg 10 daqiqada tugamadi") from None  # the default message is the whole command
+        if r.returncode:
+            out.unlink(missing_ok=True)
+            raise RuntimeError(f"ffmpeg xato ({r.returncode}): {r.stderr.strip()[-300:]}")
     return out

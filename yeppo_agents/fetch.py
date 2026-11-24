@@ -115,15 +115,24 @@ class Fetcher:
         return n
 
     # --- fetch ------------------------------------------------------------
-    def get(self, url: str) -> str:
-        if not url.startswith(self.base):
+    def _inside(self, url: str) -> None:
+        a, b = urlparse(url), urlparse(self.base)
+        if (a.scheme, a.netloc) != (b.scheme, b.netloc):  # exact host: "base.evil.com" is not ours
             raise NotAllowed(f"outside {self.base}: {url}")
+
+    def get(self, url: str) -> str:
+        self._inside(url)
         return self._get(url, check_robots=True)
 
-    def _get(self, url: str, check_robots: bool, use_cache: bool = True) -> str:
-        key = self.cache / (hashlib.sha1(url.encode()).hexdigest() + ".html")
+    def get_bytes(self, url: str) -> bytes:
+        """A product photo from the source host — same robots/pause/limit/stop rules as pages."""
+        self._inside(url)
+        return self._get(url, check_robots=True, binary=True)
+
+    def _get(self, url: str, check_robots: bool, use_cache: bool = True, binary: bool = False):
+        key = self.cache / (hashlib.sha1(url.encode()).hexdigest() + (".bin" if binary else ".html"))
         if use_cache and key.exists() and time.time() - key.stat().st_mtime < self.cache_s:
-            return key.read_text(encoding="utf-8")
+            return key.read_bytes() if binary else key.read_text(encoding="utf-8")
         if check_robots and not self.allowed(url):
             raise NotAllowed(url)
         if self._count() > self.limit:
@@ -142,9 +151,15 @@ class Fetcher:
         log.info("GET %s -> %s %.1fs", url, resp.status_code, time.time() - t0)
         if resp.status_code in (403, 429, 503):
             raise Blocked(f"{resp.status_code} — {url}")
+        if binary and resp.headers.get("content-type", "").startswith("image/"):
+            resp.raise_for_status()
+            key.write_bytes(resp.content)
+            return resp.content
         head = resp.text[:4000].lower()
         if any(c in head for c in CAPTCHA):
             raise Blocked(f"captcha/himoya sahifasi — {url}")
         resp.raise_for_status()
+        if binary:  # asked for a photo, got a page
+            raise httpx.HTTPError(f"not an image: {url}")
         key.write_text(resp.text, encoding="utf-8")
         return resp.text

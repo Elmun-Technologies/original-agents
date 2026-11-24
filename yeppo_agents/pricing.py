@@ -68,6 +68,8 @@ def usd_rate(client: httpx.Client | None = None, today: date | None = None) -> D
         r = c.get(CBU_URL.format(day=today.isoformat()))
         r.raise_for_status()
         rate = D(r.json()[0]["Rate"])
+        if not rate > 0:  # also rejects NaN; a zero rate would price everything at 0
+            raise ValueError(f"bad CBU rate {rate}")
         cache.parent.mkdir(parents=True, exist_ok=True)
         cache.write_text(json.dumps({"day": today.isoformat(), "rate": str(rate), "at": datetime.now(TZ).isoformat()}))
         return rate

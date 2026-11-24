@@ -20,7 +20,12 @@ def _load_dotenv(path: Path = ROOT / ".env") -> None:
         if not line or line.startswith("#") or "=" not in line:
             continue
         k, v = line.split("=", 1)
-        os.environ.setdefault(k.strip(), v.strip().strip('"').strip("'"))
+        v = v.strip()
+        if v[:1] in ("'", '"'):
+            v = v[1:].split(v[0], 1)[0]
+        else:
+            v = v.split(" #", 1)[0].strip()  # inline comment, as docker compose reads it
+        os.environ.setdefault(k.strip(), v)
 
 
 _load_dotenv()
@@ -39,7 +44,7 @@ def env(name: str, default: str | None = None, required: bool = False) -> str | 
 
 
 def dry_run() -> bool:
-    return os.environ.get("DRY_RUN", "true").lower() != "false"
+    return os.environ.get("DRY_RUN", "true").strip().lower() != "false"  # anything but "false" stays dry
 
 
 def admin_ids() -> list[int]:
