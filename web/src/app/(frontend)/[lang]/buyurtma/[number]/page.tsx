@@ -37,7 +37,8 @@ export default async function OrderPage({ params, searchParams }: { params: Prom
   const time = (d?: string | null) => (d ? new Date(d).toLocaleTimeString(lang === 'ru' ? 'ru-RU' : 'uz-UZ', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Tashkent' }) : '')
   const when = o.delivery === 'tashkent' ? tr('Ertaga') : tn(lang, '[N] kun ichida', store.regionDays)
   const dates = [`${tr('Bugun')}, ${time(o.paidAt)}`, tr('Bugun'), when, o.delivery === 'tashkent' && o.slot ? `${tr('Ertaga')}, ${o.slot}` : when]
-  const provider = providerOf(o.payment)
+  const provider = await providerOf(o.payment)
+  const payHref = await payUrl(o)
   const canPay = payable(o)
   const tgLink = `${store.telegramBotUrl}${store.telegramBotUrl.includes('?') ? '&' : '?'}start=order_${o.number}`
 
@@ -65,7 +66,7 @@ export default async function OrderPage({ params, searchParams }: { params: Prom
               : 'Toʻlov oʻtgach buyurtmani yigʻishni boshlaymiz. Pul faqat toʻlov tizimi tasdiqlagandan keyin hisobga olinadi.')}</p>
           </div>
           {canPay
-            ? <a href={payUrl(o)} className="pill dark" style={{ minHeight: '52px' }}>{tn(lang, '[N] orqali [N] toʻlash', provider === 'click' ? 'Click' : 'Payme', `${fmt(o.total)} ${sum(lang)}`)}</a>
+            ? <a href={payHref} className="pill dark" style={{ minHeight: '52px' }}>{tn(lang, '[N] orqali [N] toʻlash', provider === 'click' ? 'Click' : 'Payme', `${fmt(o.total)} ${sum(lang)}`)}</a>
             : <Link href={L(o.status === 'cancelled' ? '/yordam/aloqa' : '/savat')} className="pill dark" style={{ minHeight: '52px' }}>{tr(o.status === 'cancelled' ? 'Bogʻlanish' : 'Savatga oʻtish')}</Link>}
         </section>
       )}

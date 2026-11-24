@@ -1,5 +1,6 @@
 import 'server-only'
 
+import { integrations } from '@/lib/integrations'
 import { paymentsMode } from '@/lib/payments/config'
 
 // Admin messages via the Telegram Bot API (TELEGRAM_BOT_TOKEN, TELEGRAM_ADMIN_IDS in .env / Coolify).
@@ -7,9 +8,10 @@ import { paymentsMode } from '@/lib/payments/config'
 // ADMIN_NOTIFY=off silences it (automated tests). With PAYMENTS_MODE=mock every message is marked as a test.
 export async function notifyAdmins(text: string) {
   if (process.env.ADMIN_NOTIFY === 'off') return
-  if (paymentsMode() === 'mock') text = `🧪 SINOV (soxta toʻlov, pul yoʻq)\n${text}`
-  const token = process.env.TELEGRAM_BOT_TOKEN
-  const ids = (process.env.TELEGRAM_ADMIN_IDS ?? '').split(',').map((s) => s.trim()).filter(Boolean)
+  if ((await paymentsMode()) === 'mock') text = `🧪 SINOV (soxta toʻlov, pul yoʻq)\n${text}`
+  const v = await integrations()
+  const token = v.telegramToken as string
+  const ids = String(v.telegramAdminIds ?? '').split(',').map((s) => s.trim()).filter(Boolean)
   if (!token || !ids.length) return
   await Promise.all(ids.map(async (chat_id) => {
     try {

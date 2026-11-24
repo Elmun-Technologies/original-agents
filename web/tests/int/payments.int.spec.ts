@@ -35,9 +35,9 @@ beforeAll(async () => {
 })
 
 describe('Click', () => {
-  const call = (p: Omit<ClickParams, 'sign_string'>, secret = clickConfig().secretKey) => clickHandle({ ...p, sign_string: clickSign(p, secret) })
+  const call = async (p: Omit<ClickParams, 'sign_string'>, secret?: string) => clickHandle({ ...p, sign_string: clickSign(p, secret ?? (await clickConfig()).secretKey) })
   const base = (o: { number: string; total: number }, trans = String(crypto.randomInt(1e9))) =>
-    ({ click_trans_id: trans, service_id: clickConfig().serviceId, click_paydoc_id: '1', merchant_trans_id: o.number, amount: String(o.total), sign_time: '2026-06-01 10:00:00', error: '0', error_note: 'Success' })
+    ({ click_trans_id: trans, service_id: '0', click_paydoc_id: '1', merchant_trans_id: o.number, amount: String(o.total), sign_time: '2026-06-01 10:00:00', error: '0', error_note: 'Success' })
   const pay = async (o: { number: string; total: number }) => {
     const b = base(o)
     const prep = await call({ ...b, action: '0' })
@@ -96,8 +96,8 @@ describe('Click', () => {
 })
 
 describe('Payme', () => {
-  const auth = () => `Basic ${Buffer.from(`Paycom:${paymeConfig().key}`).toString('base64')}`
-  const rpc = async (method: string, params: object, header: string | null = auth()) => (await paymeHandle({ id: 1, method, params }, header)) as { result?: any; error?: { code: number } }
+  const auth = async () => `Basic ${Buffer.from(`Paycom:${(await paymeConfig()).key}`).toString('base64')}`
+  const rpc = async (method: string, params: object, header?: string | null) => (await paymeHandle({ id: 1, method, params }, header === undefined ? await auth() : header)) as { result?: any; error?: { code: number } }
   const tiyin = (o: { total: number }) => Math.round(o.total * 100)
   const acc = (o: { number: string }) => ({ order_id: o.number })
 

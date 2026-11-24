@@ -10,7 +10,7 @@ export async function POST(req: Request) {
   if (!body || !Array.isArray(body.lines)) return NextResponse.json({ error: 'bad_request' }, { status: 400 })
   try {
     const { order } = await createOrder({ ...body, lang: isLang(body.lang) ? body.lang : 'uz' })
-    return NextResponse.json({ number: order.number, token: order.token, payUrl: payUrl(order) })
+    return NextResponse.json({ number: order.number, token: order.token, payUrl: await payUrl(order) })
   } catch (e) {
     if (e instanceof OrderError) return NextResponse.json({ error: e.code }, { status: 422 })
     throw e

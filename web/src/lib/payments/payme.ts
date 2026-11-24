@@ -31,15 +31,15 @@ type Rpc = { id?: number | string; method?: string; params?: any }
 const fail = (id: Rpc['id'], e: Err) => ({ jsonrpc: '2.0', id: id ?? null, error: e })
 const ok = (id: Rpc['id'], result: unknown) => ({ jsonrpc: '2.0', id: id ?? null, result })
 
-export function paymeAuthOk(header: string | null) {
-  const { key } = paymeConfig()
+export async function paymeAuthOk(header: string | null) {
+  const { key } = await paymeConfig()
   const want = `Basic ${Buffer.from(`Paycom:${key}`).toString('base64')}`
   return !!header && header.length === want.length && crypto.timingSafeEqual(Buffer.from(header), Buffer.from(want))
 }
 
 /** Hosted checkout URL: base64("m=<merchant>;ac.order_id=<n>;a=<tiyin>;c=<return>;l=<lang>"). */
-export function paymePayUrl(orderNumber: string, total: number, returnUrl: string, lang: string) {
-  const { merchantId, checkoutUrl } = paymeConfig()
+export async function paymePayUrl(orderNumber: string, total: number, returnUrl: string, lang: string) {
+  const { merchantId, checkoutUrl } = await paymeConfig()
   const params = `m=${merchantId};ac.order_id=${orderNumber};a=${Math.round(total * 100)};c=${returnUrl};l=${lang === 'ru' ? 'ru' : 'uz'}`
   return `${checkoutUrl}/${Buffer.from(params).toString('base64')}`
 }
@@ -74,7 +74,7 @@ async function cancelTx(t: Payment, reason: number) {
 }
 
 export async function paymeHandle(rpc: Rpc, authHeader: string | null) {
-  if (!paymeAuthOk(authHeader)) return fail(rpc?.id, PAYME_ERR.AUTH)
+  if (!(await paymeAuthOk(authHeader))) return fail(rpc?.id, PAYME_ERR.AUTH)
   const { id, method, params } = rpc ?? {}
   const p = await payload()
   switch (method) {
@@ -142,7 +142,7 @@ export async function paymeHandle(rpc: Rpc, authHeader: string | null) {
 
 /** Test mode: plays Payme's call sequence with a valid auth header (same code path as production). */
 export async function paymeMockPay(orderNumber: string, total: number, ok_: boolean) {
-  const auth = `Basic ${Buffer.from(`Paycom:${paymeConfig().key}`).toString('base64')}`
+  const auth = `Basic ${Buffer.from(`Paycom:${(await paymeConfig()).key}`).toString('base64')}`
   const txId = crypto.randomBytes(12).toString('hex')
   const account = { order_id: orderNumber }
   const amount = Math.round(total * 100)

@@ -123,9 +123,11 @@ export interface Config {
   fallbackLocale: ('false' | 'none' | 'null') | false | null | ('uz' | 'ru') | ('uz' | 'ru')[];
   globals: {
     store: Store;
+    integrations: Integration;
   };
   globalsSelect: {
     store: StoreSelect<false> | StoreSelect<true>;
+    integrations: IntegrationsSelect<false> | IntegrationsSelect<true>;
   };
   locale: 'uz' | 'ru';
   widgets: {
@@ -1569,6 +1571,38 @@ export interface Store {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "integrations".
+ */
+export interface Integration {
+  id: number;
+  ga4Id?: string | null;
+  metricaId?: string | null;
+  metricaWebvisor?: boolean | null;
+  metaPixelId?: string | null;
+  googleVerification?: string | null;
+  yandexVerification?: string | null;
+  bingVerification?: string | null;
+  indexNowOn?: boolean | null;
+  indexNowKey?: string | null;
+  paymentsMode?: string | null;
+  cardProvider?: string | null;
+  clickServiceId?: string | null;
+  clickMerchantId?: string | null;
+  clickSecret?: string | null;
+  paymeMerchantId?: string | null;
+  paymeKey?: string | null;
+  paymeTest?: boolean | null;
+  smsMode?: string | null;
+  eskizEmail?: string | null;
+  eskizPassword?: string | null;
+  eskizFrom?: string | null;
+  telegramToken?: string | null;
+  telegramAdminIds?: string | null;
+  updatedAt?: string | null;
+  createdAt?: string | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "store_select".
  */
 export interface StoreSelect<T extends boolean = true> {
@@ -1613,6 +1647,38 @@ export interface StoreSelect<T extends boolean = true> {
       };
   cashOnDelivery?: T;
   homeRoutine?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  globalType?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "integrations_select".
+ */
+export interface IntegrationsSelect<T extends boolean = true> {
+  ga4Id?: T;
+  metricaId?: T;
+  metricaWebvisor?: T;
+  metaPixelId?: T;
+  googleVerification?: T;
+  yandexVerification?: T;
+  bingVerification?: T;
+  indexNowOn?: T;
+  indexNowKey?: T;
+  paymentsMode?: T;
+  cardProvider?: T;
+  clickServiceId?: T;
+  clickMerchantId?: T;
+  clickSecret?: T;
+  paymeMerchantId?: T;
+  paymeKey?: T;
+  paymeTest?: T;
+  smsMode?: T;
+  eskizEmail?: T;
+  eskizPassword?: T;
+  eskizFrom?: T;
+  telegramToken?: T;
+  telegramAdminIds?: T;
   updatedAt?: T;
   createdAt?: T;
   globalType?: T;

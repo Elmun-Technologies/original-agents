@@ -28,14 +28,14 @@ const reply = (p: ClickParams, error: number, note: string, extra: Partial<Click
   ({ click_trans_id: p.click_trans_id, merchant_trans_id: p.merchant_trans_id, error, error_note: note, ...extra })
 
 /** Pay page URL for an order (Click hosted page). */
-export function clickPayUrl(orderNumber: string, total: number, returnUrl: string) {
-  const c = clickConfig()
+export async function clickPayUrl(orderNumber: string, total: number, returnUrl: string) {
+  const c = await clickConfig()
   const q = new URLSearchParams({ service_id: c.serviceId, merchant_id: c.merchantId, amount: String(total), transaction_param: orderNumber, return_url: returnUrl })
   return `https://my.click.uz/services/pay?${q}`
 }
 
 export async function clickHandle(p: ClickParams) {
-  const { secretKey } = clickConfig()
+  const { secretKey } = await clickConfig()
   const need = ['click_trans_id', 'service_id', 'merchant_trans_id', 'amount', 'action', 'sign_time', 'sign_string']
   if (need.some((k) => p[k] === undefined)) return reply(p, CLICK_ERR.BAD_REQUEST, 'Error in request from click')
   const expected = clickSign(p, secretKey)
@@ -79,7 +79,7 @@ export async function clickHandle(p: ClickParams) {
 
 /** Test mode: plays Click's two calls with a valid signature (same code path as production). */
 export async function clickMockPay(orderNumber: string, total: number, ok: boolean) {
-  const { serviceId, secretKey } = clickConfig()
+  const { serviceId, secretKey } = await clickConfig()
   const base: ClickParams = { click_trans_id: String(Date.now()), service_id: serviceId, click_paydoc_id: '1', merchant_trans_id: orderNumber,
     amount: String(total), sign_time: new Date().toISOString().slice(0, 19).replace('T', ' '), error: '0', error_note: 'Success' }
   const prep = { ...base, action: '0' }

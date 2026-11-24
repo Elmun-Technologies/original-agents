@@ -1,7 +1,7 @@
 {
   "name": "yeppo-web",
   "version": "1.0.0",
-  "description": "Yeppo — Korean cosmetics store (Next.js + Payload)",
+  "description": "Yeppo \u2014 Korean cosmetics store (Next.js + Payload)",
   "license": "MIT",
   "type": "module",
   "scripts": {
@@ -16,7 +16,8 @@
     "test": "pnpm run test:int && pnpm run test:e2e",
     "test:e2e": "cross-env NODE_OPTIONS=\"--no-deprecation --import=tsx/esm\" playwright test --config=playwright.config.ts",
     "test:int": "cross-env NODE_OPTIONS=--no-deprecation vitest run --config ./vitest.config.mts",
-    "seed": "tsx --env-file=.env src/seed.ts"
+    "seed": "tsx --env-file=.env src/seed.ts",
+    "admin:create": "tsx --env-file=.env scripts/create-admin.ts"
   },
   "dependencies": {
     "@payloadcms/db-postgres": "3.93.0",

@@ -10,6 +10,7 @@ import sharp from 'sharp'
 import { Users } from './collections/Users'
 import { Media } from './collections/Media'
 import { Banners, Brands, Categories, PriceHistory, Products, Reviews, Store } from './collections/catalog'
+import { Integrations } from './collections/integrations'
 import { Articles, Customers, GiftCards, Ingredients, LegalPages, LoginCodes, Orders, Payments, PromoCodes, SearchLog, Segments } from './collections/shop'
 
 const filename = fileURLToPath(import.meta.url)
@@ -21,9 +22,16 @@ export default buildConfig({
     importMap: {
       baseDir: path.resolve(dirname),
     },
+    meta: { titleSuffix: ' — Yeppo admin' },
+    components: {
+      afterNavLinks: ['/components/admin/NavLinks#NavLinks'],
+      views: {
+        integrations: { Component: '/components/admin/IntegrationsView#IntegrationsView', path: '/integratsiyalar' },
+      },
+    },
   },
   collections: [Orders, Payments, PromoCodes, GiftCards, Customers, LoginCodes, Products, Brands, Categories, PriceHistory, Reviews, Banners, Segments, SearchLog, LegalPages, Articles, Ingredients, Media, Users],
-  globals: [Store],
+  globals: [Store, Integrations],
   localization: {
     locales: [
       { code: 'uz', label: 'Oʻzbekcha' },

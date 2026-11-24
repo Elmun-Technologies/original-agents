@@ -5,9 +5,9 @@ import { clickMockPay } from '@/lib/payments/click'
 import { paymentsMode } from '@/lib/payments/config'
 import { paymeMockPay } from '@/lib/payments/payme'
 
-// Test payments (PAYMENTS_MODE=mock only): replays the provider's own calls with valid signatures.
+// Test payments (only while the payment mode is "Sinov"): replays the provider's own calls with valid signatures.
 export async function POST(req: Request) {
-  if (paymentsMode() !== 'mock') return NextResponse.json({ error: 'not_found' }, { status: 404 })
+  if ((await paymentsMode()) !== 'mock') return NextResponse.json({ error: 'not_found' }, { status: 404 })
   const b = await req.json().catch(() => ({}))
   const order = await getOrder(String(b.o ?? ''), String(b.t ?? ''))
   if (!order) return NextResponse.json({ error: 'not_found' }, { status: 404 })
