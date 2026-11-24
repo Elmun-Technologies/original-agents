@@ -1,0 +1,238 @@
+{
+ "_note": "NAMUNA tovarlar (sample=true). Dizayn paketidagi data/products.sample.json repoda yoʻq boʻlgani uchun testlar va lugʻat asosida qayta tiklangan; seed avval design/yeppo-handoff ni qidiradi, topilmasa shu faylni oladi.",
+ "products": [
+  {
+   "id": "amp",
+   "brand": "SKIN1004",
+   "name": "Madagascar Centella Ampoule",
+   "type": "Ampula",
+   "type_ru": "Ампула",
+   "need": "Qizarish va tirnashni tinchlantiradi",
+   "need_ru": "Успокаивает покраснения и раздражение",
+   "skin": [
+    "oily",
+    "sens",
+    "combo",
+    "normal"
+   ],
+   "tags": [
+    "Hit"
+   ],
+   "image": "img/p-centella-amp.jpg",
+   "vol": "55 ml",
+   "price": 245000,
+   "old": 289000
+  },
+  {
+   "id": "snail",
+   "brand": "iUNIK",
+   "name": "Black Snail Restore Serum",
+   "type": "Serum",
+   "type_ru": "Сыворотка",
+   "need": "Tiklaydi va namlaydi",
+   "need_ru": "Восстанавливает и увлажняет",
+   "skin": [
+    "dry",
+    "normal",
+    "combo"
+   ],
+   "tags": [],
+   "image": "img/p-iunik-snail.jpg",
+   "vol": "30 ml",
+   "price": 179000
+  },
+  {
+   "id": "baha",
+   "brand": "COS DE BAHA",
+   "name": "Niacinamide 10 Serum",
+   "type": "Serum",
+   "type_ru": "Сыворотка",
+   "need": "Yorqinlik va tekis rang",
+   "need_ru": "Сияние и ровный тон",
+   "skin": [
+    "oily",
+    "combo",
+    "normal"
+   ],
+   "tags": [],
+   "image": "img/p-cosdebaha.jpg",
+   "vol": "30 ml",
+   "price": 129000
+  },
+  {
+   "id": "ess",
+   "brand": "mixsoon",
+   "name": "Bean Essence",
+   "type": "Essensiya",
+   "type_ru": "Эссенция",
+   "need": "Namlik va yorqinlik",
+   "need_ru": "Увлажнение и сияние",
+   "skin": [
+    "dry",
+    "normal",
+    "combo"
+   ],
+   "tags": [
+    "Yangi"
+   ],
+   "image": "img/p-mixsoon.jpg",
+   "vol": "30 ml",
+   "price": 259000
+  },
+  {
+   "id": "toner",
+   "brand": "SKIN1004",
+   "name": "Madagascar Centella Toning Toner",
+   "type": "Toner",
+   "type_ru": "Тонер",
+   "need": "Yengil namlik, tekis rang",
+   "need_ru": "Лёгкое увлажнение, ровный тон",
+   "skin": [
+    "oily",
+    "combo",
+    "sens",
+    "normal"
+   ],
+   "tags": [
+    "Hit"
+   ],
+   "image": "img/p-centella-pink.jpg",
+   "vol": "100 ml",
+   "price": 189000,
+   "old": 219000
+  },
+  {
+   "id": "revive",
+   "brand": "Beauty of Joseon",
+   "name": "Revive Serum: Ginseng + Snail Mucin",
+   "type": "Serum",
+   "type_ru": "Сыворотка",
+   "need": "Chuqur namlik",
+   "need_ru": "Глубокое увлажнение",
+   "skin": [
+    "dry",
+    "normal"
+   ],
+   "tags": [],
+   "image": "img/p-boj-glow.jpg",
+   "vol": "30 ml",
+   "price": 219000
+  },
+  {
+   "id": "pore",
+   "brand": "SKIN1004",
+   "name": "Poremizing Fresh Ampoule",
+   "type": "Ampula",
+   "type_ru": "Ампула",
+   "need": "Poralar va yogʻ",
+   "need_ru": "Поры и жирность",
+   "skin": [
+    "oily",
+    "combo"
+   ],
+   "tags": [
+    "Yangi"
+   ],
+   "image": "img/p-centella-duo.jpg",
+   "vol": "55 ml",
+   "price": 199000
+  },
+  {
+   "id": "spf",
+   "brand": "MISSHA",
+   "name": "All Around Safe Block Essence Sun",
+   "type": "SPF",
+   "type_ru": "SPF",
+   "need": "Har kungi yengil SPF",
+   "need_ru": "Лёгкий SPF на каждый день",
+   "skin": [
+    "dry",
+    "oily",
+    "combo",
+    "sens",
+    "normal"
+   ],
+   "tags": [
+    "Hit"
+   ],
+   "image": "img/spf-missha.jpg",
+   "vol": "55 ml",
+   "price": 149000
+  },
+  {
+   "id": "cream",
+   "brand": "Torriden",
+   "name": "DIVE-IN Soothing Cream",
+   "type": "Krem",
+   "type_ru": "Крем",
+   "need": "Yengil namlik, yopishmaydi",
+   "need_ru": "Лёгкое увлажнение, не липнет",
+   "skin": [
+    "dry",
+    "sens",
+    "normal"
+   ],
+   "tags": [],
+   "image": "img/jar-shadow.jpg",
+   "vol": "100 ml",
+   "price": 249000
+  },
+  {
+   "id": "clean",
+   "brand": "Round Lab",
+   "name": "1025 Dokdo Cleanser",
+   "type": "Tozalovchi",
+   "type_ru": "Очищение",
+   "need": "Yumshoq tozalaydi, quritmaydi",
+   "need_ru": "Мягко очищает, не сушит",
+   "skin": [
+    "dry",
+    "oily",
+    "combo",
+    "sens",
+    "normal"
+   ],
+   "tags": [],
+   "image": "img/gel.jpg",
+   "vol": "150 ml",
+   "price": 139000
+  },
+  {
+   "id": "mask",
+   "brand": "MEDIHEAL",
+   "name": "Teatree Essential Mask",
+   "type": "Niqob",
+   "type_ru": "Маска",
+   "need": "Toshma va yogʻni tinchlantiradi",
+   "need_ru": "Успокаивает высыпания и жирность",
+   "skin": [
+    "oily",
+    "combo"
+   ],
+   "tags": [],
+   "image": "img/sheet-mask.jpg",
+   "vol": "10 × 24 ml",
+   "price": 159000
+  },
+  {
+   "id": "set",
+   "brand": "Beauty of Joseon",
+   "name": "Glow Serum Set",
+   "type": "Toʻplam",
+   "type_ru": "Набор",
+   "need": "Sovgʻa uchun tayyor",
+   "need_ru": "Готов к подарку",
+   "skin": [
+    "dry",
+    "normal",
+    "combo"
+   ],
+   "tags": [
+    "Toʻplam"
+   ],
+   "image": "img/p-boj-glow2.jpg",
+   "vol": "3 × 30 ml",
+   "price": 599000
+  }
+ ]
+}

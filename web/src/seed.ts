@@ -11,7 +11,16 @@ import { getPayload } from 'payload'
 
 import config from './payload.config'
 
-const ROOT = path.resolve(process.cwd(), '..', 'design', 'yeppo-handoff')
+// Sample data: the design package (design/yeppo-handoff, not in git) when it is on disk, otherwise the copy in
+// src/seed-data so a fresh clone can seed and run the e2e tests.
+const DESIGN = path.resolve(process.cwd(), '..', 'design', 'yeppo-handoff', 'data')
+const LOCAL = path.resolve(process.cwd(), 'src', 'seed-data')
+const readJson = (file: string) => JSON.parse(fs.readFileSync(file, 'utf8'))
+const sampleProducts = () => readJson(fs.existsSync(path.join(DESIGN, 'products.sample.json')) ? path.join(DESIGN, 'products.sample.json') : path.join(LOCAL, 'products.sample.json')).products
+/** uz -> ru dictionary: the design's when present, else the site's own (src/i18n) */
+const ruDictionary = (): Record<string, string> => fs.existsSync(path.join(DESIGN, 'ru.json'))
+  ? readJson(path.join(DESIGN, 'ru.json'))
+  : { ...readJson(path.resolve(process.cwd(), 'src', 'i18n', 'ru.json')), ...readJson(path.resolve(process.cwd(), 'src', 'i18n', 'ru.extra.json')) }
 const IMAGES = path.resolve(process.cwd(), 'public', 'img')
 const demo = process.argv.includes('--demo')
 
@@ -45,12 +54,12 @@ const slugify = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').repla
 
 async function main() {
   const payload = await getPayload({ config: await config })
-  const { products } = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'products.sample.json'), 'utf8'))
+  const products = sampleProducts()
 
   const one = async (collection: any, slug: string, create: () => Promise<any>) =>
     (await payload.find({ collection, where: { slug: { equals: slug } }, limit: 1 })).docs[0] ?? create()
 
-  const ruDict = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'ru.json'), 'utf8')) as Record<string, string>
+  const ruDict = ruDictionary()
   const face = await one('categories', 'yuz-parvarishi', async () => {
     const c = await payload.create({ collection: 'categories', data: { slug: 'yuz-parvarishi', title: 'Yuz parvarishi', order: 0 }, locale: 'uz' })
     await payload.update({ collection: 'categories', id: c.id, data: { title: 'Уход за лицом' }, locale: 'ru' })
@@ -126,7 +135,7 @@ async function main() {
       { tag: 'Qishki parvarish', tagStyle: 'tag-new', title: 'Sovuqda teri tortishyaptimi?', text: 'Qishda teri tez quriydi. Namlantiruvchi essensiya va serumlarni bir joyga yigʻdik.', cta: 'Namlantiruvchilar', titleShort: 'Quruq teri uchun toʻplam', ctaShort: 'Tanlash', link: '/katalog/essensiya', img: 'face-flower.jpg', pos: '50% 28%', bg: '#F0EBE5', alt: 'Serum teksturasi' },
     ]
     // Russian from the design dictionary (data/ru.json)
-    const ru = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'ru.json'), 'utf8')) as Record<string, string>
+    const ru = ruDictionary()
     const R = (x?: string) => (x ? (ru[x] ?? x) : undefined)
     for (const [i, b] of SL.entries()) {
       const image = await media(b.img, b.alt)
@@ -138,7 +147,7 @@ async function main() {
   }
   const bySku = async (id: string) => (await payload.find({ collection: 'products', where: { 'variants.sku': { equals: `Y-${id.toUpperCase()}` } }, limit: 1 })).docs[0]?.id
   // full product page content for the design's sample product (Product.html / p_product.py)
-  const ru = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'ru.json'), 'utf8')) as Record<string, string>
+  const ru = ruDictionary()
   const R = (x: string) => ru[x] ?? x
   const ampId = (await payload.find({ collection: 'products', where: { 'variants.sku': { equals: 'Y-AMP' } }, limit: 1 })).docs[0]?.id
   if (ampId) {

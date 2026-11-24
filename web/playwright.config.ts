@@ -33,7 +33,8 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
-      use: { ...devices['Desktop Chrome'], channel: 'chromium' },
+      // PW_CHROMIUM=/path/to/chrome: use an already installed browser (CI images, cloud sandboxes)
+      use: { ...devices['Desktop Chrome'], ...(process.env.PW_CHROMIUM ? { launchOptions: { executablePath: process.env.PW_CHROMIUM } } : { channel: 'chromium' }) },
     },
   ],
   // e2e runs against a production build on :3100 (the dev server compiles pages on demand and is too slow
