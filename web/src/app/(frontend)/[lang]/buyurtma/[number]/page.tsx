@@ -7,6 +7,7 @@ import { ProductCard } from '@/components/ProductCard'
 import { findCards, getStore, payload } from '@/lib/catalog'
 import { fmt, sum } from '@/lib/format'
 import { href, isLang, t, tn } from '@/lib/i18n'
+import { payable } from '@/lib/order-state'
 import { getOrder } from '@/lib/orders'
 import { payUrl, providerOf } from '@/lib/payments'
 
@@ -37,6 +38,7 @@ export default async function OrderPage({ params, searchParams }: { params: Prom
   const when = o.delivery === 'tashkent' ? tr('Ertaga') : tn(lang, '[N] kun ichida', store.regionDays)
   const dates = [`${tr('Bugun')}, ${time(o.paidAt)}`, tr('Bugun'), when, o.delivery === 'tashkent' && o.slot ? `${tr('Ertaga')}, ${o.slot}` : when]
   const provider = providerOf(o.payment)
+  const canPay = payable(o)
   const tgLink = `${store.telegramBotUrl}${store.telegramBotUrl.includes('?') ? '&' : '?'}start=order_${o.number}`
 
   return (
@@ -57,10 +59,14 @@ export default async function OrderPage({ params, searchParams }: { params: Prom
       ) : (
         <section className="card pad-m" style={{ padding: '36px', display: 'flex', gap: '28px', flexWrap: 'wrap', alignItems: 'center', background: '#F5DCC9' }}>
           <div style={{ flex: '1 1 420px' }}>
-            <h1 className="h h1" style={{ fontSize: '40px' }}>{o.paymentStatus === 'cancelled' ? tr('Toʻlov oʻtmadi') : tr('Toʻlov kutilmoqda')}</h1>
-            <p style={{ margin: '10px 0 0', fontSize: '16px', lineHeight: 1.55 }}>{tr('Buyurtma')} <b>№ {o.number}</b>. {tr('Toʻlov oʻtgach buyurtmani yigʻishni boshlaymiz. Pul faqat toʻlov tizimi tasdiqlagandan keyin hisobga olinadi.')}</p>
+            <h1 className="h h1" style={{ fontSize: '40px' }}>{tr(o.status === 'cancelled' ? 'Buyurtma bekor qilingan' : !canPay ? 'Toʻlov muddati tugadi' : o.paymentStatus === 'cancelled' ? 'Toʻlov oʻtmadi' : 'Toʻlov kutilmoqda')}</h1>
+            <p style={{ margin: '10px 0 0', fontSize: '16px', lineHeight: 1.55 }}>{tr('Buyurtma')} <b>№ {o.number}</b>. {tr(o.status === 'cancelled' ? 'Savolingiz boʻlsa, Telegramda yozing — yordam beramiz.'
+              : !canPay ? 'Buyurtma 12 soat ichida toʻlanmadi, shuning uchun yopildi. Pul yechilmagan. Narx va qoldiq oʻzgargan boʻlishi mumkin — savatdan qaytadan rasmiylashtiring.'
+              : 'Toʻlov oʻtgach buyurtmani yigʻishni boshlaymiz. Pul faqat toʻlov tizimi tasdiqlagandan keyin hisobga olinadi.')}</p>
           </div>
-          <a href={payUrl(o)} className="pill dark" style={{ minHeight: '52px' }}>{tn(lang, '[N] orqali [N] toʻlash', provider === 'click' ? 'Click' : 'Payme', `${fmt(o.total)} ${sum(lang)}`)}</a>
+          {canPay
+            ? <a href={payUrl(o)} className="pill dark" style={{ minHeight: '52px' }}>{tn(lang, '[N] orqali [N] toʻlash', provider === 'click' ? 'Click' : 'Payme', `${fmt(o.total)} ${sum(lang)}`)}</a>
+            : <Link href={L(o.status === 'cancelled' ? '/yordam/aloqa' : '/savat')} className="pill dark" style={{ minHeight: '52px' }}>{tr(o.status === 'cancelled' ? 'Bogʻlanish' : 'Savatga oʻtish')}</Link>}
         </section>
       )}
 

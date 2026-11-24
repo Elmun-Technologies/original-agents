@@ -25,6 +25,6 @@ export default async function Page({ params }: { params: Promise<{ lang: string 
   return <LoyaltyPage lang={lang} d={{
     tiers: (l?.tiers ?? []).map((x) => ({ name: x.name, percent: x.percent, from: x.from ?? 0, perks: (x.perks ?? []).map((y) => y.text) })).sort((a, b) => a.from - b.from),
     maxUsePct: l?.maxUsePct, creditDays: l?.creditDays, expireMonths: l?.expireMonths,
-    me: me ? { spent: me.spent, tier: me.tier?.name ?? null, balance: me.balance } : null,
+    me: me ? { spent: me.spent, tier: me.tier?.name ?? null, balance: me.balance, expiresAt: me.expiresAt } : null,
   }} />
 }

@@ -2,7 +2,8 @@ import 'server-only'
 import crypto from 'node:crypto'
 
 import { payload } from '@/lib/catalog'
-import { markPaid, markPaymentCancelled, orderByNumber } from '@/lib/orders'
+import { payable } from '@/lib/order-state'
+import { markPaid, markPaymentCancelled, orderByNumber, reopenPayment } from '@/lib/orders'
 import { clickConfig, siteUrl } from './config'
 
 // Click "Shop API" (merchant callbacks). Click calls Prepare (action=0), then Complete (action=1) as
@@ -49,10 +50,13 @@ export async function clickHandle(p: ClickParams) {
   const existing = (await pl.find({ collection: 'payments', where: { providerId: { equals: `click:${p.click_trans_id}` } }, limit: 1, overrideAccess: true })).docs[0]
 
   if (p.action === '0') { // Prepare
-    if (order.paymentStatus === 'paid') return reply(p, CLICK_ERR.ALREADY_PAID, 'Already paid')
-    if (order.paymentStatus === 'cancelled' || order.status === 'cancelled') return reply(p, CLICK_ERR.CANCELLED, 'Transaction cancelled')
+    if (order.paymentStatus === 'paid' || order.paymentStatus === 'refund') return reply(p, CLICK_ERR.ALREADY_PAID, 'Already paid')
+    // cancelled by the shop, or older than the payment window (prices and stock are no longer held)
+    if (!payable(order)) return reply(p, CLICK_ERR.CANCELLED, 'Transaction cancelled')
+    if (existing?.state === -1) return reply(p, CLICK_ERR.CANCELLED, 'Transaction cancelled')
     const pay = existing ?? await pl.create({ collection: 'payments', overrideAccess: true, data: {
       provider: 'click', providerId: `click:${p.click_trans_id}`, order: order.id, amount: Number(p.amount), state: 0, createTime: Date.now() } })
+    await reopenPayment(Number(order.id)) // a retry after a failed attempt: the order waits for payment again
     return reply(p, CLICK_ERR.OK, 'Success', { merchant_prepare_id: pay.id })
   }
 
@@ -65,6 +69,9 @@ export async function clickHandle(p: ClickParams) {
     await markPaymentCancelled(Number(order.id))
     return reply(p, CLICK_ERR.CANCELLED, 'Transaction cancelled')
   }
+  // another transaction paid the order, or the shop cancelled it: an error here makes Click return the money
+  if (order.paymentStatus === 'paid' || order.paymentStatus === 'refund') return reply(p, CLICK_ERR.ALREADY_PAID, 'Already paid')
+  if (order.status === 'cancelled') return reply(p, CLICK_ERR.CANCELLED, 'Transaction cancelled')
   await pl.update({ collection: 'payments', id: existing.id, overrideAccess: true, data: { state: 1, performTime: Date.now() } })
   await markPaid(Number(order.id), 'click')
   return reply(p, CLICK_ERR.OK, 'Success', { merchant_confirm_id: existing.id })
