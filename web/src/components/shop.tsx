@@ -2,6 +2,8 @@
 // Cart + favourites in the browser (until login: HANDOFF stage 2 moves them to the account).
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 
+import { track } from '@/lib/track-client'
+
 export type CardProduct = {
   slug: string
   sku: string
@@ -67,6 +69,7 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
   }, [lines, favs, promo])
 
   const add = useCallback((p: CardProduct, qty = 1) => {
+    track('add_to_cart', location.pathname, { sku: p.sku, slug: p.slug, price: p.price, qty })
     setLines((ls) => {
       const i = ls.findIndex((l) => l.sku === p.sku)
       if (i >= 0) return ls.map((l, j) => (j === i ? { ...l, qty: l.qty + qty } : l))

@@ -59,6 +59,17 @@ export const Orders: CollectionConfig = {
     { name: 'deliveryFee', type: 'number', defaultValue: 0 },
     { name: 'giftFee', type: 'number', defaultValue: 0 },
     { name: 'total', type: 'number', required: true },
+    {
+      type: 'collapsible', label: 'Manba (marketing)', admin: { initCollapsed: true },
+      fields: [
+        { name: 'src', type: 'text', index: true, admin: { readOnly: true, description: 'Mijoz qayerdan kelgan (utm_source yoki sayt)' } },
+        { name: 'med', type: 'text', admin: { readOnly: true } },
+        { name: 'cmp', type: 'text', index: true, admin: { readOnly: true, description: 'Kampaniya (utm_campaign)' } },
+        { name: 'landing', type: 'text', admin: { readOnly: true, description: 'Birinchi kirgan sahifa' } },
+        { name: 'visitor', type: 'text', index: true, admin: { readOnly: true } },
+        { name: 'session', type: 'text', admin: { readOnly: true } },
+      ],
+    },
     { name: 'pointsUsed', type: 'number', defaultValue: 0, admin: { readOnly: true } },
     { name: 'pointsEarned', type: 'number', admin: { readOnly: true, description: 'Yetkazilganda hisoblanadi' } },
   ],

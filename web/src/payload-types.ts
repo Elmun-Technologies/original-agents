@@ -84,6 +84,7 @@ export interface Config {
     'legal-pages': LegalPage;
     articles: Article;
     ingredients: Ingredient;
+    'analytics-events': AnalyticsEvent;
     media: Media;
     users: User;
     'payload-kv': PayloadKv;
@@ -110,6 +111,7 @@ export interface Config {
     'legal-pages': LegalPagesSelect<false> | LegalPagesSelect<true>;
     articles: ArticlesSelect<false> | ArticlesSelect<true>;
     ingredients: IngredientsSelect<false> | IngredientsSelect<true>;
+    'analytics-events': AnalyticsEventsSelect<false> | AnalyticsEventsSelect<true>;
     media: MediaSelect<false> | MediaSelect<true>;
     users: UsersSelect<false> | UsersSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
@@ -196,6 +198,21 @@ export interface Order {
   deliveryFee?: number | null;
   giftFee?: number | null;
   total: number;
+  /**
+   * Mijoz qayerdan kelgan (utm_source yoki sayt)
+   */
+  src?: string | null;
+  med?: string | null;
+  /**
+   * Kampaniya (utm_campaign)
+   */
+  cmp?: string | null;
+  /**
+   * Birinchi kirgan sahifa
+   */
+  landing?: string | null;
+  visitor?: string | null;
+  session?: string | null;
   pointsUsed?: number | null;
   /**
    * Yetkazilganda hisoblanadi
@@ -805,6 +822,34 @@ export interface Ingredient {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "analytics-events".
+ */
+export interface AnalyticsEvent {
+  id: number;
+  name: string;
+  visitor: string;
+  session: string;
+  path: string;
+  lang?: string | null;
+  device?: string | null;
+  ref?: string | null;
+  src?: string | null;
+  med?: string | null;
+  cmp?: string | null;
+  data?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "users".
  */
 export interface User {
@@ -922,6 +967,10 @@ export interface PayloadLockedDocument {
         value: number | Ingredient;
       } | null)
     | ({
+        relationTo: 'analytics-events';
+        value: number | AnalyticsEvent;
+      } | null)
+    | ({
         relationTo: 'media';
         value: number | Media;
       } | null)
@@ -1011,6 +1060,12 @@ export interface OrdersSelect<T extends boolean = true> {
   deliveryFee?: T;
   giftFee?: T;
   total?: T;
+  src?: T;
+  med?: T;
+  cmp?: T;
+  landing?: T;
+  visitor?: T;
+  session?: T;
   pointsUsed?: T;
   pointsEarned?: T;
   updatedAt?: T;
@@ -1376,6 +1431,25 @@ export interface IngredientsSelect<T extends boolean = true> {
   does?: T;
   who?: T;
   care?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "analytics-events_select".
+ */
+export interface AnalyticsEventsSelect<T extends boolean = true> {
+  name?: T;
+  visitor?: T;
+  session?: T;
+  path?: T;
+  lang?: T;
+  device?: T;
+  ref?: T;
+  src?: T;
+  med?: T;
+  cmp?: T;
+  data?: T;
   updatedAt?: T;
   createdAt?: T;
 }

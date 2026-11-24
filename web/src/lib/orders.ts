@@ -4,6 +4,8 @@ import crypto from 'node:crypto'
 import type { Media, Order, Product } from '@/payload-types'
 import { getStore, oldPrices, payload } from './catalog'
 import type { Lang } from './i18n'
+import { recordOrderEvent } from './analytics-record'
+import type { readCookies } from './analytics-ingest'
 import { notifyAdmins } from './notify'
 export const GIFT_CATEGORY = 'sertifikatlar'
 /** the shop's own brand (gift certificates) — not listed among cosmetics brands */
@@ -109,6 +111,8 @@ export async function quoteCart(req: CartRequest, lang: Lang) {
 export type OrderRequest = CartRequest & {
   lang: Lang; name: string; phone: string; telegramUpdates?: boolean; city?: string; address: string; slot?: string; comment?: string
   payment: 'click' | 'payme' | 'card'; consent: boolean
+  /** where the customer came from (first-party cookies, see readCookies in lib/analytics-ingest.ts) */
+  attribution?: Pick<ReturnType<typeof readCookies>, 'visitor' | 'session' | 'src' | 'med' | 'cmp' | 'landing'>
 }
 
 export class OrderError extends Error {
@@ -140,11 +144,14 @@ export async function createOrder(req: OrderRequest): Promise<{ order: Order; qu
       name, phone, telegramUpdates: req.telegramUpdates !== false, delivery: quote.delivery, city: clean(req.city, 80), address,
       slot: clean(req.slot, 20), comment: clean(req.comment, 500), gift: !!req.gift,
       items: quote.lines.map((l) => ({ sku: l.sku, slug: l.slug, brand: l.brand, name: l.name, volume: l.volume, img: l.img, price: l.price, qty: l.qty })),
+      src: req.attribution?.src ?? undefined, med: req.attribution?.med ?? undefined, cmp: req.attribution?.cmp ?? undefined,
+      landing: req.attribution?.landing ?? undefined, visitor: req.attribution?.visitor ?? undefined, session: req.attribution?.session ?? undefined,
       subtotal: quote.subtotal, discount: quote.discount, discountLabel: quote.discountLabel, deliveryFee: quote.deliveryFee, giftFee: quote.giftFee, total: quote.total, pointsUsed: quote.pointsUsed,
     },
   })
   // short human number from the id: 10001, 10002 …
   const order = await p.update({ collection: 'orders', id: draft.id, overrideAccess: true, data: { number: String(10000 + Number(draft.id)) } })
+  await recordOrderEvent('order_created', order)
   return { order, quote }
 }
 
@@ -196,6 +203,7 @@ export async function markPaid(orderId: number, provider: 'click' | 'payme') {
   if (o.discountLabel && o.discount) {
     await db.query('UPDATE gift_cards SET balance = GREATEST(0, balance - $1) WHERE code = $2', [o.discount, o.discountLabel])
   }
+  await recordOrderEvent('purchase', o)
   await notifyAdmins(`💳 Toʻlandi (${provider}) — buyurtma №${o.number}\n${o.items.map((i) => `• ${i.brand} ${i.name}${i.volume ? ` ${i.volume}` : ''} × ${i.qty}`).join('\n')}\nJami: ${o.total.toLocaleString('ru-RU')} soʻm\n${o.name}, +${o.phone}\n${o.delivery === 'tashkent' ? 'Toshkent' : 'Viloyat'}: ${o.city ? `${o.city}, ` : ''}${o.address}${o.slot ? `, ${o.slot}` : ''}${o.gift ? '\n🎁 Sovgʻa qutisi' : ''}${issued.length ? `\n🎟 Sertifikat kodlari: ${issued.join(', ')}` : ''}${o.comment ? `\nIzoh: ${o.comment}` : ''}${short.length ? `\n⚠️ Omborda yetmadi: ${short.join(', ')}. Mijoz bilan bogʻlaning.` : ''}`)
   return paid
 }

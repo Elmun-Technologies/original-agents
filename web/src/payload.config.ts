@@ -10,6 +10,7 @@ import sharp from 'sharp'
 import { Users } from './collections/Users'
 import { Media } from './collections/Media'
 import { Banners, Brands, Categories, PriceHistory, Products, Reviews, Store } from './collections/catalog'
+import { AnalyticsEvents } from './collections/analytics'
 import { Integrations } from './collections/integrations'
 import { Articles, Customers, GiftCards, Ingredients, LegalPages, LoginCodes, Orders, Payments, PromoCodes, SearchLog, Segments } from './collections/shop'
 
@@ -30,7 +31,7 @@ export default buildConfig({
       },
     },
   },
-  collections: [Orders, Payments, PromoCodes, GiftCards, Customers, LoginCodes, Products, Brands, Categories, PriceHistory, Reviews, Banners, Segments, SearchLog, LegalPages, Articles, Ingredients, Media, Users],
+  collections: [Orders, Payments, PromoCodes, GiftCards, Customers, LoginCodes, Products, Brands, Categories, PriceHistory, Reviews, Banners, Segments, SearchLog, LegalPages, Articles, Ingredients, AnalyticsEvents, Media, Users],
   globals: [Store, Integrations],
   localization: {
     locales: [

@@ -5,6 +5,7 @@ import '../fonts.css'
 import '../styles.css'
 import { Footer, MobileTabBar, Toast } from '@/components/Footer'
 import { Header } from '@/components/Header'
+import { Tracker } from '@/components/Tracker'
 import { ShopProvider } from '@/components/shop'
 import { categoryCounts, getStore } from '@/lib/catalog'
 import { isLang, t } from '@/lib/i18n'
@@ -43,6 +44,7 @@ export default async function LangLayout({ children, params }: { children: React
           <Footer lang={lang} telegramUrl={store.telegramUrl} />
           <MobileTabBar lang={lang} />
           <Toast lang={lang} />
+          <Tracker />
         </ShopProvider>
       </body>
     </html>
