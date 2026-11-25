@@ -42,7 +42,7 @@ export function MobileHome({ lang, slides, hits, cutoff }: { lang: Lang; slides:
         <div style={{ display: 'flex', gap: '6px', justifyContent: 'center', marginTop: '-8px' }}>
           {slides.map((_, j) => (
             <button key={j} aria-label={`Banner ${j + 1}`} aria-current={i === j} onClick={() => setI(j)}
-              style={{ width: i === j ? '22px' : '6px', height: '6px', borderRadius: '3px', border: 'none', padding: 0, background: i === j ? '#2A211E' : '#CFC5BD' }} />
+              style={{ width: i === j ? '40px' : '24px', height: '24px', boxSizing: 'border-box', borderRadius: '999px', border: 'none', padding: '9px 9px', backgroundClip: 'content-box', background: i === j ? '#2A211E' : '#CFC5BD', cursor: 'pointer' }} />
           ))}
         </div>
       )}

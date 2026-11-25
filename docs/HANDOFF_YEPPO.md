@@ -40,6 +40,7 @@ tests/int/                    vitest (haqiqiy Postgres bilan), tests/e2e/ Playwr
 | **Admin ekranlari** | `payload.config.ts` → `admin.components.views` / `beforeNavLinks` / `beforeDashboard`; `AdminPage.tsx` kirishni tekshiradi | Maxsus view Payload tomonidan **himoyalanmaydi**: har view `AdminPage` ichida boʻlsin, har API `adminUser()` ni tekshirsin |
 | **SEO** | `lib/seo.ts` (meta), `lib/seo-audit*.ts`, `components/ThirdPartyTags.tsx`, `lib/indexnow.ts`, `Products/Articles` `seoTitle/seoDescription` | Teglar faqat sayt ochiq (`SITE_PASSWORD`/`SITE_NOINDEX` yoʻq) va ID tekshiruvdan oʻtganda qoʻyiladi |
 | **Mijozlar uchun Telegram bot** | `lib/telegram.ts` (API, webhook sirri), `lib/telegram-bot.ts` (`/start o_<n>_<token>`, `notify_<sku>`, `buy_<sku>`, `account`, `/stop`), `app/api/telegram/route.ts`, `collections/waitlist.ts`, `orders.telegramChat`, hook’lar `payload.config.ts` da | Webhook faqat `X-Telegram-Bot-Api-Secret-Token` (HMAC(PAYLOAD_SECRET, token)) bilan. Chat id faqat mijoz tugmani bosgandan keyin saqlanadi. Holat oʻzgarishi (order hook) va qoldiq 0→>0 (product hook) xabar yuboradi. Telegram faqat https webhook qabul qiladi — domen kerak |
+| **Rasmlar** | `src/app/(payload)/api/media/file/[...path]/route.ts`, `lib/media-url.ts` (`thumb`) | `/api/media/file/<nom>` endi rasmni 1200 px gacha WebP (yoki JPEG) qilib beradi, `?w=` bilan kichik, `?raw=1` asl; PDF/SVG oʻzgarishsiz; diskda keshlanadi (`$TMPDIR/yeppo-media-cache`). Kartalar va savat `?w=640/480` oladi. Payload’ning oʻz fayl yoʻli oʻrniga ishlaydi (aniqroq yoʻl ustun) |
 | **Tayyorlik / Marketing** | `lib/readiness*.ts`, `lib/marketing.ts` | Roʻyxat statik emas — haqiqiy holatdan hisoblanadi (`buildChecklist` toza funksiya) |
 
 Sayt ochiq/yopiq holati hali **env** orqali (`SITE_PASSWORD`, `SITE_NOINDEX`, `proxy.ts` har soʻrovda oʻqiydi). Admin panelga koʻchirish mumkin, lekin proxy’da DB oʻqish kerak boʻladi — ataylab qilinmadi.
@@ -74,7 +75,9 @@ E2E_BASE=http://localhost:3100 E2E_ADMIN_EMAIL=… E2E_ADMIN_PASSWORD=… pnpm r
 - Migratsiya qoidasi: sxema oʻzgarsa `pnpm payload migrate:create <nom>`, fayl commit qilinadi; **dev rejimda push** qilingan bazaga migratsiya qoʻllab boʻlmaydi — migratsiya bilan yaratilgan bazadan foydalaning (`NODE_ENV=production`).
 - Skriptlar (`seed`, `e2e-reset`) saytdan tashqarida ishlaydi: hook’lardagi `server-only` importlar `try/catch` bilan oʻralgan, yangi hook yozsangiz shunday qiling.
 
-Oxirgi tekshiruv natijasi (2026-11-25): `tsc` toza, `lint` 0 xato, integratsiya 149 + 1 test (analitika tozalash) oʻtdi, e2e 134/134 oʻtdi (126 ochiq sayt + 8 admin), `uv run pytest tests/yeppo` 74/74.
+Oxirgi tekshiruv natijasi (2026-11-25): `tsc` toza, `lint` 0 xato, integratsiya 173/173, e2e 135/135 (126 ochiq sayt + 9 admin), `uv run pytest tests/yeppo` 74/74. Toza bazada 5 ta migratsiya xatosiz qoʻllanadi; Docker rasmidagi `standalone` server toza bazada ishga tushirilib tekshirilgan.
+
+**Lighthouse** (lokal, production build, 2026-11-25): SEO 100 va Best Practices 100 barcha tekshirilgan sahifalarda; Accessibility 96–100; Performance: kompyuterda 97–99, telefonda katalog 92, mahsulot 95, bosh sahifa 83 (simulyatsiya qilingan sekin 4G da LCP 4.6 s; haqiqiy oʻlchovda 0.5 s). Boshlangʻich oʻlchov: bosh sahifa telefonda 75, SEO mahsulot sahifasida 92.
 
 ---
 

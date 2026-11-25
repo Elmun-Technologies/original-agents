@@ -58,15 +58,15 @@ export function Sale({ lang, title, accent, endsAt, products }: { lang: Lang; ti
       <div className="card pad-m" style={{ padding: '32px', background: '#A8475C', color: '#fff' }}>
         <div className="sec-h" style={{ marginBottom: '24px' }}>
           <div>
-            <span style={{ font: '600 12px Inter, sans-serif', letterSpacing: '.12em', textTransform: 'uppercase', color: '#F9DCE1' }}>{tr('Faqat shu hafta')}</span>
+            <span style={{ font: '600 12px Inter, sans-serif', letterSpacing: '.12em', textTransform: 'uppercase', color: '#FFFFFF' }}>{tr('Faqat shu hafta')}</span>
             <h2 id="deal-h" className="h h2" style={{ fontSize: '40px', marginTop: '8px' }}>{title} {accent && <span className="serif">{accent}</span>}</h2>
           </div>
           <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }} role="timer" aria-label={tr('Aksiya tugashiga')}>
-            <span style={{ fontSize: '14px', marginRight: '6px', color: '#F9DCE1' }}>{tr('Tugashiga:')}</span>
+            <span style={{ fontSize: '14px', marginRight: '6px', color: '#FFFFFF' }}>{tr('Tugashiga:')}</span>
             {(['kun', 'soat', 'daqiqa', 'soniya'] as const).map((l, i) => (
               <span key={l} style={box}>
                 <b className="num" style={{ fontSize: '22px' }} suppressHydrationWarning>{parts ? (i ? String(parts[i]).padStart(2, '0') : parts[i]) : '–'}</b>
-                <span style={{ fontSize: '11px', color: '#F9DCE1' }}>{tr(l)}</span>
+                <span style={{ fontSize: '11px', color: '#FFFFFF' }}>{tr(l)}</span>
               </span>
             ))}
           </div>

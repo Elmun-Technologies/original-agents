@@ -6,6 +6,7 @@ import { getStore, oldPrices, payload } from './catalog'
 import type { Lang } from './i18n'
 import { recordOrderEvent } from './analytics-record'
 import type { readCookies } from './analytics-ingest'
+import { thumb } from './media-url'
 import { notifyAdmins } from './notify'
 export const GIFT_CATEGORY = 'sertifikatlar'
 /** the shop's own brand (gift certificates) — not listed among cosmetics brands */
@@ -25,7 +26,7 @@ async function loadPriced(skus: string[], lang: Lang) {
   const olds = await oldPrices(skus)
   const map = new Map<string, Priced & { category: string }>()
   for (const pr of res.docs) {
-    const img = (pr.images?.[0] as Media | undefined)?.url ?? ''
+    const img = thumb((pr.images?.[0] as Media | undefined)?.url, 480)
     for (const v of pr.variants) {
       if (!skus.includes(v.sku)) continue
       map.set(v.sku, {
@@ -99,7 +100,7 @@ export async function quoteCart(req: CartRequest, lang: Lang) {
     const cats = q.lines.map((l) => products.get(l.sku)?.category ?? '')
     const pool = await p.find({ collection: 'products', where: { 'category.slug': { in: ['spf', 'toner'] } }, locale: lang, depth: 1, limit: 50 })
     const cands = pool.docs.flatMap((pr) => pr.variants.slice(0, 1).map((v) => ({
-      sku: v.sku, slug: pr.slug, brand: typeof pr.brand === 'object' ? pr.brand.name : '', name: pr.name, img: (pr.images?.[0] as Media | undefined)?.url ?? '',
+      sku: v.sku, slug: pr.slug, brand: typeof pr.brand === 'object' ? pr.brand.name : '', name: pr.name, img: thumb((pr.images?.[0] as Media | undefined)?.url, 480),
       volume: v.volume ?? undefined, price: v.price, stock: v.stock ?? 0, category: typeof pr.category === 'object' ? pr.category.slug : '',
     }))).filter((c) => !skus.includes(c.sku))
     const s = suggestion(cats, cands, q.subtotal)
