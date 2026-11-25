@@ -1,6 +1,55 @@
 # Yeppo — ishni davom ettiruvchi dasturchi uchun hisobot
 
-Holat sanasi: 2026-11-25. Branch: `claude/eloquent-mayer-9nruoq` (GitHub'ga push qilingan; `master` ga qoʻshish egasining qarori). Egasi bajaradigan ishlar alohida: [EGASI_UCHUN.md](EGASI_UCHUN.md).
+Holat sanasi: 2026-11-25. Kod `master`'da (PR #1 qoʻshilgan). Egasi bajaradigan ishlar alohida: [EGASI_UCHUN.md](EGASI_UCHUN.md).
+
+## 0. Hozirgi holat va BIRINCHI vazifa (2026-11-25)
+
+**Kod:** PR #1 `master`'ga qoʻshilgan (merge commit `6e03401`). Tekshiruvlar yashil: integratsiya 173, e2e 135, agentlar 74, `tsc` va `lint` xatosiz.
+
+**Server: yangi versiya hali serverga chiqmagan va Coolify’da Yeppo resursi bilan muammo bor.** Quyidagilar egasining brauzer yordamchisi hisobotidan olingan; men (Claude) sandbox’dan `2.29.137.243` ga ulana olmadim, shuning uchun oʻzim tekshirmaganman:
+
+- Coolify: `http://2.29.137.243:8000` (v4.7.6), jamoa «Root Team», bitta loyiha `original-agents`, `production` muhitida **faqat bitta resurs**: eski **Poizon boti** (UUID `akbhpw6zbnceaqr…`, holati «Running»).
+- Yeppo resursi (UUID `k0dffhjims7lucm6ytxly88v`, hujjatlarda eski HANDOFF’da shunday yozilgan) **bu Coolify’da yoʻq**: `/application/<uuid>` va `/service/<uuid>` ikkalasi 404.
+- Lekin `https://web-k0dffhjims7lucm6ytxly88v.2.29.137.243.sslip.io/uz` 2026-11-25 05:46 (Toshkent) da egasida Basic-auth soʻradi, yaʼni Yeppo konteynerlari serverda **ishlayapti** (yoki ishlagan). Taxmin (tekshirilmagan): Coolify bazasi qayta oʻrnatilgan/tozalangan, konteynerlar boshqaruvsiz (yetim) qolgan.
+- 2026-11-25 ~06:03 (Toshkent) egasi adashib **Poizon resursini** Redeploy qildi: commit `6e03401`, «Manual», 2 daq 1 s, «Finished». Poizon kodi (`app/`, root `Dockerfile`, root `docker-compose.yml`) men tomondan oʻzgartirilmagan, shuning uchun xatti-harakati oʻzgarmasligi kerak. Baribir tekshiring: u resursning Environment Variables’ida `BOT_HOLD=true` boʻlishi kerak (bot «pauzada» degani shu, konteyner oʻchirilgani emas).
+
+### Birinchi vazifalar (ketma-ket)
+
+1. **Faqat oʻqish diagnostikasi** (Coolify → Servers → localhost → Terminal, yoki Hetzner Console, yoki `ssh root@2.29.137.243`). Hech narsa oʻzgartirilmaydi:
+   ```bash
+   docker ps -a --format 'table {{.Names}}\t{{.Image}}\t{{.Status}}' | head -40
+   docker volume ls | grep -i -E 'k0dff|pg_data|media|backup'
+   free -m && df -h /
+   ```
+   Savol: nomida `k0dffhjims7lucm6ytxly88v` boʻlgan konteyner (web/db/backup) bormi va ishlayaptimi? Natijani shu boʻlimga yozib qoʻying.
+2. Poizon resursida `BOT_HOLD` qiymatini tekshiring (parol emas, koʻrish xavfsiz). `true` boʻlmasa — egasiga darhol ayting, botga oʻzingiz tegmang.
+3. **Yeppo uchun yangi Coolify resursi** (serverni oʻzgartiradi — avval egasidan ruxsat oling). Qadamlar `web/deploy/README.md` → «Yeppo resursini yaratish». Yetim konteynerlar/volume’larni egasi aytmaguncha **oʻchirmang**.
+4. Deploydan keyin tekshiruv: `/uz` (parol: foydalanuvchi `yeppo`, parol — Coolify’dagi `SERVICE_PASSWORD_SITE`), `/admin` da birinchi admin yaratish, **Admin → Ishga tushirishga tayyorlik** ochiladi, `POST /api/t` 204 qaytaradi, `payload_migrations` jadvalida 5 ta yozuv.
+5. Shundan keyin egasi bajaradigan ishlar boshlanadi: `docs/EGASI_UCHUN.md`.
+
+### Maʼlumot haqida
+
+Eski Yeppo bazasida faqat namuna mahsulotlar (13 ta) va 2 ta test mijoz boʻlgan (eski HANDOFF). Yangi resurs yangi, boʻsh baza oladi (yangi `SERVICE_BASE64_64_PAYLOAD` bilan). Ishlab turgan konteynerda `tsx`/`pnpm` yoʻq (standalone image): namuna maʼlumot kerak boʻlsa, uni admin orqali qoʻlda kiritiladi; `pnpm seed` faqat dasturchi kompyuterida.
+
+### Qaror qilingan narsalar (egasidan qayta soʻramang)
+
+- Admin va maydon nomlari oʻzbekcha; Payload’ning oʻz tugmalari ruscha (Payload’da oʻzbekcha yoʻq).
+- Kalitlar admin panelda (shifrlangan), server env — zaxira. Sayt ochiq/yopiq holati hozircha env’da (`SITE_PASSWORD`, `SITE_NOINDEX`).
+- Oʻz analitikamiz cookie ishlatadi (anonim), shaxsiy maʼlumot saqlamaydi; maxfiylik siyosatiga qoʻshish egasi/yurist ishi.
+- Mijozlar boti — adminga xabar yuboradigan **bir xil** bot tokeni (Integratsiyalar → Telegram), webhook faqat https domen bilan.
+- Qoidalar buzilmaydi: soxta sharh/reyting/kamyoblik yoʻq, rasm AI bilan oʻzgartirilmaydi, sirlar chatga/gitga tushmaydi, pul qarorlari admin qoʻlida, Poizon’ga ruxsatsiz tegilmaydi.
+
+### Egasidan hal boʻlishi kutilayotgan savollar
+
+Sayt nomi (Yeppo yoki Yeppy) va domen; Click/Payme/Eskiz akkauntlari; yurist matnlari (oferta, maxfiylik); haqiqiy yetkazish narxlari, muddatlar va bonus darajalari (hozir NAMUNA); Hetzner Storage Box (zaxira nusxa); agentlarni ishga tushirish (`docs/EGASI_UCHUN.md` 7-bosqich).
+
+### Ish usuli haqida
+
+- Egasi texnik mutaxassis emas, oʻzbek tilida yozadi (lotin). Javoblar qisqa va aniq boʻlsin; har bir qadamda qayerga bosishni ayting.
+- Sandbox’dan serverga chiqib boʻlmaydi. Egasi Coolify’da brauzer kengaytmasidan foydalanadi: unga ingliz tilida aniq, **faqat oʻqish yoki bitta harakat** buyuradigan prompt bering (namuna: qoidalari — env qiymatlarini oʻqima, oʻchirma/toʻxtatma, bir martadan koʻp Redeploy qilma, parolni oʻzi yozma).
+- Branch’ga yozing, `master`’ga faqat egasi roziligi bilan PR orqali qoʻshing.
+
+---
 
 Repo: `Elmun-Technologies/original-agents` (private). Unda uchta alohida qism bor:
 

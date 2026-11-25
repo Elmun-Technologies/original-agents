@@ -81,3 +81,17 @@ Tashqi joy sozlanmagan bo'lsa, bot har kuni ogohlantiradi.
   docker exec <backup> restore-test.sh
   ```
   Eng yangi nusxa vaqtinchalik bazaga tiklanadi, qatorlar sanaladi, keyin baza o'chiriladi. Ishlayotgan bazaga tegilmaydi.
+
+## Yeppo resursini yaratish (Coolify v4)
+
+Faqat resurs oʻchib ketgan yoki yoʻq boʻlsa kerak. Serverni oʻzgartiradi — egasidan ruxsat oling. Eski Poizon resursiga (`akbhpw6zbnceaqr…`) tegmang.
+
+1. Coolify → **Projects** → `original-agents` → **production** → **+ New**.
+2. Repo manbai: eski resurs qaysi usulda ulangan boʻlsa, shunday (private repo: GitHub App yoki Deploy Key). Repo `Elmun-Technologies/original-agents`, branch **`master`**.
+3. **Build Pack: Docker Compose**, **Base Directory: `/web`**, **Docker Compose Location: `/docker-compose.yml`**. Continue.
+4. **Domains**: `web` xizmati uchun Coolify oʻzi `web-<uuid>.<IP>.sslip.io` yaratadi (compose’dagi `SERVICE_FQDN_WEB_3000` — port 3000). Haqiqiy domen keyinroq shu yerga qoʻyiladi.
+5. **Environment Variables**: `SERVICE_PASSWORD_POSTGRES`, `SERVICE_BASE64_64_PAYLOAD`, `SERVICE_PASSWORD_SITE` ni Coolify compose faylidan oʻzi yaratadi. Qoʻlda hech narsa kiritish shart emas. (`TELEGRAM_*` ixtiyoriy zaxira; kalitlar keyin admin panelda.) **`SERVICE_BASE64_64_PAYLOAD` ni keyin oʻzgartirmang.**
+6. **Deploy**. Build ~2 GB xotira oladi (server 8 GB). Birinchi ishga tushishda 5 ta migratsiya oʻzi bajariladi.
+7. Tekshiruv: `/uz` (foydalanuvchi `yeppo`, parol — `SERVICE_PASSWORD_SITE`), `/admin` → birinchi adminni yaratish → **Ishga tushirishga tayyorlik**.
+
+Yangi resurs yangi, boʻsh baza va yangi media volume oladi (eski namuna maʼlumot koʻchirilmaydi).
