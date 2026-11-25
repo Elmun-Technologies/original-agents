@@ -1,10 +1,10 @@
 'use client'
 import { usePathname } from 'next/navigation'
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 
 import { flush, start, track } from '@/lib/track-client'
 
-declare global { interface Window { __ymId?: string; ym?: (id: string, ev: string, url: string) => void } }
+declare global { interface Window { __ymId?: string; ym?: (id: string, ev: string, url: string) => void; fbq?: (...a: unknown[]) => void } }
 
 const label = (el: Element | null) => {
   const t = el?.closest('a,button,[role=button],summary,label')
@@ -16,12 +16,17 @@ const label = (el: Element | null) => {
 
 export function Tracker() {
   const path = usePathname()
+  const first = useRef(true)
 
   // page views (also for in-app navigation), scroll depth of the page just left, clicks on the current page
   useEffect(() => {
     start()
     track('pageview', path)
-    if (window.__ymId && window.ym && history.length > 1) window.ym(window.__ymId, 'hit', path) // Yandex Metrika: in-app navigation
+    if (!first.current) { // in-app navigation: the tags only see the first load by themselves
+      if (window.__ymId && window.ym) window.ym(window.__ymId, 'hit', location.pathname)
+      window.fbq?.('track', 'PageView')
+    }
+    first.current = false
     let depth = 0, clicks = 0
     const onScroll = () => {
       const h = document.documentElement.scrollHeight
@@ -31,13 +36,22 @@ export function Tracker() {
       if (clicks++ >= 40) return
       track('click', path, { x: e.clientX / innerWidth, y: e.pageY, w: innerWidth, h: document.documentElement.scrollHeight, t: label(e.target as Element) })
     }
+    // how far the page was read: sent when the visitor moves on to another page or closes the tab (once per page)
+    let reported = false
+    const report = () => { if (!reported) { reported = true; track('scroll', path, { depth }) } }
+    const onHidden = () => { if (document.visibilityState === 'hidden') { report(); flush() } }
+    const onPageHide = () => { report(); flush() } // 'pagehide' can arrive while the page still says "visible"
     onScroll()
     addEventListener('scroll', onScroll, { passive: true })
     document.addEventListener('click', onClick, { capture: true, passive: true })
+    document.addEventListener('visibilitychange', onHidden)
+    addEventListener('pagehide', onPageHide)
     return () => {
       removeEventListener('scroll', onScroll)
       document.removeEventListener('click', onClick, { capture: true })
-      track('scroll', path, { depth })
+      document.removeEventListener('visibilitychange', onHidden)
+      removeEventListener('pagehide', onPageHide)
+      report()
     }
   }, [path])
 

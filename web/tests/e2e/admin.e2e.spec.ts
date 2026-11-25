@@ -70,3 +70,72 @@ test('integrations: save, refuse bad input, hide secrets, protect payments', asy
   await page.locator('#ga4').getByRole('button', { name: 'Saqlash' }).click()
   await expect(page.locator('#ga4 .yp-msg.ok')).toBeVisible()
 })
+
+const SCREENS = [
+  '/admin', '/admin/tayyorlik', '/admin/integratsiyalar', '/admin/seo', '/admin/heatmap',
+  ...['umumiy', 'manbalar', 'sahifalar', 'mahsulotlar', 'qidiruv', 'auditoriya', 'tezlik', 'hozir'].map((t) => `/admin/analitika?tab=${t}`),
+  ...['tashlab', 'mijozlar', 'havola', 'promokod'].map((t) => `/admin/marketing?tab=${t}`),
+]
+
+test('every admin screen opens, has its heading and no script errors', async ({ page }) => {
+  const errors: string[] = []
+  page.on('pageerror', (e) => errors.push(e.message))
+  await login(page)
+  for (const path of SCREENS) {
+    const r = await page.goto(`${BASE}${path}`, { waitUntil: 'networkidle' })
+    expect(r?.status(), path).toBe(200)
+    await expect(page.locator('h1').first(), path).toBeVisible()
+    await expect(page.locator('body'), path).not.toContainText('Something went wrong')
+  }
+  expect(errors).toEqual([])
+})
+
+test('the admin menu is in Uzbek and lists our screens', async ({ page }) => {
+  await login(page)
+  await page.goto(`${BASE}/admin`)
+  await page.locator('.nav-toggler').first().click()
+  const nav = page.locator('nav, aside').filter({ hasText: 'Analitika' }).first()
+  for (const t of ['Ishga tushirishga tayyorlik', 'Integratsiyalar', 'Analitika', 'Heatmap', 'Marketing', 'SEO audit', 'Buyurtmalar', 'Mahsulotlar', 'Mijozlar', 'Promokodlar']) await expect(nav, t).toContainText(t)
+  await expect(nav).not.toContainText('Price Histories')
+})
+
+test('a campaign link appears in the sources report; the admin\'s own visits do not', async ({ page, browser }) => {
+  const campaign = `e2e${Date.now()}`
+  const visitor = await browser.newContext()
+  const v = await visitor.newPage()
+  await v.goto(`${BASE}/uz?utm_source=e2esource&utm_medium=story&utm_campaign=${campaign}`, { waitUntil: 'networkidle' })
+  await v.goto(`${BASE}/uz/katalog/serum`, { waitUntil: 'networkidle' })
+  await v.close() // sends what is queued
+  await visitor.close()
+
+  await login(page)
+  await page.goto(`${BASE}/uz?utm_source=adminsource&utm_campaign=${campaign}admin`, { waitUntil: 'networkidle' }) // the admin browsing the site
+  await page.waitForTimeout(500)
+  await expect(async () => {
+    await page.goto(`${BASE}/admin/analitika?tab=manbalar&r=1`, { waitUntil: 'networkidle' })
+    await expect(page.locator('.yp-table')).toContainText(`e2esource / story / ${campaign}`)
+  }).toPass({ timeout: 15_000 })
+  await expect(page.locator('.yp-table')).not.toContainText('adminsource')
+})
+
+test('link builder makes a tracked link', async ({ page }) => {
+  await login(page)
+  await page.goto(`${BASE}/admin/marketing?tab=havola`)
+  await page.getByLabel('Kampaniya nomi').fill('Qish Aksiyasi!')
+  await expect(page.locator('.yp-msg.ok')).toContainText('utm_source=instagram&utm_medium=story&utm_campaign=qish-aksiyasi')
+})
+
+test('customer list is a spreadsheet that cannot run formulas, and needs a login', async ({ page, request }) => {
+  expect((await request.get(`${BASE}/api/admin/customers`)).status()).toBe(401)
+  expect((await request.get(`${BASE}/api/admin/heat?path=/`)).status()).toBe(401)
+  await login(page)
+  const r = await page.request.get(`${BASE}/api/admin/customers`)
+  expect(r.status()).toBe(200)
+  expect(r.headers()['content-type']).toContain('text/csv')
+  expect(r.headers()['content-disposition']).toContain('attachment')
+  expect(await r.text()).toContain('Telefon,Ism,Buyurtmalar')
+})
+
+test('the key file of IndexNow is served only for the saved key', async ({ request }) => {
+  expect((await request.get(`${BASE}/indexnow/${'a'.repeat(32)}`)).status()).toBe(404)
+})

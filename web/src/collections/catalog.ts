@@ -114,6 +114,13 @@ export const Products: CollectionConfig = {
         { name: 'certificate', type: 'upload', relationTo: 'media' },
       ],
     },
+    {
+      type: 'collapsible', label: 'SEO (Google va Yandex qidiruvi uchun)', admin: { initCollapsed: true, description: 'Boʻsh qoldirsangiz, sayt sarlavha va tavsifni mahsulot maʼlumotidan oʻzi yaratadi. Qidiruvda yaxshiroq koʻrinishi uchun oʻzingiz yozing.' },
+      fields: [
+        { name: 'seoTitle', type: 'text', localized: true, maxLength: 70, admin: { description: 'Qidiruvdagi sarlavha. 50–60 belgi yaxshi. Oxiriga « — Yeppo» avtomatik qoʻshiladi.' } },
+        { name: 'seoDescription', type: 'textarea', localized: true, maxLength: 200, admin: { description: 'Sarlavha ostidagi matn. 120–160 belgi: nima uchun, kimga, narx yoki afzallik.' } },
+      ],
+    },
     { name: 'expertNote', type: 'textarea', localized: true, admin: { description: '«Maslahatchi aytadi» (mahsulot sahifasi)' } },
     {
       name: 'fit', type: 'array', admin: { description: '«Teringizga mosmi?» — har teri turi uchun javob' },
@@ -143,6 +150,7 @@ export const Products: CollectionConfig = {
             await req.payload.create({ collection: 'price-history', data: { product: doc.id, sku: v.sku, price: v.price }, req })
           }
         }
+
       },
     ],
   },

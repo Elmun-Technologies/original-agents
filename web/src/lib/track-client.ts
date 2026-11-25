@@ -58,7 +58,22 @@ export function flush() {
   } catch { /* analytics must never break the page */ }
 }
 
+type Tags = { gtag?: (...a: unknown[]) => void; fbq?: (...a: unknown[]) => void; ym?: (id: string, ev: string, target?: string) => void; __ymId?: string }
+/** the same event for the connected Google / Meta / Yandex tags (if the owner connected them) */
+function fanOut(n: string, data: Record<string, unknown>) {
+  const w = window as unknown as Tags
+  try {
+    if (n === 'add_to_cart') {
+      const value = Number(data.price ?? 0) * Number(data.qty ?? 1)
+      w.gtag?.('event', 'add_to_cart', { currency: 'UZS', value, items: [{ item_id: data.sku, quantity: data.qty }] })
+      w.fbq?.('track', 'AddToCart', { currency: 'UZS', value, content_ids: [data.sku] })
+      if (w.__ymId) w.ym?.(w.__ymId, 'reachGoal', 'add_to_cart')
+    }
+  } catch { /* a blocked or broken tag must not break the shop */ }
+}
+
 export function track(n: string, p: string, data: Record<string, unknown> = {}) {
+  fanOut(n, data)
   queue.push({ n, p, ...data })
   if (queue.length >= 20) flush()
   else timer ??= setTimeout(flush, 4000)

@@ -4,7 +4,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 //    search engines not to index anything. /api stays open (payment callbacks, the agents; Payload access rules apply)
 //    and robots.txt stays open so crawlers read "Disallow: /".
 // 2) Remembers the language (HANDOFF §5.8): "/" -> the last chosen "/uz" | "/ru"; visiting a language saves it.
-const OPEN = /^\/(api\/|robots\.txt$)/
+const OPEN = /^\/(api\/|robots\.txt$|indexnow\/)/
 
 function sameText(a: string, b: string) {
   if (a.length !== b.length) return false

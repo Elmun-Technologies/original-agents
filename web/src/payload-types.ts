@@ -72,20 +72,20 @@ export interface Config {
     'promo-codes': PromoCode;
     'gift-cards': GiftCard;
     customers: Customer;
-    'login-codes': LoginCode;
     products: Product;
     brands: Brand;
     categories: Category;
+    media: Media;
     'price-history': PriceHistory;
     reviews: Review;
     banners: Banner;
     segments: Segment;
-    'search-log': SearchLog;
-    'legal-pages': LegalPage;
     articles: Article;
     ingredients: Ingredient;
+    'legal-pages': LegalPage;
+    'search-log': SearchLog;
+    'login-codes': LoginCode;
     'analytics-events': AnalyticsEvent;
-    media: Media;
     users: User;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
@@ -99,20 +99,20 @@ export interface Config {
     'promo-codes': PromoCodesSelect<false> | PromoCodesSelect<true>;
     'gift-cards': GiftCardsSelect<false> | GiftCardsSelect<true>;
     customers: CustomersSelect<false> | CustomersSelect<true>;
-    'login-codes': LoginCodesSelect<false> | LoginCodesSelect<true>;
     products: ProductsSelect<false> | ProductsSelect<true>;
     brands: BrandsSelect<false> | BrandsSelect<true>;
     categories: CategoriesSelect<false> | CategoriesSelect<true>;
+    media: MediaSelect<false> | MediaSelect<true>;
     'price-history': PriceHistorySelect<false> | PriceHistorySelect<true>;
     reviews: ReviewsSelect<false> | ReviewsSelect<true>;
     banners: BannersSelect<false> | BannersSelect<true>;
     segments: SegmentsSelect<false> | SegmentsSelect<true>;
-    'search-log': SearchLogSelect<false> | SearchLogSelect<true>;
-    'legal-pages': LegalPagesSelect<false> | LegalPagesSelect<true>;
     articles: ArticlesSelect<false> | ArticlesSelect<true>;
     ingredients: IngredientsSelect<false> | IngredientsSelect<true>;
+    'legal-pages': LegalPagesSelect<false> | LegalPagesSelect<true>;
+    'search-log': SearchLogSelect<false> | SearchLogSelect<true>;
+    'login-codes': LoginCodesSelect<false> | LoginCodesSelect<true>;
     'analytics-events': AnalyticsEventsSelect<false> | AnalyticsEventsSelect<true>;
-    media: MediaSelect<false> | MediaSelect<true>;
     users: UsersSelect<false> | UsersSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
@@ -335,19 +335,6 @@ export interface Customer {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "login-codes".
- */
-export interface LoginCode {
-  id: number;
-  phone: string;
-  hash: string;
-  expiresAt: string;
-  tries?: number | null;
-  updatedAt: string;
-  createdAt: string;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "products".
  */
 export interface Product {
@@ -434,6 +421,14 @@ export interface Product {
   batch?: string | null;
   expiresAt?: string | null;
   certificate?: (number | null) | Media;
+  /**
+   * Qidiruvdagi sarlavha. 50–60 belgi yaxshi. Oxiriga « — Yeppo» avtomatik qoʻshiladi.
+   */
+  seoTitle?: string | null;
+  /**
+   * Sarlavha ostidagi matn. 120–160 belgi: nima uchun, kimga, narx yoki afzallik.
+   */
+  seoDescription?: string | null;
   /**
    * «Maslahatchi aytadi» (mahsulot sahifasi)
    */
@@ -524,6 +519,8 @@ export interface Brand {
   createdAt: string;
 }
 /**
+ * Mahsulot, banner va maqola rasmlari. Rasmni AI bilan oʻzgartirmang — faqat asl surat.
+ *
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "media".
  */
@@ -697,49 +694,6 @@ export interface Segment {
   createdAt: string;
 }
 /**
- * Qidiruv soʻrovlari. «missed» — mos mahsulot topilmagan.
- *
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "search-log".
- */
-export interface SearchLog {
-  id: number;
-  query: string;
-  count?: number | null;
-  missed?: boolean | null;
-  updatedAt: string;
-  createdAt: string;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "legal-pages".
- */
-export interface LegalPage {
-  id: number;
-  /**
-   * oferta, maxfiylik
-   */
-  slug: string;
-  title: string;
-  body?: {
-    root: {
-      type: string;
-      children: {
-        type: any;
-        version: number;
-        [k: string]: unknown;
-      }[];
-      direction: ('ltr' | 'rtl') | null;
-      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
-      indent: number;
-      version: number;
-    };
-    [k: string]: unknown;
-  } | null;
-  updatedAt: string;
-  createdAt: string;
-}
-/**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "articles".
  */
@@ -747,6 +701,14 @@ export interface Article {
   id: number;
   slug: string;
   title: string;
+  /**
+   * Qidiruvdagi sarlavha. 50–60 belgi yaxshi. Oxiriga « — Yeppo» avtomatik qoʻshiladi.
+   */
+  seoTitle?: string | null;
+  /**
+   * Sarlavha ostidagi matn. 120–160 belgi: nima uchun, kimga, narx yoki afzallik.
+   */
+  seoDescription?: string | null;
   /**
    * Sarlavhadagi kursiv qism (sarlavha ichidagi aynan shu soʻzlar)
    */
@@ -822,6 +784,62 @@ export interface Ingredient {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "legal-pages".
+ */
+export interface LegalPage {
+  id: number;
+  /**
+   * oferta, maxfiylik
+   */
+  slug: string;
+  title: string;
+  body?: {
+    root: {
+      type: string;
+      children: {
+        type: any;
+        version: number;
+        [k: string]: unknown;
+      }[];
+      direction: ('ltr' | 'rtl') | null;
+      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+      indent: number;
+      version: number;
+    };
+    [k: string]: unknown;
+  } | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Qidiruv soʻrovlari. «missed» — mos mahsulot topilmagan.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "search-log".
+ */
+export interface SearchLog {
+  id: number;
+  query: string;
+  count?: number | null;
+  missed?: boolean | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "login-codes".
+ */
+export interface LoginCode {
+  id: number;
+  phone: string;
+  hash: string;
+  expiresAt: string;
+  tries?: number | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "analytics-events".
  */
 export interface AnalyticsEvent {
@@ -849,6 +867,8 @@ export interface AnalyticsEvent {
   createdAt: string;
 }
 /**
+ * Admin panelga kira oladigan odamlar. Yangi admin qoʻshish: «Create new». Parolni kuchli qiling.
+ *
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "users".
  */
@@ -919,10 +939,6 @@ export interface PayloadLockedDocument {
         value: number | Customer;
       } | null)
     | ({
-        relationTo: 'login-codes';
-        value: number | LoginCode;
-      } | null)
-    | ({
         relationTo: 'products';
         value: number | Product;
       } | null)
@@ -933,6 +949,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'categories';
         value: number | Category;
+      } | null)
+    | ({
+        relationTo: 'media';
+        value: number | Media;
       } | null)
     | ({
         relationTo: 'price-history';
@@ -951,14 +971,6 @@ export interface PayloadLockedDocument {
         value: number | Segment;
       } | null)
     | ({
-        relationTo: 'search-log';
-        value: number | SearchLog;
-      } | null)
-    | ({
-        relationTo: 'legal-pages';
-        value: number | LegalPage;
-      } | null)
-    | ({
         relationTo: 'articles';
         value: number | Article;
       } | null)
@@ -967,12 +979,20 @@ export interface PayloadLockedDocument {
         value: number | Ingredient;
       } | null)
     | ({
-        relationTo: 'analytics-events';
-        value: number | AnalyticsEvent;
+        relationTo: 'legal-pages';
+        value: number | LegalPage;
       } | null)
     | ({
-        relationTo: 'media';
-        value: number | Media;
+        relationTo: 'search-log';
+        value: number | SearchLog;
+      } | null)
+    | ({
+        relationTo: 'login-codes';
+        value: number | LoginCode;
+      } | null)
+    | ({
+        relationTo: 'analytics-events';
+        value: number | AnalyticsEvent;
       } | null)
     | ({
         relationTo: 'users';
@@ -1141,18 +1161,6 @@ export interface CustomersSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "login-codes_select".
- */
-export interface LoginCodesSelect<T extends boolean = true> {
-  phone?: T;
-  hash?: T;
-  expiresAt?: T;
-  tries?: T;
-  updatedAt?: T;
-  createdAt?: T;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "products_select".
  */
 export interface ProductsSelect<T extends boolean = true> {
@@ -1183,6 +1191,8 @@ export interface ProductsSelect<T extends boolean = true> {
   batch?: T;
   expiresAt?: T;
   certificate?: T;
+  seoTitle?: T;
+  seoDescription?: T;
   expertNote?: T;
   fit?:
     | T
@@ -1253,6 +1263,25 @@ export interface CategoriesSelect<T extends boolean = true> {
   seoText?: T;
   updatedAt?: T;
   createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "media_select".
+ */
+export interface MediaSelect<T extends boolean = true> {
+  alt?: T;
+  caption?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  url?: T;
+  thumbnailURL?: T;
+  filename?: T;
+  mimeType?: T;
+  filesize?: T;
+  width?: T;
+  height?: T;
+  focalX?: T;
+  focalY?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -1350,33 +1379,13 @@ export interface SegmentsSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "search-log_select".
- */
-export interface SearchLogSelect<T extends boolean = true> {
-  query?: T;
-  count?: T;
-  missed?: T;
-  updatedAt?: T;
-  createdAt?: T;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "legal-pages_select".
- */
-export interface LegalPagesSelect<T extends boolean = true> {
-  slug?: T;
-  title?: T;
-  body?: T;
-  updatedAt?: T;
-  createdAt?: T;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "articles_select".
  */
 export interface ArticlesSelect<T extends boolean = true> {
   slug?: T;
   title?: T;
+  seoTitle?: T;
+  seoDescription?: T;
   accent?: T;
   category?: T;
   tag?: T;
@@ -1436,6 +1445,40 @@ export interface IngredientsSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "legal-pages_select".
+ */
+export interface LegalPagesSelect<T extends boolean = true> {
+  slug?: T;
+  title?: T;
+  body?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "search-log_select".
+ */
+export interface SearchLogSelect<T extends boolean = true> {
+  query?: T;
+  count?: T;
+  missed?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "login-codes_select".
+ */
+export interface LoginCodesSelect<T extends boolean = true> {
+  phone?: T;
+  hash?: T;
+  expiresAt?: T;
+  tries?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "analytics-events_select".
  */
 export interface AnalyticsEventsSelect<T extends boolean = true> {
@@ -1452,25 +1495,6 @@ export interface AnalyticsEventsSelect<T extends boolean = true> {
   data?: T;
   updatedAt?: T;
   createdAt?: T;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "media_select".
- */
-export interface MediaSelect<T extends boolean = true> {
-  alt?: T;
-  caption?: T;
-  updatedAt?: T;
-  createdAt?: T;
-  url?: T;
-  thumbnailURL?: T;
-  filename?: T;
-  mimeType?: T;
-  filesize?: T;
-  width?: T;
-  height?: T;
-  focalX?: T;
-  focalY?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema

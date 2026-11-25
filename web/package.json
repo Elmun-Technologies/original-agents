@@ -1,7 +1,7 @@
 {
   "name": "yeppo-web",
   "version": "1.0.0",
-  "description": "Yeppo \u2014 Korean cosmetics store (Next.js + Payload)",
+  "description": "Yeppo — Korean cosmetics store (Next.js + Payload)",
   "license": "MIT",
   "type": "module",
   "scripts": {
@@ -23,6 +23,7 @@
     "@payloadcms/db-postgres": "3.93.0",
     "@payloadcms/next": "3.93.0",
     "@payloadcms/richtext-lexical": "3.93.0",
+    "@payloadcms/translations": "3.93.0",
     "@payloadcms/ui": "3.93.0",
     "cross-env": "^7.0.3",
     "dotenv": "16.4.7",

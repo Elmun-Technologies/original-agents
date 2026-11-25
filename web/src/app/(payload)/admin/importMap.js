@@ -21,7 +21,13 @@ import { StrikethroughFeatureClient as StrikethroughFeatureClient_e70f5e05f09f93
 import { UnderlineFeatureClient as UnderlineFeatureClient_e70f5e05f09f93e00b997edb1ef0c864 } from '@payloadcms/richtext-lexical/client'
 import { BoldFeatureClient as BoldFeatureClient_e70f5e05f09f93e00b997edb1ef0c864 } from '@payloadcms/richtext-lexical/client'
 import { ItalicFeatureClient as ItalicFeatureClient_e70f5e05f09f93e00b997edb1ef0c864 } from '@payloadcms/richtext-lexical/client'
+import { DashboardWidget as DashboardWidget_344e3a73cddbcf367ee9e021bdd44e82 } from '../../../components/admin/DashboardWidget'
 import { NavLinks as NavLinks_c025f118f75d1c67ec1517e1fc784abd } from '../../../components/admin/NavLinks'
+import { AnalyticsView as AnalyticsView_e3b35b44f6b14d102431def2313ebb66 } from '../../../components/admin/AnalyticsView'
+import { HeatmapView as HeatmapView_41e13b5b1bdc966cf559bbadaf8bd3bb } from '../../../components/admin/HeatmapView'
+import { MarketingView as MarketingView_de230318d9875b9873cd7df5cb6faaff } from '../../../components/admin/MarketingView'
+import { SeoView as SeoView_8d458d29cf3127296f41937b4a5b0fcf } from '../../../components/admin/SeoView'
+import { ReadinessView as ReadinessView_06b4ae2697c5d5bb4690d819972f9a62 } from '../../../components/admin/ReadinessView'
 import { IntegrationsView as IntegrationsView_cb34f93266309ea6114810034bf566c3 } from '../../../components/admin/IntegrationsView'
 import { CollectionCards as CollectionCards_f9c02e79a4aed9a3924487c0cd4cafb1 } from '@payloadcms/next/rsc'
 
@@ -50,7 +56,13 @@ export const importMap = {
   "@payloadcms/richtext-lexical/client#UnderlineFeatureClient": UnderlineFeatureClient_e70f5e05f09f93e00b997edb1ef0c864,
   "@payloadcms/richtext-lexical/client#BoldFeatureClient": BoldFeatureClient_e70f5e05f09f93e00b997edb1ef0c864,
   "@payloadcms/richtext-lexical/client#ItalicFeatureClient": ItalicFeatureClient_e70f5e05f09f93e00b997edb1ef0c864,
+  "/components/admin/DashboardWidget#DashboardWidget": DashboardWidget_344e3a73cddbcf367ee9e021bdd44e82,
   "/components/admin/NavLinks#NavLinks": NavLinks_c025f118f75d1c67ec1517e1fc784abd,
+  "/components/admin/AnalyticsView#AnalyticsView": AnalyticsView_e3b35b44f6b14d102431def2313ebb66,
+  "/components/admin/HeatmapView#HeatmapView": HeatmapView_41e13b5b1bdc966cf559bbadaf8bd3bb,
+  "/components/admin/MarketingView#MarketingView": MarketingView_de230318d9875b9873cd7df5cb6faaff,
+  "/components/admin/SeoView#SeoView": SeoView_8d458d29cf3127296f41937b4a5b0fcf,
+  "/components/admin/ReadinessView#ReadinessView": ReadinessView_06b4ae2697c5d5bb4690d819972f9a62,
   "/components/admin/IntegrationsView#IntegrationsView": IntegrationsView_cb34f93266309ea6114810034bf566c3,
   "@payloadcms/next/rsc#CollectionCards": CollectionCards_f9c02e79a4aed9a3924487c0cd4cafb1
 }

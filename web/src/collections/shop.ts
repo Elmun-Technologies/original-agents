@@ -184,6 +184,13 @@ export const Articles: CollectionConfig = {
   fields: [
     { name: 'slug', type: 'text', required: true, unique: true },
     { name: 'title', type: 'text', required: true, localized: true },
+    {
+      type: 'collapsible', label: 'SEO (Google va Yandex qidiruvi uchun)', admin: { initCollapsed: true, description: 'Boʻsh qoldirsangiz, sayt sarlavha va tavsifni maqola matnidan oʻzi yaratadi. Qidiruvda yaxshiroq koʻrinishi uchun oʻzingiz yozing.' },
+      fields: [
+        { name: 'seoTitle', type: 'text', localized: true, maxLength: 70, admin: { description: 'Qidiruvdagi sarlavha. 50–60 belgi yaxshi. Oxiriga « — Yeppo» avtomatik qoʻshiladi.' } },
+        { name: 'seoDescription', type: 'textarea', localized: true, maxLength: 200, admin: { description: 'Sarlavha ostidagi matn. 120–160 belgi: nima uchun, kimga, narx yoki afzallik.' } },
+      ],
+    },
     { name: 'accent', type: 'text', localized: true, admin: { description: 'Sarlavhadagi kursiv qism (sarlavha ichidagi aynan shu soʻzlar)' } },
     { name: 'category', type: 'select', required: true, options: ARTICLE_CATS },
     { name: 'tag', type: 'text', localized: true, admin: { description: 'Maqola tepasidagi teg, masalan «Yogʻli teri»' } },

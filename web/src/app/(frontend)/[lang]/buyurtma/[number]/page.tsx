@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation'
 
 import { Icon } from '@/components/icons'
 import { ProductCard } from '@/components/ProductCard'
+import { PurchasePixels } from '@/components/PurchasePixels'
 import { findCards, getStore, payload } from '@/lib/catalog'
 import { fmt, sum } from '@/lib/format'
 import { href, isLang, t, tn } from '@/lib/i18n'
@@ -44,6 +45,7 @@ export default async function OrderPage({ params, searchParams }: { params: Prom
 
   return (
     <div className="wrap" style={{ marginTop: '20px' }}>
+      {o.paymentStatus === 'paid' && <PurchasePixels number={o.number} total={o.total} />}
       {paid ? (
         <section className="card pad-m" style={{ padding: '36px', display: 'flex', gap: '28px', flexWrap: 'wrap', alignItems: 'center', background: '#E8F0E4' }}>
           <span style={{ width: '72px', height: '72px', borderRadius: '50%', background: '#2F5228', color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}><Icon name="check" size={34} sw={2.2} /></span>

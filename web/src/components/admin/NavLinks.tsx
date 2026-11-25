@@ -6,7 +6,8 @@ import './admin.css'
 
 // Our screens in Payload's left menu, under the standard collections.
 const LINKS: { group: string; items: [string, string][] }[] = [
-  { group: 'Tahlil', items: [['/admin/integratsiyalar', 'Integratsiyalar']] },
+  { group: 'Boshqaruv', items: [['/admin/tayyorlik', 'Ishga tushirishga tayyorlik'], ['/admin/integratsiyalar', 'Integratsiyalar']] },
+  { group: 'Tahlil va marketing', items: [['/admin/analitika', 'Analitika'], ['/admin/heatmap', 'Heatmap'], ['/admin/marketing', 'Marketing'], ['/admin/seo', 'SEO audit']] },
 ]
 
 export function NavLinks() {

@@ -5,10 +5,12 @@ import '../fonts.css'
 import '../styles.css'
 import { Footer, MobileTabBar, Toast } from '@/components/Footer'
 import { Header } from '@/components/Header'
+import { ThirdPartyTags } from '@/components/ThirdPartyTags'
 import { Tracker } from '@/components/Tracker'
 import { ShopProvider } from '@/components/shop'
 import { categoryCounts, getStore } from '@/lib/catalog'
 import { isLang, t } from '@/lib/i18n'
+import { integrations } from '@/lib/integrations'
 import { siteUrl } from '@/lib/site'
 
 // Pages are rendered on first request (no DB during the Docker build) and refreshed every minute,
@@ -19,7 +21,10 @@ export const revalidate = 60
 export async function generateMetadata({ params }: { params: Promise<{ lang: string }> }): Promise<Metadata> {
   const { lang } = await params
   if (!isLang(lang)) return {}
+  const v = await integrations()
   return {
+    // search engine ownership codes from the admin panel (Integratsiyalar → Search Console / Vebmaster / Bing)
+    verification: { ...(v.googleVerification ? { google: String(v.googleVerification) } : {}), ...(v.yandexVerification ? { yandex: String(v.yandexVerification) } : {}), ...(v.bingVerification ? { other: { 'msvalidate.01': String(v.bingVerification) } } : {}) },
     // the site address: one setting, SITE_URL (lib/site.ts)
     metadataBase: new URL(siteUrl()),
     // defaults only; every page sets its own canonical + hreflang through lib/seo meta()
@@ -45,6 +50,7 @@ export default async function LangLayout({ children, params }: { children: React
           <MobileTabBar lang={lang} />
           <Toast lang={lang} />
           <Tracker />
+          <ThirdPartyTags />
         </ShopProvider>
       </body>
     </html>
