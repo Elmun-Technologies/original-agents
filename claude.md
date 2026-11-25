@@ -1,5 +1,8 @@
 # CLAUDE.md — Poizon → O'zbekiston savdo agentlari tizimi
 
+> **Diqqat:** bu fayl faqat eski **Poizon** loyihasi (`app/`) uchun. Hozirgi asosiy ish — **Yeppo** (`web/`, `yeppo_agents/`). Yeppo bilan ishlasangiz avval `docs/HANDOFF_YEPPO.md`, `docs/EGASI_UCHUN.md` va `docs/NEXT_DEVELOPER_PROMPT.md` ni oʻqing. Poizon’ga egasining ruxsatisiz tegilmaydi.
+
+
 ## 1. Loyiha nima
 
 Biz O'zbekistonda **faqat original** brend krossovka va kiyimlarni sotamiz. Manba: **Poizon** (poizon.com, xalqaro versiya; xarid Xitoydagi vositachi orqali Dewu/得物 dan bo'ladi). Tizim har kuni:
