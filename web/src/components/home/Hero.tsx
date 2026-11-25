@@ -30,7 +30,7 @@ export function Hero({ lang, slides, giftFrom }: { lang: Lang; slides: Slide[]; 
                 <span style={{ display: 'inline-flex', gap: '6px', alignItems: 'center' }}>
                   {slides.map((_, j) => (
                     <button key={j} aria-label={`Banner ${j + 1}`} aria-current={i === j} onClick={() => setI(j)}
-                      style={{ width: i === j ? '26px' : '8px', height: '8px', borderRadius: '999px', border: 'none', padding: 0, background: i === j ? '#2A211E' : 'rgba(42,33,30,.25)', cursor: 'pointer', transition: 'width .3s' }} />
+                      style={{ width: i === j ? '42px' : '24px', height: '24px', boxSizing: 'border-box', borderRadius: '999px', border: 'none', padding: '8px', backgroundClip: 'content-box', background: i === j ? '#2A211E' : 'rgba(42,33,30,.25)', cursor: 'pointer', transition: 'width .3s' }} />
                   ))}
                 </span>
               )}

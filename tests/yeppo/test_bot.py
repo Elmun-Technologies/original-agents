@@ -27,8 +27,15 @@ def cand(url="https://www.q-depot.com/a", img=None):
                                   score=6, reasons=["admin trendi"])
 
 
+class NoPhotos:
+    """Candidate photos would come from the source site: no network in tests."""
+    def __init__(self, data=None): self.data, self.asked = data, []
+    def get(self, url): self.asked.append(url); return self.data
+
+
 def test_candidates_marked_sent_only_when_delivered(monkeypatch):
     monkeypatch.setenv("TELEGRAM_ADMIN_IDS", "1")
+    monkeypatch.setattr(yb, "SourcePhotos", NoPhotos)
     cid = cand()
     assert asyncio.run(yb.send_candidates(FakeBot(fail=True))) == 0
     assert store.candidate(cid)["status"] == "new"
@@ -81,3 +88,13 @@ def test_dispatcher_builds(monkeypatch):
     monkeypatch.setenv("TELEGRAM_ADMIN_IDS", "1")
     from aiogram import Bot
     yb.build_dispatcher(Bot("123:abc"))
+
+
+def test_candidate_with_a_photo_goes_out_as_a_photo(monkeypatch):
+    monkeypatch.setenv("TELEGRAM_ADMIN_IDS", "1")
+    photos = NoPhotos(b"\xff\xd8img")
+    monkeypatch.setattr(yb, "SourcePhotos", lambda: photos)
+    cand(img="https://www.q-depot.com/image/a.jpg")
+    b = FakeBot()
+    assert asyncio.run(yb.send_candidates(b)) == 1
+    assert b.sent[0][0] == "photo" and photos.asked == ["https://www.q-depot.com/image/a.jpg"]

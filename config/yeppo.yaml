@@ -96,6 +96,7 @@ skip_words: [tint, lip, cushion, foundation, eyeliner, mascara, pencil, nail, ha
 content:
   daily_posts: 3                # TODO(admin)
   repost_after_days: 14
+  keep_days: 30                 # rendered packages older than this are deleted from the data volume
   per_brand_daily_max: 1
   utm: {source: instagram, medium: social, campaign: agent}
   originality:   # TODO(admin): wording about where goods come from

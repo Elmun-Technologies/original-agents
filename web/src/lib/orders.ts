@@ -4,6 +4,9 @@ import crypto from 'node:crypto'
 import type { Media, Order, Product } from '@/payload-types'
 import { getStore, oldPrices, payload } from './catalog'
 import type { Lang } from './i18n'
+import { recordOrderEvent } from './analytics-record'
+import type { readCookies } from './analytics-ingest'
+import { thumb } from './media-url'
 import { notifyAdmins } from './notify'
 export const GIFT_CATEGORY = 'sertifikatlar'
 /** the shop's own brand (gift certificates) — not listed among cosmetics brands */
@@ -11,6 +14,7 @@ export const HOUSE_BRAND = 'yeppo'
 
 import { sessionPhone } from './customer'
 import { loyaltyOf } from './loyalty'
+import { holds } from './order-state'
 import { normalizePhone, priceCart, suggestion, type Delivery, type Priced, type Promo, type Quote } from './pricing'
 
 export type CartRequest = { lines: { sku: string; qty: number }[]; promo?: string; delivery?: Delivery; gift?: boolean; phone?: string; usePoints?: boolean }
@@ -22,7 +26,7 @@ async function loadPriced(skus: string[], lang: Lang) {
   const olds = await oldPrices(skus)
   const map = new Map<string, Priced & { category: string }>()
   for (const pr of res.docs) {
-    const img = (pr.images?.[0] as Media | undefined)?.url ?? ''
+    const img = thumb((pr.images?.[0] as Media | undefined)?.url, 480)
     for (const v of pr.variants) {
       if (!skus.includes(v.sku)) continue
       map.set(v.sku, {
@@ -55,7 +59,13 @@ async function findPromo(code: string | undefined, lang: Lang): Promise<Promo | 
   if (!doc) {
     // a gift certificate code works in the same field: fixed discount up to its balance
     const gc = (await p.find({ collection: 'gift-cards', where: { code: { equals: code.trim().toUpperCase() }, active: { equals: true } }, limit: 1, depth: 0, overrideAccess: true })).docs[0]
-    if (gc && gc.balance > 0 && (!gc.validTo || new Date(gc.validTo) > new Date())) return { code: gc.code, type: 'fixed', value: gc.balance, note: lang === 'ru' ? 'подарочный сертификат' : 'sovgʻa sertifikati', active: true }
+    if (gc && (!gc.validTo || new Date(gc.validTo) > new Date())) {
+      // the balance is spent when an order is paid; unpaid orders that may still be paid keep their part reserved
+      const open = await p.find({ collection: 'orders', where: { discountLabel: { equals: gc.code }, paymentStatus: { in: ['pending', 'cancelled'] }, status: { equals: 'new' } },
+        select: { createdAt: true, status: true, paymentStatus: true, discount: true }, limit: 200, pagination: false, depth: 0, overrideAccess: true })
+      const left = gc.balance - open.docs.filter((o) => holds(o)).reduce((a, o) => a + (o.discount ?? 0), 0)
+      if (left > 0) return { code: gc.code, type: 'fixed', value: left, note: lang === 'ru' ? 'подарочный сертификат' : 'sovgʻa sertifikati', active: true }
+    }
   }
   return doc ? { note: doc.note, code: doc.code, type: doc.type, value: doc.value, minTotal: doc.minTotal, firstOrderOnly: doc.firstOrderOnly, active: doc.active, validTo: doc.validTo } : null
 }
@@ -90,7 +100,7 @@ export async function quoteCart(req: CartRequest, lang: Lang) {
     const cats = q.lines.map((l) => products.get(l.sku)?.category ?? '')
     const pool = await p.find({ collection: 'products', where: { 'category.slug': { in: ['spf', 'toner'] } }, locale: lang, depth: 1, limit: 50 })
     const cands = pool.docs.flatMap((pr) => pr.variants.slice(0, 1).map((v) => ({
-      sku: v.sku, slug: pr.slug, brand: typeof pr.brand === 'object' ? pr.brand.name : '', name: pr.name, img: (pr.images?.[0] as Media | undefined)?.url ?? '',
+      sku: v.sku, slug: pr.slug, brand: typeof pr.brand === 'object' ? pr.brand.name : '', name: pr.name, img: thumb((pr.images?.[0] as Media | undefined)?.url, 480),
       volume: v.volume ?? undefined, price: v.price, stock: v.stock ?? 0, category: typeof pr.category === 'object' ? pr.category.slug : '',
     }))).filter((c) => !skus.includes(c.sku))
     const s = suggestion(cats, cands, q.subtotal)
@@ -102,6 +112,8 @@ export async function quoteCart(req: CartRequest, lang: Lang) {
 export type OrderRequest = CartRequest & {
   lang: Lang; name: string; phone: string; telegramUpdates?: boolean; city?: string; address: string; slot?: string; comment?: string
   payment: 'click' | 'payme' | 'card'; consent: boolean
+  /** where the customer came from (first-party cookies, see readCookies in lib/analytics-ingest.ts) */
+  attribution?: Pick<ReturnType<typeof readCookies>, 'visitor' | 'session' | 'src' | 'med' | 'cmp' | 'landing'>
 }
 
 export class OrderError extends Error {
@@ -133,11 +145,14 @@ export async function createOrder(req: OrderRequest): Promise<{ order: Order; qu
       name, phone, telegramUpdates: req.telegramUpdates !== false, delivery: quote.delivery, city: clean(req.city, 80), address,
       slot: clean(req.slot, 20), comment: clean(req.comment, 500), gift: !!req.gift,
       items: quote.lines.map((l) => ({ sku: l.sku, slug: l.slug, brand: l.brand, name: l.name, volume: l.volume, img: l.img, price: l.price, qty: l.qty })),
+      src: req.attribution?.src ?? undefined, med: req.attribution?.med ?? undefined, cmp: req.attribution?.cmp ?? undefined,
+      landing: req.attribution?.landing ?? undefined, visitor: req.attribution?.visitor ?? undefined, session: req.attribution?.session ?? undefined,
       subtotal: quote.subtotal, discount: quote.discount, discountLabel: quote.discountLabel, deliveryFee: quote.deliveryFee, giftFee: quote.giftFee, total: quote.total, pointsUsed: quote.pointsUsed,
     },
   })
   // short human number from the id: 10001, 10002 …
   const order = await p.update({ collection: 'orders', id: draft.id, overrideAccess: true, data: { number: String(10000 + Number(draft.id)) } })
+  await recordOrderEvent('order_created', order)
   return { order, quote }
 }
 
@@ -153,17 +168,27 @@ export async function orderByNumber(number: string) {
   return (await p.find({ collection: 'orders', where: { number: { equals: number } }, limit: 1, depth: 0, overrideAccess: true })).docs[0] ?? null
 }
 
+type Pool = { query: (sql: string, params: unknown[]) => Promise<{ rowCount: number | null; rows: Record<string, unknown>[] }> }
+/** Plain SQL for the two places that must be atomic (Payload's own update reads, then writes). */
+const pool = (p: Awaited<ReturnType<typeof payload>>) => (p.db as unknown as { pool: Pool }).pool
+
 /** The only way an order becomes "paid": called from a provider callback that the server verified. Idempotent. */
 export async function markPaid(orderId: number, provider: 'click' | 'payme') {
   const p = await payload()
+  const db = pool(p)
+  // of two callbacks that arrive together only one gets the row: stock and certificates are handled exactly once
+  const claim = await db.query(`UPDATE orders SET payment_status = 'paid' WHERE id = $1 AND payment_status <> 'paid' RETURNING id`, [orderId])
   const o = await p.findByID({ collection: 'orders', id: orderId, overrideAccess: true, depth: 0 })
-  if (o.paymentStatus === 'paid') return o
+  if (!claim.rowCount) return o
   const paid = await p.update({ collection: 'orders', id: orderId, overrideAccess: true, data: { paymentStatus: 'paid', status: 'accepted', paidAt: new Date().toISOString() } })
-  // ponytail: stock decremented without row locks; fine at this volume, use a SQL UPDATE … stock = stock - qty if orders get concurrent
+  // stock: one UPDATE per line, so simultaneous orders cannot both take the last item unnoticed
+  const short: string[] = []
   for (const it of o.items) {
-    const pr = (await p.find({ collection: 'products', where: { 'variants.sku': { equals: it.sku } }, limit: 1, depth: 0, overrideAccess: true })).docs[0]
-    if (!pr) continue
-    await p.update({ collection: 'products', id: pr.id, overrideAccess: true, data: { variants: pr.variants.map((v) => (v.sku === it.sku ? { ...v, stock: Math.max(0, (v.stock ?? 0) - it.qty) } : v)) } })
+    const r = await db.query('UPDATE products_variants SET stock = COALESCE(stock, 0) - $1 WHERE sku = $2 RETURNING stock', [it.qty, it.sku])
+    if (r.rows.some((row) => Number(row.stock) < 0)) {
+      short.push(`${it.brand ?? ''} ${it.name}`.trim())
+      await db.query('UPDATE products_variants SET stock = 0 WHERE sku = $1 AND stock < 0', [it.sku])
+    }
   }
   // gift certificates: issue codes for bought ones, spend the balance of a redeemed one
   const issued: string[] = []
@@ -177,21 +202,27 @@ export async function markPaid(orderId: number, provider: 'click' | 'payme') {
     }
   }
   if (o.discountLabel && o.discount) {
-    const gc = (await p.find({ collection: 'gift-cards', where: { code: { equals: o.discountLabel } }, limit: 1, depth: 0, overrideAccess: true })).docs[0]
-    if (gc) await p.update({ collection: 'gift-cards', id: gc.id, overrideAccess: true, data: { balance: Math.max(0, gc.balance - (o.discount ?? 0)) } })
+    await db.query('UPDATE gift_cards SET balance = GREATEST(0, balance - $1) WHERE code = $2', [o.discount, o.discountLabel])
   }
-  await notifyAdmins(`💳 Toʻlandi (${provider}) — buyurtma №${o.number}\n${o.items.map((i) => `• ${i.brand} ${i.name}${i.volume ? ` ${i.volume}` : ''} × ${i.qty}`).join('\n')}\nJami: ${o.total.toLocaleString('ru-RU')} soʻm\n${o.name}, +${o.phone}\n${o.delivery === 'tashkent' ? 'Toshkent' : 'Viloyat'}: ${o.city ? `${o.city}, ` : ''}${o.address}${o.slot ? `, ${o.slot}` : ''}${o.gift ? '\n🎁 Sovgʻa qutisi' : ''}${issued.length ? `\n🎟 Sertifikat kodlari: ${issued.join(', ')}` : ''}${o.comment ? `\nIzoh: ${o.comment}` : ''}`)
+  await recordOrderEvent('purchase', o)
+  await notifyAdmins(`💳 Toʻlandi (${provider}) — buyurtma №${o.number}\n${o.items.map((i) => `• ${i.brand} ${i.name}${i.volume ? ` ${i.volume}` : ''} × ${i.qty}`).join('\n')}\nJami: ${o.total.toLocaleString('ru-RU')} soʻm\n${o.name}, +${o.phone}\n${o.delivery === 'tashkent' ? 'Toshkent' : 'Viloyat'}: ${o.city ? `${o.city}, ` : ''}${o.address}${o.slot ? `, ${o.slot}` : ''}${o.gift ? '\n🎁 Sovgʻa qutisi' : ''}${issued.length ? `\n🎟 Sertifikat kodlari: ${issued.join(', ')}` : ''}${o.comment ? `\nIzoh: ${o.comment}` : ''}${short.length ? `\n⚠️ Omborda yetmadi: ${short.join(', ')}. Mijoz bilan bogʻlaning.` : ''}`)
   return paid
 }
 
-export async function markPaymentCancelled(orderId: number) {
+/** A new payment attempt starts on an order whose previous attempt failed: it is waiting for payment again. */
+export async function reopenPayment(orderId: number) {
+  await pool(await payload()).query(`UPDATE orders SET payment_status = 'pending' WHERE id = $1 AND payment_status = 'cancelled'`, [orderId])
+}
+
+/** A payment attempt ended without success. `wasPaid`: this very transaction had taken the money (a refund). */
+export async function markPaymentCancelled(orderId: number, wasPaid = false) {
   const p = await payload()
-  const o = await p.findByID({ collection: 'orders', id: orderId, overrideAccess: true, depth: 0 })
-  if (o.paymentStatus === 'paid') {
+  if (wasPaid) {
     // money was taken and is being returned: the admin decides (HANDOFF: refunds are a human decision)
-    await p.update({ collection: 'orders', id: orderId, overrideAccess: true, data: { paymentStatus: 'refund' } })
+    const o = await p.update({ collection: 'orders', id: orderId, overrideAccess: true, data: { paymentStatus: 'refund' } })
     await notifyAdmins(`↩️ Toʻlov bekor qilindi — buyurtma №${o.number}. Qaytarishni tekshiring.`)
     return
   }
-  await p.update({ collection: 'orders', id: orderId, overrideAccess: true, data: { paymentStatus: 'cancelled' } })
+  // an abandoned attempt never touches an order that another transaction has already paid
+  await pool(p).query(`UPDATE orders SET payment_status = 'cancelled' WHERE id = $1 AND payment_status = 'pending'`, [orderId])
 }

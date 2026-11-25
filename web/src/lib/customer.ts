@@ -49,7 +49,7 @@ export async function requestCode(phone: string): Promise<{ ok: true; mock?: str
   // older codes stay (for the daily count) but only the newest one is checked
   await p.create({ collection: 'login-codes', data: { phone, hash: hash(phone, code), expiresAt: new Date(Date.now() + 5 * 60_000).toISOString() }, overrideAccess: true })
   try { await sendSms(phone, `Yeppo: kirish kodi ${code}`) } catch { return { ok: false, error: 'sms_failed' } }
-  return smsMock() ? { ok: true, mock: code } : { ok: true }
+  return (await smsMock()) ? { ok: true, mock: code } : { ok: true }
 }
 
 /** Checks the code (5 tries, 5 minutes), creates the customer on first login, sets the session cookie. */

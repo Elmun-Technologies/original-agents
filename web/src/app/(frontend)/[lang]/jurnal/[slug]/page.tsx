@@ -16,7 +16,7 @@ export async function generateMetadata({ params }: Props) {
   const { lang, slug } = await params
   if (!isLang(lang)) return {}
   const a = await load(lang, slug)
-  return a ? meta(lang, `/jurnal/${slug}`, { title: a.title, description: a.shortAnswer ?? a.excerpt, type: 'article', image: typeof a.cover === 'object' ? a.cover?.url : undefined }) : {}
+  return a ? meta(lang, `/jurnal/${slug}`, { title: a.seoTitle || a.title, description: a.seoDescription || a.shortAnswer || a.excerpt, type: 'article', image: typeof a.cover === 'object' ? a.cover?.url : undefined }) : {}
 }
 
 export default async function Page({ params }: Props) {

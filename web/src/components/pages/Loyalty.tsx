@@ -8,7 +8,7 @@ import { href, t, tn, type Lang } from '@/lib/i18n'
 const TICK = <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"></path></svg>
 const BG = ['#F2D6D0', '#F5DCC9', '#E8DDD3']
 export type LoyaltyTier = { name: string; percent: number; from: number; perks: string[] }
-export type LoyaltyData = { tiers: LoyaltyTier[]; maxUsePct?: number | null; creditDays?: number | null; expireMonths?: number | null; me: { spent: number; tier: string | null; balance: number } | null }
+export type LoyaltyData = { tiers: LoyaltyTier[]; maxUsePct?: number | null; creditDays?: number | null; expireMonths?: number | null; me: { spent: number; tier: string | null; balance: number; expiresAt?: string | null } | null }
 
 export function LoyaltyPage({ lang, d }: { lang: Lang; d: LoyaltyData }) {
   const tr = (s: string) => t(lang, s)
@@ -24,6 +24,7 @@ export function LoyaltyPage({ lang, d }: { lang: Lang; d: LoyaltyData }) {
           <h1 className="h h1" style={{ fontSize: '50px', lineHeight: 1.04 }}>{tr('Har xariddan qaytadi.')} <span className="serif" style={{ fontStyle: 'italic', color: '#F2D6D0' }}>{tr(on ? 'Shunchaki.' : 'Tez orada.')}</span></h1>
           <p style={{ margin: 0, fontSize: '17px', lineHeight: 1.6, color: '#E9E1DC', maxWidth: '520px' }}>{tr(on ? 'Har xariddan ball yigʻiladi, 1 ball = 1 soʻm. Keyingi buyurtmada chegirma sifatida ishlatasiz. Roʻyxatdan oʻtish — telefon raqam bilan, 20 soniya.' : 'Dastur shartlarini tayyorlayapmiz. Ishga tushganda Telegramda xabar beramiz.')}</p>
           {on && <Link href={L(d.me ? '/kabinet' : '/kirish')} className="pill" style={{ alignSelf: 'flex-start', background: '#F2D6D0', borderColor: '#F2D6D0', color: '#2A211E' }}>{d.me ? tn(lang, 'Sizda [N] ball', fmt(d.me.balance)) : tr('Qoʻshilish')}</Link>}
+          {on && d.me?.expiresAt && <span style={{ fontSize: '14px', color: '#E9E1DC' }}>{tn(lang, 'Ballar [N] gacha amal qiladi', new Date(d.me.expiresAt).toLocaleDateString(lang === 'ru' ? 'ru-RU' : 'uz-UZ', { timeZone: 'Asia/Tashkent' }))}</span>}
         </div>
         <div style={{ flex: '1 1 420px', minHeight: '340px', position: 'relative' }}><img className="ph" src="/img/face-white.jpg" alt="" style={{ position: 'absolute', inset: 0, objectPosition: '50% 25%' }} /></div>
       </section>
@@ -59,7 +60,7 @@ export function LoyaltyPage({ lang, d }: { lang: Lang; d: LoyaltyData }) {
           <div data-g="2" style={{ display: 'grid', gap: '12px', marginTop: '8px' }}>
             <p><b>{tr('Ball qachon tushadi?')}</b><br /><span className="muted">{d.creditDays ? tn(lang, 'Buyurtma yetkazilganidan keyin [N] kun ichida.', d.creditDays) : tr('Buyurtma yetkazilgach.')}</span></p>
             {d.maxUsePct ? <p><b>{tr('Qancha ishlatsa boʻladi?')}</b><br /><span className="muted">{tn(lang, 'Buyurtma summasining [N]% igacha.', d.maxUsePct)}</span></p> : null}
-            {d.expireMonths ? <p><b>{tr('Ball yonib ketadimi?')}</b><br /><span className="muted">{tn(lang, '[N] oy xarid qilmasangiz — ha. Oldindan Telegramda eslatamiz.', d.expireMonths)}</span></p> : null}
+            {d.expireMonths ? <p><b>{tr('Ball yonib ketadimi?')}</b><br /><span className="muted">{tn(lang, '[N] oy xarid qilmasangiz — ha. Muddat kabinetingizda koʻrinadi.', d.expireMonths)}</span></p> : null}
             <p><b>{tr('Aksiyadagi mahsulotga-chi?')}</b><br /><span className="muted">{tr('Ball yigʻiladi, lekin promokod bilan birga ishlatilmaydi.')}</span></p>
           </div>
         </section>

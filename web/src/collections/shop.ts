@@ -32,6 +32,7 @@ export const Orders: CollectionConfig = {
         { name: 'name', type: 'text', required: true },
         { name: 'phone', type: 'text', required: true, index: true },
         { name: 'telegramUpdates', type: 'checkbox', defaultValue: true },
+        { name: 'telegramChat', type: 'text', index: true, admin: { readOnly: true, description: 'Mijoz botga ulangan (u oʻzi tugmani bosgan). «/stop» yozsa tozalanadi.' } },
       ],
     },
     {
@@ -59,6 +60,17 @@ export const Orders: CollectionConfig = {
     { name: 'deliveryFee', type: 'number', defaultValue: 0 },
     { name: 'giftFee', type: 'number', defaultValue: 0 },
     { name: 'total', type: 'number', required: true },
+    {
+      type: 'collapsible', label: 'Manba (marketing)', admin: { initCollapsed: true },
+      fields: [
+        { name: 'src', type: 'text', index: true, admin: { readOnly: true, description: 'Mijoz qayerdan kelgan (utm_source yoki sayt)' } },
+        { name: 'med', type: 'text', admin: { readOnly: true } },
+        { name: 'cmp', type: 'text', index: true, admin: { readOnly: true, description: 'Kampaniya (utm_campaign)' } },
+        { name: 'landing', type: 'text', admin: { readOnly: true, description: 'Birinchi kirgan sahifa' } },
+        { name: 'visitor', type: 'text', index: true, admin: { readOnly: true } },
+        { name: 'session', type: 'text', admin: { readOnly: true } },
+      ],
+    },
     { name: 'pointsUsed', type: 'number', defaultValue: 0, admin: { readOnly: true } },
     { name: 'pointsEarned', type: 'number', admin: { readOnly: true, description: 'Yetkazilganda hisoblanadi' } },
   ],
@@ -173,6 +185,13 @@ export const Articles: CollectionConfig = {
   fields: [
     { name: 'slug', type: 'text', required: true, unique: true },
     { name: 'title', type: 'text', required: true, localized: true },
+    {
+      type: 'collapsible', label: 'SEO (Google va Yandex qidiruvi uchun)', admin: { initCollapsed: true, description: 'Boʻsh qoldirsangiz, sayt sarlavha va tavsifni maqola matnidan oʻzi yaratadi. Qidiruvda yaxshiroq koʻrinishi uchun oʻzingiz yozing.' },
+      fields: [
+        { name: 'seoTitle', type: 'text', localized: true, maxLength: 70, admin: { description: 'Qidiruvdagi sarlavha. 50–60 belgi yaxshi. Oxiriga « — Yeppo» avtomatik qoʻshiladi.' } },
+        { name: 'seoDescription', type: 'textarea', localized: true, maxLength: 200, admin: { description: 'Sarlavha ostidagi matn. 120–160 belgi: nima uchun, kimga, narx yoki afzallik.' } },
+      ],
+    },
     { name: 'accent', type: 'text', localized: true, admin: { description: 'Sarlavhadagi kursiv qism (sarlavha ichidagi aynan shu soʻzlar)' } },
     { name: 'category', type: 'select', required: true, options: ARTICLE_CATS },
     { name: 'tag', type: 'text', localized: true, admin: { description: 'Maqola tepasidagi teg, masalan «Yogʻli teri»' } },

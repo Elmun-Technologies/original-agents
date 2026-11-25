@@ -16,12 +16,14 @@
     "test": "pnpm run test:int && pnpm run test:e2e",
     "test:e2e": "cross-env NODE_OPTIONS=\"--no-deprecation --import=tsx/esm\" playwright test --config=playwright.config.ts",
     "test:int": "cross-env NODE_OPTIONS=--no-deprecation vitest run --config ./vitest.config.mts",
-    "seed": "tsx --env-file=.env src/seed.ts"
+    "seed": "tsx --env-file=.env src/seed.ts",
+    "admin:create": "tsx --env-file=.env scripts/create-admin.ts"
   },
   "dependencies": {
     "@payloadcms/db-postgres": "3.93.0",
     "@payloadcms/next": "3.93.0",
     "@payloadcms/richtext-lexical": "3.93.0",
+    "@payloadcms/translations": "3.93.0",
     "@payloadcms/ui": "3.93.0",
     "cross-env": "^7.0.3",
     "dotenv": "16.4.7",

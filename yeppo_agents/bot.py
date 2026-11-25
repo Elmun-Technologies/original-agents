@@ -19,7 +19,7 @@ from apscheduler.triggers.cron import CronTrigger
 from yeppo_agents import content, sourcing, store
 from yeppo_agents.catalog import Catalog
 from yeppo_agents.content import fmt_uzs
-from yeppo_agents.fetch import user_agent
+from yeppo_agents.fetch import Blocked, Fetcher, NotAllowed
 from yeppo_agents.settings import TZ, admin_ids, cfg, dry_run, env
 
 log = logging.getLogger(__name__)
@@ -102,6 +102,31 @@ def candidate_text(c: dict) -> str:
     )
 
 
+class SourcePhotos:
+    """Candidate photos come from the source site, so they follow the same rules as its pages: robots.txt, the pause
+    between requests, the daily limit, a 12 h cache and a full stop on 403/429/captcha (no retry, no workaround)."""
+
+    def __init__(self):
+        self.fetcher = Fetcher(cfg()["source"]["base_url"])
+        self.ready = False
+        self.stopped = False
+
+    def get(self, url: str) -> bytes | None:
+        if self.stopped or not url:
+            return None
+        try:
+            if not self.ready:
+                self.fetcher.load_robots()
+                self.ready = True
+            return self.fetcher.get_bytes(url)
+        except Blocked as e:
+            self.stopped = True  # the rest of this run goes out without photos
+            log.warning("source blocked photo downloads: %s", e)
+        except (NotAllowed, httpx.HTTPError) as e:
+            log.info("no photo for %s (%s)", url, type(e).__name__)
+        return None
+
+
 def candidate_kb(cid: int) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=[[
         InlineKeyboardButton(text="✅ Katalogga qoʻshish", callback_data=f"yc:add:{cid}"),
@@ -112,29 +137,26 @@ def candidate_kb(cid: int) -> InlineKeyboardMarkup:
 async def send_candidates(bot: Bot, limit: int = 8) -> int:
     rows = [c for c in store.candidates_by_status("new", limit=limit) if c["score"] > 0] or store.candidates_by_status("new", limit=limit)
     sent = 0
-    async with httpx.AsyncClient(timeout=30, headers={"User-Agent": user_agent()}) as h:
-        for c in rows:
-            photo = None
-            if c.get("img"):  # we fetch the image ourselves: Telegram fetching third-party URLs times out
-                try:
-                    r = await h.get(c["img"])
-                    if r.status_code == 200:
-                        photo = BufferedInputFile(r.content, filename="p.jpg")
-                except httpx.HTTPError:
-                    pass
-            ok = False
-            for uid in admin_ids():
-                try:
-                    if photo:
-                        await bot.send_photo(uid, photo, caption=candidate_text(c), reply_markup=candidate_kb(c["id"]))
-                    else:
-                        await bot.send_message(uid, candidate_text(c), reply_markup=candidate_kb(c["id"]))
-                    ok = True
-                except Exception as e:
-                    log.warning("candidate %s to %s failed: %s", c["id"], uid, type(e).__name__)
-            if ok:  # undelivered proposals stay "new" and go out next time
-                store.set_status(c["id"], "sent")
-                sent += 1
+    photos = SourcePhotos()
+    for c in rows:
+        photo = None
+        if c.get("img"):  # we fetch the image ourselves: Telegram fetching third-party URLs times out
+            data = await asyncio.to_thread(photos.get, c["img"])
+            if data:
+                photo = BufferedInputFile(data, filename="p.jpg")
+        ok = False
+        for uid in admin_ids():
+            try:
+                if photo:
+                    await bot.send_photo(uid, photo, caption=candidate_text(c), reply_markup=candidate_kb(c["id"]))
+                else:
+                    await bot.send_message(uid, candidate_text(c), reply_markup=candidate_kb(c["id"]))
+                ok = True
+            except Exception as e:
+                log.warning("candidate %s to %s failed: %s", c["id"], uid, type(e).__name__)
+        if ok:  # undelivered proposals stay "new" and go out next time
+            store.set_status(c["id"], "sent")
+            sent += 1
     return sent
 
 
@@ -172,10 +194,9 @@ async def add_candidate(cid: int) -> str:
     cat_id = cats.get(c["category"] or "") or cats.get("yuz-parvarishi")
     image_ids = []
     if c.get("img"):
-        async with httpx.AsyncClient(timeout=60, headers={"User-Agent": user_agent()}) as h:
-            r = await h.get(c["img"])
-        if r.status_code == 200:
-            image_ids.append(await asyncio.to_thread(cat.upload_image, r.content, c["img"].rsplit("/", 1)[-1], f"{c['brand']} {c['name']}"))
+        data = await asyncio.to_thread(SourcePhotos().get, c["img"])  # usually the cached copy shown with the proposal
+        if data:
+            image_ids.append(await asyncio.to_thread(cat.upload_image, data, c["img"].rsplit("/", 1)[-1], f"{c['brand']} {c['name']}"))
     sku = f"QD-{c['model'] or cid}"
     doc = await asyncio.to_thread(
         cat.create_product, name=c["name"], brand=c["brand"], category_id=cat_id, type_uz=CAT_UZ.get(c["category"] or ""),

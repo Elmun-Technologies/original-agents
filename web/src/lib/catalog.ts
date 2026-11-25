@@ -5,6 +5,7 @@ import config from '@/payload.config'
 import type { Media, Product, Store } from '@/payload-types'
 import type { CardProduct } from '@/components/shop'
 import type { Lang } from './i18n'
+import { thumb } from './media-url'
 
 export const payload = cache(async () => getPayload({ config: await config }))
 
@@ -70,7 +71,7 @@ export async function toCards(products: Product[], lang: Lang): Promise<CardProd
       sku: v.sku,
       brand: typeof pr.brand === 'object' ? pr.brand.name : '',
       name: pr.name,
-      img: img(pr.images?.[0]),
+      img: thumb(img(pr.images?.[0])),
       vol: v.volume ?? undefined,
       type: pr.type ?? undefined,
       price: v.price,

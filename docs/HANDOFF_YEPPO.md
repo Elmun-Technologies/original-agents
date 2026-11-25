@@ -1,118 +1,102 @@
 # Yeppo — ishni davom ettiruvchi dasturchi uchun hisobot
 
-Holat sanasi: 2026-11-15. Oxirgi commit: `0624581` (`master`, GitHub'ga push qilingan). Ishchi papka toza.
+Holat sanasi: 2026-11-25. Branch: `claude/eloquent-mayer-9nruoq` (GitHub'ga push qilingan; `master` ga qoʻshish egasining qarori). Egasi bajaradigan ishlar alohida: [EGASI_UCHUN.md](EGASI_UCHUN.md).
 
-Repo: `Elmun-Technologies/original-agents` (private). Unda ikkita alohida loyiha bor:
+Repo: `Elmun-Technologies/original-agents` (private). Unda uchta alohida qism bor:
 
 | Papka | Nima | Holat |
 |---|---|---|
-| `web/` | **Yeppo** — koreys kosmetikasi internet-do'koni (Next.js 16 + Payload 3 + Postgres) | Serverda Coolify'da ishlayapti, oxirgi deploy `0624581` |
-| `app/`, `config/settings.yaml`, `docker-compose.yml` (root) | **Poizon** krossovka boti (eski loyiha) | Serverda ishlaydi, bot **pauzada**. **Egasining ruxsatisiz tegilmaydi.** |
-| `yeppo_agents/`, `config/yeppo.yaml` | **Yeppo marketing agentlari** (Python): tovar topish, narx, Instagram paketlari, Telegram | Serverga hali qo'yilmagan |
+| `web/` | **Yeppo** — koreys kosmetikasi internet-doʻkoni (Next.js 16 + Payload 3 + Postgres) | Serverda yopiq test rejimida. Bu branch'dagi yangilanishlar hali serverga chiqarilmagan (Redeploy kerak) |
+| `yeppo_agents/`, `config/yeppo.yaml` | Marketing agentlari (Python): tovar topish, narx, Instagram paketlari, Telegram | Kodi tayyor va sinalgan, serverga qoʻyilmagan |
+| `app/`, `config/settings.yaml`, `docker-compose.yml` (root) | Poizon krossovka boti (eski loyiha) | Pauzada. **Egasining ruxsatisiz tegilmaydi** |
 
-Asosiy qoidalar (egasining talablari, buzilmaydi):
-
-- Soxta sharh, reyting yoki "faqat 2 ta qoldi" yozilmaydi. Eski narx faqat oxirgi 30 kundagi haqiqiy narx bo'lishi mumkin.
-- Mahsulot rasmlari AI bilan o'zgartirilmaydi.
-- Sirlar (token, parol, kalit) chatga, logga yoki git'ga chiqmaydi — faqat `.env` / Coolify Environment Variables.
-- Pul bilan bog'liq qarorlar faqat admin qo'lida. To'lovlar hozircha soxta (mock) rejimda.
-- Yeppo'dan tashqaridagi narsalar (Poizon, serverdagi boshqa loyihalar) egasidan so'ramasdan o'zgarmaydi.
+Qoidalar (egasi talabi, buzilmaydi): soxta sharh/reyting/kamyoblik yoʻq; rasm AI bilan oʻzgartirilmaydi; sirlar faqat Integratsiyalar sahifasida (shifrlangan) yoki Coolify’da; pul qarorlari faqat admin qoʻlida; Poizon va boshqa loyihalarga tegilmaydi.
 
 ---
 
-## 1. Sayt (`web/`)
+## 1. Arxitektura (web/)
 
-### Ishga tushirish (lokal)
+```
+src/app/(frontend)/[lang]/…   ochiq sayt (uz/ru), ISR 60 s
+src/app/(payload)/            Payload admin + REST/GraphQL
+src/app/api/                  shop (savat/buyurtma), pay (click/payme/mock), auth (SMS kod), account,
+                              t (analitika kollektori), admin/* (faqat admin: integrations, heat, customers)
+src/app/indexnow/[key]/       IndexNow kalit fayli
+src/collections/              maʼlumotlar modeli; labels.ts — admin matnlari oʻzbekcha
+src/lib/                      biznes mantiq (pricing, orders, payments/, loyalty, order-state, …)
+src/components/admin/         admin ekranlari (Analitika, Heatmap, Marketing, SEO, Tayyorlik, Integratsiyalar, panel vidjeti)
+src/migrations/               Postgres migratsiyalari (server ishga tushganda oʻzi bajaradi)
+tests/int/                    vitest (haqiqiy Postgres bilan), tests/e2e/ Playwright
+```
+
+### Bu sessiyada qoʻshilgan asosiy mexanizmlar
+
+| Mexanizm | Fayllar | Esda tuting |
+|---|---|---|
+| **Integratsiyalar** (kalitlar admin panelda) | `lib/integrations-def.ts` (hamma xizmatlar bitta jadvalda), `lib/integrations.ts` (oʻqish, kesh 10 s), `lib/secrets.ts` (AES-256-GCM, kalit = `PAYLOAD_SECRET` dan), `collections/integrations.ts`, `components/admin/Integrations*.tsx`, `app/api/admin/integrations/` | Qiymat ustuvorligi: admin panel → server env → standart. Yangi xizmat qoʻshish: `SERVICES` ga yozuv, migratsiya (`pnpm payload migrate:create`). «Live» rejim kalitlarsiz saqlanmaydi (`validate`, faqat oʻzgargan maydonlar tekshiriladi). `PAYLOAD_SECRET` almashsa, sirlar oʻqilmaydi (UI buni koʻrsatadi) |
+| **Toʻlov holati** | `lib/order-state.ts`, `lib/orders.ts` (`markPaid` — atomar `UPDATE … WHERE payment_status <> 'paid'`; qoldiq SQL bilan, 0 dan pastga tushmaydi), `payments/click.ts`, `payments/payme.ts` | Toʻlov oynasi 12 soat, ball va sertifikat balansi 24 soat band qilinadi. Muvaffaqiyatsiz urinishdan keyin qayta toʻlash mumkin. `paymentsMode()/clickConfig()/paymeConfig()` **async** |
+| **Bonus muddati** | `lib/loyalty.ts` `pointsBalance` (toza funksiya) | `Store.loyalty.expireMonths` boʻsh = yonmaydi |
+| **Oʻz analitikamiz** | `collections/analytics.ts`, `lib/analytics-ingest.ts` (tekshiruv, toza), `lib/analytics-record.ts`, `lib/analytics.ts` (hisobotlar), `lib/track-client.ts` + `components/Tracker.tsx`, `app/api/t/route.ts` | Shaxsiy maʼlumot yoʻq (IP, UA, query, ism saqlanmaydi). Bot va admin kirishlari tashlanadi. Buyurtma `src/med/cmp/landing/visitor/session` maydonlarini saqlaydi; `order_created` va `purchase` hodisalari serverdan. Saqlash muddati: click 90 kun, scroll/vitals 180, qolgani 2 yil (`purgeOldEvents`) |
+| **Admin ekranlari** | `payload.config.ts` → `admin.components.views` / `beforeNavLinks` / `beforeDashboard`; `AdminPage.tsx` kirishni tekshiradi | Maxsus view Payload tomonidan **himoyalanmaydi**: har view `AdminPage` ichida boʻlsin, har API `adminUser()` ni tekshirsin |
+| **SEO** | `lib/seo.ts` (meta), `lib/seo-audit*.ts`, `components/ThirdPartyTags.tsx`, `lib/indexnow.ts`, `Products/Articles` `seoTitle/seoDescription` | Teglar faqat sayt ochiq (`SITE_PASSWORD`/`SITE_NOINDEX` yoʻq) va ID tekshiruvdan oʻtganda qoʻyiladi |
+| **Mijozlar uchun Telegram bot** | `lib/telegram.ts` (API, webhook sirri), `lib/telegram-bot.ts` (`/start o_<n>_<token>`, `notify_<sku>`, `buy_<sku>`, `account`, `/stop`), `app/api/telegram/route.ts`, `collections/waitlist.ts`, `orders.telegramChat`, hook’lar `payload.config.ts` da | Webhook faqat `X-Telegram-Bot-Api-Secret-Token` (HMAC(PAYLOAD_SECRET, token)) bilan. Chat id faqat mijoz tugmani bosgandan keyin saqlanadi. Holat oʻzgarishi (order hook) va qoldiq 0→>0 (product hook) xabar yuboradi. Telegram faqat https webhook qabul qiladi — domen kerak |
+| **Rasmlar** | `src/app/(payload)/api/media/file/[...path]/route.ts`, `lib/media-url.ts` (`thumb`) | `/api/media/file/<nom>` endi rasmni 1200 px gacha WebP (yoki JPEG) qilib beradi, `?w=` bilan kichik, `?raw=1` asl; PDF/SVG oʻzgarishsiz; diskda keshlanadi (`$TMPDIR/yeppo-media-cache`). Kartalar va savat `?w=640/480` oladi. Payload’ning oʻz fayl yoʻli oʻrniga ishlaydi (aniqroq yoʻl ustun) |
+| **Tayyorlik / Marketing** | `lib/readiness*.ts`, `lib/marketing.ts` | Roʻyxat statik emas — haqiqiy holatdan hisoblanadi (`buildChecklist` toza funksiya) |
+
+Sayt ochiq/yopiq holati hali **env** orqali (`SITE_PASSWORD`, `SITE_NOINDEX`, `proxy.ts` har soʻrovda oʻqiydi). Admin panelga koʻchirish mumkin, lekin proxy’da DB oʻqish kerak boʻladi — ataylab qilinmadi.
+
+---
+
+## 2. Ishga tushirish va tekshirish
 
 ```bash
 cd web
 pnpm install
-# Postgres: docker konteyner "yeppo-pg", 127.0.0.1:5434, baza "yeppo" (web/.env da)
-pnpm dev                      # http://localhost:3000
-pnpm seed --demo              # namuna ma'lumot (12 tovar + sertifikat, 1-marta)
+# Postgres (127.0.0.1:5432, foydalanuvchi yeppo/yeppo): baza yeppo va yeppo_test
+cp .env.example .env              # DATABASE_URI, PAYLOAD_SECRET (>=16 belgi), SITE_URL, SMS_MODE=mock
+NODE_ENV=production pnpm payload migrate     # migratsiyalar (serverdagidek)
+NODE_ENV=production pnpm seed --demo         # namuna maʼlumot (design/ boʻlmasa src/seed-data dan)
+ADMIN_EMAIL=… ADMIN_PASSWORD=… pnpm admin:create
+pnpm dev
 ```
-
-`web/.env` git'da yo'q. Kalitlar ro'yxati `web/.env.example` da. Lokalda `SMS_MODE=mock` va `PAYMENTS_MODE=mock`.
-
-### Sifat tekshiruvi (buguni bajarildi, hamma o'tdi)
 
 ```bash
-pnpm -s tsc --noEmit          # exit 0
-pnpm run lint                 # 0 xato (oldindan bor 107 ogohlantirish, yangilanmagan)
-pnpm run test:int             # 72/72 test o'tdi (6 ta fayl)
-pnpm run build                # exit 0, production build muvaffaqiyatli
+pnpm -s tsc --noEmit
+pnpm run lint                                        # 0 xato (ogohlantirishlar: asosan `any`)
+TEST_DATABASE_URI=postgres://yeppo:yeppo@localhost:5432/yeppo_test pnpm run test:int   # 149+ test, alohida baza
+pnpm run build
+# e2e (ishlayotgan serverga qarshi; build + start -p 3100):
+E2E_BASE=http://localhost:3100 E2E_ADMIN_EMAIL=… E2E_ADMIN_PASSWORD=… pnpm run test:e2e
 ```
 
-E2E (Playwright) alohida server bilan: `E2E_BASE=http://localhost:3100 pnpm run test:e2e`
+- Integratsiya testlari **haqiqiy Postgres** ishlatadi (`TEST_DATABASE_URI` — saytning bazasi tozaligi uchun). Fayllar ketma-ket yuradi (umumiy baza).
+- `PW_CHROMIUM=/yoʻl/chrome` — oʻrnatilgan brauzerni ishlatish (CI/sandbox).
+- E2E admin testlari `E2E_ADMIN_*` boʻlmasa oʻtkazib yuboriladi.
+- Migratsiya qoidasi: sxema oʻzgarsa `pnpm payload migrate:create <nom>`, fayl commit qilinadi; **dev rejimda push** qilingan bazaga migratsiya qoʻllab boʻlmaydi — migratsiya bilan yaratilgan bazadan foydalaning (`NODE_ENV=production`).
+- Skriptlar (`seed`, `e2e-reset`) saytdan tashqarida ishlaydi: hook’lardagi `server-only` importlar `try/catch` bilan oʻralgan, yangi hook yozsangiz shunday qiling.
 
-### Nimalar qurilgan
+Oxirgi tekshiruv natijasi (2026-11-25): `tsc` toza, `lint` 0 xato, integratsiya 173/173, e2e 135/135 (126 ochiq sayt + 9 admin), `uv run pytest tests/yeppo` 74/74. Toza bazada 5 ta migratsiya xatosiz qoʻllanadi; Docker rasmidagi `standalone` server toza bazada ishga tushirilib tekshirilgan.
 
-- **Sahifalar (uz/ru):** bosh sahifa, katalog, mahsulot; savat, rasmiylashtirish, buyurtma sahifasi; yuz parvarishi, aksiyalar, brendlar, brend; kim uchun, qidiruv; jurnal va maqola, yordam (5 bo'lim + oferta/maxfiylik), sovg'alar va sertifikatlar; rutina konstruktori, sevimlilar; kirish (SMS kod), kabinet, bonus dasturi, AI maslahatchi; 404.
-- **Telefon versiyalari:** MobileHome, MobileCatalog, MobileProduct, MobileCart, MobileCheckout, MobileSearch, MobileAccount, MobileAI. MegaMenu bor.
-- **To'lov:** Click va Payme (`src/lib/payments/`). `PAYMENTS_MODE=mock` — haqiqiy pul qabul qilinmaydi.
-- **Narx hisobi:** faqat serverda (`src/lib/pricing.ts`).
-- **SEO:** har sahifada canonical/hreflang/OG, sitemap, robots, llms.txt, schema.
-
-### Hozirgi rejimlar
-
-- Sayt **parol bilan yopiq** (Basic auth, foydalanuvchi `yeppo`), `noindex` + `robots.txt` `Disallow: /`.
-- `PAYMENTS_MODE=mock`, `SMS_MODE=mock` (kirish kodi ekranda ko'rinadi).
-- Selfie/biometrik tekshiruv **o'chiq** (yuridik tekshiruvgacha).
-
-### Deploy (server)
-
-Coolify → Docker Compose build pack, repo `original-agents`, branch `master`, base directory `/web`.  
-`master` ga push → Coolify'da **Redeploy** (Auto Deploy yoqilsa avtomatik).
-
-Coolify Environment Variables (haqiqiy qiymatlar git/chatga chiqmaydi):
-
-- `SERVICE_PASSWORD_POSTGRES`, `SERVICE_BASE64_64_PAYLOAD` — Coolify avtomatik generatsiya qiladi.
-- `SERVICE_PASSWORD_SITE` — sayt paroli (egasi Coolify'da ko'radi).
-- `SITE_URL=${SERVICE_URL_WEB}` — Coolify bergan manzil.
-
-Migratsiyalari server ishga tushganda avtomatik bajariladi.
-
-### Backup
-
-- Har kuni 03:00 (Toshkent) `pg_dump`, serverda 7 kun saqlanadi.
-- Off-site zaxira (`OFFSITE_*`) hali sozlanmagan.
+**Lighthouse** (lokal, production build, 2026-11-25): SEO 100 va Best Practices 100 barcha tekshirilgan sahifalarda; Accessibility 96–100; Performance: kompyuterda 97–99, telefonda katalog 92, mahsulot 95, bosh sahifa 83 (simulyatsiya qilingan sekin 4G da LCP 4.6 s; haqiqiy oʻlchovda 0.5 s). Boshlangʻich oʻlchov: bosh sahifa telefonda 75, SEO mahsulot sahifasida 92.
 
 ---
 
-## 2. Bugungi tuzatishlar (commitlar)
+## 3. Ochiq ishlar (dasturchi tomondan)
 
-- `db5d9ee` — `SITE_URL` endi `SERVICE_URL_WEB` dan olinadi; `SITE_URL` da sxema bo'lmasa `https://` qo'shiladi. `TypeError: Invalid URL` (`generateMetadata`) xatosi tuzatildi. `web/docker-compose.yml` + `web/src/lib/site.ts`.
-- `0624581` — variantsiz mahsulotlar katalog va bosh sahifadan chiqariladi ("Cannot read properties of undefined (reading 'sku')" xatosi tuzatildi). `web/src/lib/catalog.ts`. Yangi test: `web/tests/int/catalog.int.spec.ts`.
+| Ish | Izoh |
+|---|---|
+| Search Console / Yandex Vebmaster maʼlumotini admin’ga olib kelish | Google xizmat akkaunti JSON va Yandex OAuth token kerak (egasi beradi). Analitika → yangi «Qidiruv tizimlari» boʻlimi |
+| Marketing agentlarini serverga qoʻyish | `docker-compose.yeppo-agents.yml`, `.env.yeppo-agents.example`; avval `DRY_RUN=true` |
+| Avtomatik xabar (tashlab ketilgan buyurtma, qaytarish) | Eskiz/Telegram shablonlari va mijoz roziligi kerak |
+| Sayt ochiq/yopiq holatini admin panelga koʻchirish | Yuqorida: proxy’da DB oʻqish |
+| Lighthouse tekshiruvi (360/834/1440) | Haqiqiy domen va haqiqiy server kerak; hozir faqat oʻz analitikamiz tezlikni oʻlchaydi (Analitika → Tezlik) |
+| ESLint ogohlantirishlari (~124, asosan `any`) | Xato yoʻq |
+| Haqiqiy Click/Payme sinov kassasi tekshiruvlari | Akkaunt kerak. Kod rasmiy protokol boʻyicha yozilgan va unit-test qilingan, lekin jonli provayderda hali sinalmagan |
 
-## 3. Serverga chiqarilgan holat
+## 4. Maʼlum cheklovlar
 
-- Coolify'da Yeppo sayti ishlayapti, oxirgi deploy `0624581` (Success).
-- Serverdagi DB konteyneri `db-k0dffhjims7lucm6ytxly88v-*`, media volume `k0dffhjims7lucm6ytxly88v_media`.
-- Demo ma'lumotlar serverga to'liq tiklandi: products 13, products_variants 21, products_rels 19, media 38, customers 2, categories 10 (lokal `yeppo_mig` bilan bir xil).
-- Sayt tekshirildi: `/uz` → HTTP 200, `/uz/katalog/yuz-parvarishi` → HTTP 200 (sayt ochilmoqda, crash yo'q).
-- **Poizon botiga touch qilinmadi.**
-
----
-
-## 4. Ochiq ishlar
-
-- Domen (`yeppo.uz`) va nom bo'yicha yakuniy qaror (Yeppo / Yeppy).
-- Off-site backup tanlovi (Hetzner Storage Box yoki Object Storage) va restore testi.
-- Haqiqiy to'lov (Click/Payme) va SMS provayder akkauntlari — hozir mock.
-- Telegram bot va kanal.
-- Lighthouse tekshiruvi 360/834/1440 kengliklarda.
-- Serverdagi xotira tekshiruvi (`free -m`, `docker stats`).
-- Serverdagi 2 ta mijoz yozuvi test ma'lumotimi — tasdiqlash kerak.
-- Shaxsiy ma'lumotlarni Hetzner'da saqlash bo'yicha yurist fikri.
-
-## 5. Ma'lum muammolar
-
-- ESLint'da 107 ta ogohlantirish bor (asosan `any`), xato yo'q.
-- Bonus ballarning muddati o'tishi qoida sifatida ko'rsatiladi, lekin hali amalda ishlamaydi.
-- Poizon loyiha `tests/test_llm.py::test_alert_when_a_call_crosses_the_budget` tuzilishi — Yeppo bilan bog'liq emas, egasining ruxsatisiz tuzilmaydi.
-
-## 6. Ustuvor keyingi 3 qadam
-
-1. Domenni aniqlash va DNS/Coolify'da sozlash; `SITE_PASSWORD` va `SITE_NOINDEX` ni olib tashlab saytni ochish.
-2. Off-site backup sozlash va restore ni sinash.
-3. Haqiqiy to'lov (Click/Payme) va SMS provayderini ulash.
+- Click/Payme kodi provayderlarning jonli kabinetida **sinalmagan** (akkaunt yoʻq); protokol testlari mahalliy.
+- Analitikada «Qidiruv» bolimi butun vaqt uchun (davr tanlanmaydi) — `search_log` jadvali shunday.
+- Heatmap bosishlarni sahifa koordinatasida saqlaydi: sahifa maketi keskin oʻzgarsa, eski bosishlar siljib koʻrinishi mumkin (davrni qisqartiring).
+- Analitikada «tashrifchi» — brauzer cookie’si; bitta odam telefon va kompyuterdan kirsa, ikki tashrifchi.
+- Sayt faqat bitta server nusxasida ishlaydi: integratsiya keshi va tezlik cheklovi xotirada (koʻp nusxaga oʻtilsa Redis kerak).

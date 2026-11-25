@@ -6,9 +6,16 @@ export type Lang = (typeof LANGS)[number]
 
 const RU = { ...(ru as Record<string, string>), ...(extra as Record<string, string>) }
 
+// NEXT_PUBLIC_I18N_DEBUG=1 at build time: every text shown in Russian without a translation is logged as
+// "[i18n-miss] …" (server log and browser console). scripts/i18n-crawl.mjs collects them. Off = compiled out.
+const DEBUG = process.env.NEXT_PUBLIC_I18N_DEBUG === '1'
+
 /** Design text is Uzbek; Russian comes from the design's dictionary (data/ru.json). Missing -> Uzbek. */
 export function t(lang: Lang, uz: string): string {
-  return lang === 'ru' ? (RU[uz] ?? uz) : uz
+  if (lang !== 'ru') return uz
+  const ru = RU[uz]
+  if (DEBUG && ru === undefined && /\p{L}{2,}/u.test(uz)) console.warn(`[i18n-miss] ${uz}`)
+  return ru ?? uz
 }
 
 export const isLang = (x: string): x is Lang => (LANGS as readonly string[]).includes(x)

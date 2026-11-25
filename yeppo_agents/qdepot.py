@@ -8,7 +8,7 @@ import html
 import json
 import re
 from dataclasses import dataclass, field
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 
 THUMB = re.compile(r'<div class="product-thumb">(.*?)(?=<div class="product-thumb">|<div class="product-layout|</section>|$)', re.S)
 LDJSON = re.compile(r'<script type="application/ld\+json">(.*?)</script>', re.S)
@@ -89,14 +89,23 @@ def parse_product(page: str, url: str) -> Detail | None:
     if not best:
         return None
     offer = best["offers"]
+    if isinstance(offer, list):  # schema.org allows a list of offers
+        offer = offer[0] if offer else {}
+    if not isinstance(offer, dict):
+        return None
+    try:
+        price = Decimal(str(offer.get("price") or offer.get("lowPrice") or "0").replace(",", ""))
+    except InvalidOperation:
+        return None
     brand = best.get("brand") or {}
+    brand = brand.get("name") if isinstance(brand, dict) else brand
     img = best.get("image")
     stock_li = re.search(r'class="product-stock ([a-z-]+)"', page)
     in_stock = "InStock" in str(offer.get("availability", "")) and (not stock_li or stock_li.group(1) == "in-stock")
     return Detail(
-        url=url, name=html.unescape(best.get("name", "")).strip(), brand=html.unescape(brand.get("name", "")).strip(),
-        model=(best.get("model") or "").strip(), price_usd=Decimal(str(offer.get("price") or "0")),
-        in_stock=in_stock, images=[img] if isinstance(img, str) else list(img or []),
+        url=url, name=html.unescape(str(best.get("name") or "")).strip(), brand=html.unescape(str(brand or "")).strip(),
+        model=str(best.get("model") or "").strip(), price_usd=price,
+        in_stock=in_stock, images=[img] if isinstance(img, str) else [x for x in img or [] if isinstance(x, str)],
     )
 
 

@@ -14,7 +14,7 @@ export const metadata = { robots: { index: false } }
 export default async function MockPayPage({ params, searchParams }: { params: Promise<{ lang: string }>; searchParams: Promise<Record<string, string | undefined>> }) {
   const { lang } = await params
   const sp = await searchParams
-  if (!isLang(lang) || paymentsMode() !== 'mock') notFound()
+  if (!isLang(lang) || (await paymentsMode()) !== 'mock') notFound()
   const order = await getOrder(sp.o ?? '', sp.t ?? '')
   if (!order) notFound()
   return <MockPay lang={lang} number={order.number} token={order.token} total={order.total} provider={sp.p === 'click' ? 'click' : 'payme'} paid={order.paymentStatus === 'paid'} />

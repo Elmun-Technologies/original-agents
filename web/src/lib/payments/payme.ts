@@ -2,7 +2,8 @@ import 'server-only'
 import crypto from 'node:crypto'
 
 import { payload } from '@/lib/catalog'
-import { markPaid, markPaymentCancelled, orderByNumber } from '@/lib/orders'
+import { payable } from '@/lib/order-state'
+import { markPaid, markPaymentCancelled, orderByNumber, reopenPayment } from '@/lib/orders'
 import type { Payment } from '@/payload-types'
 import { paymeConfig } from './config'
 
@@ -30,15 +31,15 @@ type Rpc = { id?: number | string; method?: string; params?: any }
 const fail = (id: Rpc['id'], e: Err) => ({ jsonrpc: '2.0', id: id ?? null, error: e })
 const ok = (id: Rpc['id'], result: unknown) => ({ jsonrpc: '2.0', id: id ?? null, result })
 
-export function paymeAuthOk(header: string | null) {
-  const { key } = paymeConfig()
+export async function paymeAuthOk(header: string | null) {
+  const { key } = await paymeConfig()
   const want = `Basic ${Buffer.from(`Paycom:${key}`).toString('base64')}`
   return !!header && header.length === want.length && crypto.timingSafeEqual(Buffer.from(header), Buffer.from(want))
 }
 
 /** Hosted checkout URL: base64("m=<merchant>;ac.order_id=<n>;a=<tiyin>;c=<return>;l=<lang>"). */
-export function paymePayUrl(orderNumber: string, total: number, returnUrl: string, lang: string) {
-  const { merchantId, checkoutUrl } = paymeConfig()
+export async function paymePayUrl(orderNumber: string, total: number, returnUrl: string, lang: string) {
+  const { merchantId, checkoutUrl } = await paymeConfig()
   const params = `m=${merchantId};ac.order_id=${orderNumber};a=${Math.round(total * 100)};c=${returnUrl};l=${lang === 'ru' ? 'ru' : 'uz'}`
   return `${checkoutUrl}/${Buffer.from(params).toString('base64')}`
 }
@@ -57,20 +58,23 @@ async function checkOrder(params: any): Promise<{ err?: Err; order?: NonNullable
   const order = await orderByNumber(String(params?.account?.order_id ?? ''))
   if (!order) return { err: PAYME_ERR.ORDER }
   if (Number(params?.amount) !== Math.round(order.total * 100)) return { err: PAYME_ERR.AMOUNT }
-  if (order.paymentStatus !== 'pending' || order.status === 'cancelled') return { err: PAYME_ERR.ORDER_BUSY }
+  // paid, cancelled by the shop, or older than the payment window (prices and stock are no longer held)
+  if (!payable(order)) return { err: PAYME_ERR.ORDER_BUSY }
   return { order }
 }
+
+const orderIdOf = (t: Payment) => Number(typeof t.order === 'object' ? t.order.id : t.order)
 
 async function cancelTx(t: Payment, reason: number) {
   const p = await payload()
   const state = t.state === 2 ? -2 : -1
   const upd = await p.update({ collection: 'payments', id: t.id, overrideAccess: true, data: { state, reason, cancelTime: Date.now() } })
-  await markPaymentCancelled(Number(typeof t.order === 'object' ? t.order.id : t.order))
+  await markPaymentCancelled(orderIdOf(t), t.state === 2)
   return upd
 }
 
 export async function paymeHandle(rpc: Rpc, authHeader: string | null) {
-  if (!paymeAuthOk(authHeader)) return fail(rpc?.id, PAYME_ERR.AUTH)
+  if (!(await paymeAuthOk(authHeader))) return fail(rpc?.id, PAYME_ERR.AUTH)
   const { id, method, params } = rpc ?? {}
   const p = await payload()
   switch (method) {
@@ -91,6 +95,7 @@ export async function paymeHandle(rpc: Rpc, authHeader: string | null) {
       if (active.totalDocs) return fail(id, PAYME_ERR.ORDER_BUSY)
       const t = await p.create({ collection: 'payments', overrideAccess: true, data: {
         provider: 'payme', providerId: `payme:${params.id}`, order: order!.id, amount: Number(params.amount), state: 1, createTime: Number(params.time) || Date.now() } })
+      await reopenPayment(Number(order!.id)) // a retry after a failed attempt: the order waits for payment again
       return ok(id, { create_time: t.createTime, transaction: String(t.id), state: 1 })
     }
     case 'PerformTransaction': {
@@ -99,8 +104,11 @@ export async function paymeHandle(rpc: Rpc, authHeader: string | null) {
       if (t.state === 2) return ok(id, { transaction: String(t.id), perform_time: t.performTime, state: 2 })
       if (t.state !== 1) return fail(id, PAYME_ERR.CANT_PERFORM)
       if (Date.now() - (t.createTime ?? 0) > TIMEOUT) { await cancelTx(t, 4); return fail(id, PAYME_ERR.CANT_PERFORM) }
+      // the shop cancelled the order, or another transaction paid it meanwhile: do not take the money
+      const o = await p.findByID({ collection: 'orders', id: orderIdOf(t), overrideAccess: true, depth: 0 })
+      if (o.status === 'cancelled' || o.paymentStatus === 'paid' || o.paymentStatus === 'refund') { await cancelTx(t, 3); return fail(id, PAYME_ERR.CANT_PERFORM) }
       const done = await p.update({ collection: 'payments', id: t.id, overrideAccess: true, data: { state: 2, performTime: Date.now() } })
-      await markPaid(Number(typeof t.order === 'object' ? t.order.id : t.order), 'payme')
+      await markPaid(orderIdOf(t), 'payme')
       return ok(id, { transaction: String(done.id), perform_time: done.performTime, state: 2 })
     }
     case 'CancelTransaction': {
@@ -109,7 +117,7 @@ export async function paymeHandle(rpc: Rpc, authHeader: string | null) {
       if (t.state < 0) return ok(id, { transaction: String(t.id), cancel_time: t.cancelTime, state: t.state })
       if (t.state === 2) {
         // refund after payment only before the parcel left; otherwise the admin handles it by hand
-        const o = await p.findByID({ collection: 'orders', id: typeof t.order === 'object' ? t.order.id : t.order, overrideAccess: true, depth: 0 })
+        const o = await p.findByID({ collection: 'orders', id: orderIdOf(t), overrideAccess: true, depth: 0 })
         if (['shipping', 'delivered'].includes(o.status)) return fail(id, PAYME_ERR.CANT_CANCEL)
       }
       const c = await cancelTx(t, Number(params?.reason) || 0)
@@ -134,7 +142,7 @@ export async function paymeHandle(rpc: Rpc, authHeader: string | null) {
 
 /** Test mode: plays Payme's call sequence with a valid auth header (same code path as production). */
 export async function paymeMockPay(orderNumber: string, total: number, ok_: boolean) {
-  const auth = `Basic ${Buffer.from(`Paycom:${paymeConfig().key}`).toString('base64')}`
+  const auth = `Basic ${Buffer.from(`Paycom:${(await paymeConfig()).key}`).toString('base64')}`
   const txId = crypto.randomBytes(12).toString('hex')
   const account = { order_id: orderNumber }
   const amount = Math.round(total * 100)

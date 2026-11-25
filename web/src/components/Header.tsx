@@ -121,8 +121,8 @@ export function Header({ lang, store, cats = {}, active = '' }: { lang: Lang; st
             <Link href={L('/kabinet')} className="ib hdr-acc" aria-label={tr('Kabinet')}><Icon name="user" /></Link>
             <Link href={L('/sevimlilar')} className="ib" aria-label={tr('Sevimlilar')}><Icon name="heart" />{shop.favs.length > 0 && <span className="badge">{shop.favs.length}</span>}</Link>
             <a href={store.telegramUrl} className="ib phone-only" aria-label="Telegram"><Icon name="tg" /></a>
-            <Link href={L('/savat')} className="pill dark hdr-cart" style={{ minHeight: '48px', padding: '0 16px 0 14px', marginLeft: '6px' }} aria-label={tr('Savat')}>
-              <Icon name="bag" size={19} /><span className="num" style={{ fontSize: '15px' }}>{fmt(shop.total)}</span>
+            <Link href={L('/savat')} className="pill dark hdr-cart" style={{ minHeight: '48px', padding: '0 16px 0 14px', marginLeft: '6px' }}>
+              <span style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)', whiteSpace: 'nowrap' }}>{tr('Savat')}</span><Icon name="bag" size={19} /><span className="num" style={{ fontSize: '15px' }}>{fmt(shop.total)}</span>
               <span style={{ minWidth: '22px', height: '22px', borderRadius: '999px', background: '#F2D6D0', color: '#2A211E', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 700 }}>{shop.count}</span>
             </Link>
           </nav>

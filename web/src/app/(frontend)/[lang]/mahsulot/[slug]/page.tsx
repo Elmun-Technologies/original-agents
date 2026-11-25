@@ -21,9 +21,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!d) return {}
   const price = Math.min(...d.variants.map((v) => v.price))
   return meta(lang, `/mahsulot/${slug}`, {
-    title: `${d.brand?.name ?? ''} ${d.pr.name}`.trim(),
+    title: d.pr.seoTitle || `${d.brand?.name ?? ''} ${d.pr.name}`.trim(),
     // the snippet carries what people search for: what it does + price
-    description: [d.pr.need ?? d.pr.summary, `${t(lang, 'Narxi')}: ${fmt(price)} ${sum(lang)}`].filter(Boolean).join(' · '),
+    description: d.pr.seoDescription || [d.pr.need ?? d.pr.summary, `${t(lang, 'Narxi')}: ${fmt(price)} ${sum(lang)}`].filter(Boolean).join(' · '),
     image: d.images[0]?.url,
   })
 }

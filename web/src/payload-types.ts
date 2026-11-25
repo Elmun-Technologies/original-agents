@@ -72,19 +72,21 @@ export interface Config {
     'promo-codes': PromoCode;
     'gift-cards': GiftCard;
     customers: Customer;
-    'login-codes': LoginCode;
     products: Product;
     brands: Brand;
     categories: Category;
+    media: Media;
     'price-history': PriceHistory;
     reviews: Review;
     banners: Banner;
     segments: Segment;
-    'search-log': SearchLog;
-    'legal-pages': LegalPage;
     articles: Article;
     ingredients: Ingredient;
-    media: Media;
+    'legal-pages': LegalPage;
+    'search-log': SearchLog;
+    'login-codes': LoginCode;
+    'analytics-events': AnalyticsEvent;
+    waitlist: Waitlist;
     users: User;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
@@ -98,19 +100,21 @@ export interface Config {
     'promo-codes': PromoCodesSelect<false> | PromoCodesSelect<true>;
     'gift-cards': GiftCardsSelect<false> | GiftCardsSelect<true>;
     customers: CustomersSelect<false> | CustomersSelect<true>;
-    'login-codes': LoginCodesSelect<false> | LoginCodesSelect<true>;
     products: ProductsSelect<false> | ProductsSelect<true>;
     brands: BrandsSelect<false> | BrandsSelect<true>;
     categories: CategoriesSelect<false> | CategoriesSelect<true>;
+    media: MediaSelect<false> | MediaSelect<true>;
     'price-history': PriceHistorySelect<false> | PriceHistorySelect<true>;
     reviews: ReviewsSelect<false> | ReviewsSelect<true>;
     banners: BannersSelect<false> | BannersSelect<true>;
     segments: SegmentsSelect<false> | SegmentsSelect<true>;
-    'search-log': SearchLogSelect<false> | SearchLogSelect<true>;
-    'legal-pages': LegalPagesSelect<false> | LegalPagesSelect<true>;
     articles: ArticlesSelect<false> | ArticlesSelect<true>;
     ingredients: IngredientsSelect<false> | IngredientsSelect<true>;
-    media: MediaSelect<false> | MediaSelect<true>;
+    'legal-pages': LegalPagesSelect<false> | LegalPagesSelect<true>;
+    'search-log': SearchLogSelect<false> | SearchLogSelect<true>;
+    'login-codes': LoginCodesSelect<false> | LoginCodesSelect<true>;
+    'analytics-events': AnalyticsEventsSelect<false> | AnalyticsEventsSelect<true>;
+    waitlist: WaitlistSelect<false> | WaitlistSelect<true>;
     users: UsersSelect<false> | UsersSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
@@ -123,9 +127,11 @@ export interface Config {
   fallbackLocale: ('false' | 'none' | 'null') | false | null | ('uz' | 'ru') | ('uz' | 'ru')[];
   globals: {
     store: Store;
+    integrations: Integration;
   };
   globalsSelect: {
     store: StoreSelect<false> | StoreSelect<true>;
+    integrations: IntegrationsSelect<false> | IntegrationsSelect<true>;
   };
   locale: 'uz' | 'ru';
   widgets: {
@@ -171,6 +177,10 @@ export interface Order {
   name: string;
   phone: string;
   telegramUpdates?: boolean | null;
+  /**
+   * Mijoz botga ulangan (u oʻzi tugmani bosgan). «/stop» yozsa tozalanadi.
+   */
+  telegramChat?: string | null;
   delivery: 'tashkent' | 'region';
   city?: string | null;
   address: string;
@@ -194,6 +204,21 @@ export interface Order {
   deliveryFee?: number | null;
   giftFee?: number | null;
   total: number;
+  /**
+   * Mijoz qayerdan kelgan (utm_source yoki sayt)
+   */
+  src?: string | null;
+  med?: string | null;
+  /**
+   * Kampaniya (utm_campaign)
+   */
+  cmp?: string | null;
+  /**
+   * Birinchi kirgan sahifa
+   */
+  landing?: string | null;
+  visitor?: string | null;
+  session?: string | null;
   pointsUsed?: number | null;
   /**
    * Yetkazilganda hisoblanadi
@@ -316,19 +341,6 @@ export interface Customer {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "login-codes".
- */
-export interface LoginCode {
-  id: number;
-  phone: string;
-  hash: string;
-  expiresAt: string;
-  tries?: number | null;
-  updatedAt: string;
-  createdAt: string;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "products".
  */
 export interface Product {
@@ -415,6 +427,14 @@ export interface Product {
   batch?: string | null;
   expiresAt?: string | null;
   certificate?: (number | null) | Media;
+  /**
+   * Qidiruvdagi sarlavha. 50–60 belgi yaxshi. Oxiriga « — Yeppo» avtomatik qoʻshiladi.
+   */
+  seoTitle?: string | null;
+  /**
+   * Sarlavha ostidagi matn. 120–160 belgi: nima uchun, kimga, narx yoki afzallik.
+   */
+  seoDescription?: string | null;
   /**
    * «Maslahatchi aytadi» (mahsulot sahifasi)
    */
@@ -505,6 +525,8 @@ export interface Brand {
   createdAt: string;
 }
 /**
+ * Mahsulot, banner va maqola rasmlari. Rasmni AI bilan oʻzgartirmang — faqat asl surat.
+ *
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "media".
  */
@@ -678,49 +700,6 @@ export interface Segment {
   createdAt: string;
 }
 /**
- * Qidiruv soʻrovlari. «missed» — mos mahsulot topilmagan.
- *
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "search-log".
- */
-export interface SearchLog {
-  id: number;
-  query: string;
-  count?: number | null;
-  missed?: boolean | null;
-  updatedAt: string;
-  createdAt: string;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "legal-pages".
- */
-export interface LegalPage {
-  id: number;
-  /**
-   * oferta, maxfiylik
-   */
-  slug: string;
-  title: string;
-  body?: {
-    root: {
-      type: string;
-      children: {
-        type: any;
-        version: number;
-        [k: string]: unknown;
-      }[];
-      direction: ('ltr' | 'rtl') | null;
-      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
-      indent: number;
-      version: number;
-    };
-    [k: string]: unknown;
-  } | null;
-  updatedAt: string;
-  createdAt: string;
-}
-/**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "articles".
  */
@@ -728,6 +707,14 @@ export interface Article {
   id: number;
   slug: string;
   title: string;
+  /**
+   * Qidiruvdagi sarlavha. 50–60 belgi yaxshi. Oxiriga « — Yeppo» avtomatik qoʻshiladi.
+   */
+  seoTitle?: string | null;
+  /**
+   * Sarlavha ostidagi matn. 120–160 belgi: nima uchun, kimga, narx yoki afzallik.
+   */
+  seoDescription?: string | null;
   /**
    * Sarlavhadagi kursiv qism (sarlavha ichidagi aynan shu soʻzlar)
    */
@@ -803,6 +790,104 @@ export interface Ingredient {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "legal-pages".
+ */
+export interface LegalPage {
+  id: number;
+  /**
+   * oferta, maxfiylik
+   */
+  slug: string;
+  title: string;
+  body?: {
+    root: {
+      type: string;
+      children: {
+        type: any;
+        version: number;
+        [k: string]: unknown;
+      }[];
+      direction: ('ltr' | 'rtl') | null;
+      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+      indent: number;
+      version: number;
+    };
+    [k: string]: unknown;
+  } | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Qidiruv soʻrovlari. «missed» — mos mahsulot topilmagan.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "search-log".
+ */
+export interface SearchLog {
+  id: number;
+  query: string;
+  count?: number | null;
+  missed?: boolean | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "login-codes".
+ */
+export interface LoginCode {
+  id: number;
+  phone: string;
+  hash: string;
+  expiresAt: string;
+  tries?: number | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "analytics-events".
+ */
+export interface AnalyticsEvent {
+  id: number;
+  name: string;
+  visitor: string;
+  session: string;
+  path: string;
+  lang?: string | null;
+  device?: string | null;
+  ref?: string | null;
+  src?: string | null;
+  med?: string | null;
+  cmp?: string | null;
+  data?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "waitlist".
+ */
+export interface Waitlist {
+  id: number;
+  sku: string;
+  chat: string;
+  lang?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Admin panelga kira oladigan odamlar. Yangi admin qoʻshish: «Create new». Parolni kuchli qiling.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "users".
  */
 export interface User {
@@ -872,10 +957,6 @@ export interface PayloadLockedDocument {
         value: number | Customer;
       } | null)
     | ({
-        relationTo: 'login-codes';
-        value: number | LoginCode;
-      } | null)
-    | ({
         relationTo: 'products';
         value: number | Product;
       } | null)
@@ -886,6 +967,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'categories';
         value: number | Category;
+      } | null)
+    | ({
+        relationTo: 'media';
+        value: number | Media;
       } | null)
     | ({
         relationTo: 'price-history';
@@ -904,14 +989,6 @@ export interface PayloadLockedDocument {
         value: number | Segment;
       } | null)
     | ({
-        relationTo: 'search-log';
-        value: number | SearchLog;
-      } | null)
-    | ({
-        relationTo: 'legal-pages';
-        value: number | LegalPage;
-      } | null)
-    | ({
         relationTo: 'articles';
         value: number | Article;
       } | null)
@@ -920,8 +997,24 @@ export interface PayloadLockedDocument {
         value: number | Ingredient;
       } | null)
     | ({
-        relationTo: 'media';
-        value: number | Media;
+        relationTo: 'legal-pages';
+        value: number | LegalPage;
+      } | null)
+    | ({
+        relationTo: 'search-log';
+        value: number | SearchLog;
+      } | null)
+    | ({
+        relationTo: 'login-codes';
+        value: number | LoginCode;
+      } | null)
+    | ({
+        relationTo: 'analytics-events';
+        value: number | AnalyticsEvent;
+      } | null)
+    | ({
+        relationTo: 'waitlist';
+        value: number | Waitlist;
       } | null)
     | ({
         relationTo: 'users';
@@ -984,6 +1077,7 @@ export interface OrdersSelect<T extends boolean = true> {
   name?: T;
   phone?: T;
   telegramUpdates?: T;
+  telegramChat?: T;
   delivery?: T;
   city?: T;
   address?: T;
@@ -1009,6 +1103,12 @@ export interface OrdersSelect<T extends boolean = true> {
   deliveryFee?: T;
   giftFee?: T;
   total?: T;
+  src?: T;
+  med?: T;
+  cmp?: T;
+  landing?: T;
+  visitor?: T;
+  session?: T;
   pointsUsed?: T;
   pointsEarned?: T;
   updatedAt?: T;
@@ -1084,18 +1184,6 @@ export interface CustomersSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "login-codes_select".
- */
-export interface LoginCodesSelect<T extends boolean = true> {
-  phone?: T;
-  hash?: T;
-  expiresAt?: T;
-  tries?: T;
-  updatedAt?: T;
-  createdAt?: T;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "products_select".
  */
 export interface ProductsSelect<T extends boolean = true> {
@@ -1126,6 +1214,8 @@ export interface ProductsSelect<T extends boolean = true> {
   batch?: T;
   expiresAt?: T;
   certificate?: T;
+  seoTitle?: T;
+  seoDescription?: T;
   expertNote?: T;
   fit?:
     | T
@@ -1196,6 +1286,25 @@ export interface CategoriesSelect<T extends boolean = true> {
   seoText?: T;
   updatedAt?: T;
   createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "media_select".
+ */
+export interface MediaSelect<T extends boolean = true> {
+  alt?: T;
+  caption?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  url?: T;
+  thumbnailURL?: T;
+  filename?: T;
+  mimeType?: T;
+  filesize?: T;
+  width?: T;
+  height?: T;
+  focalX?: T;
+  focalY?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -1293,33 +1402,13 @@ export interface SegmentsSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "search-log_select".
- */
-export interface SearchLogSelect<T extends boolean = true> {
-  query?: T;
-  count?: T;
-  missed?: T;
-  updatedAt?: T;
-  createdAt?: T;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "legal-pages_select".
- */
-export interface LegalPagesSelect<T extends boolean = true> {
-  slug?: T;
-  title?: T;
-  body?: T;
-  updatedAt?: T;
-  createdAt?: T;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "articles_select".
  */
 export interface ArticlesSelect<T extends boolean = true> {
   slug?: T;
   title?: T;
+  seoTitle?: T;
+  seoDescription?: T;
   accent?: T;
   category?: T;
   tag?: T;
@@ -1379,22 +1468,67 @@ export interface IngredientsSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "media_select".
+ * via the `definition` "legal-pages_select".
  */
-export interface MediaSelect<T extends boolean = true> {
-  alt?: T;
-  caption?: T;
+export interface LegalPagesSelect<T extends boolean = true> {
+  slug?: T;
+  title?: T;
+  body?: T;
   updatedAt?: T;
   createdAt?: T;
-  url?: T;
-  thumbnailURL?: T;
-  filename?: T;
-  mimeType?: T;
-  filesize?: T;
-  width?: T;
-  height?: T;
-  focalX?: T;
-  focalY?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "search-log_select".
+ */
+export interface SearchLogSelect<T extends boolean = true> {
+  query?: T;
+  count?: T;
+  missed?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "login-codes_select".
+ */
+export interface LoginCodesSelect<T extends boolean = true> {
+  phone?: T;
+  hash?: T;
+  expiresAt?: T;
+  tries?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "analytics-events_select".
+ */
+export interface AnalyticsEventsSelect<T extends boolean = true> {
+  name?: T;
+  visitor?: T;
+  session?: T;
+  path?: T;
+  lang?: T;
+  device?: T;
+  ref?: T;
+  src?: T;
+  med?: T;
+  cmp?: T;
+  data?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "waitlist_select".
+ */
+export interface WaitlistSelect<T extends boolean = true> {
+  sku?: T;
+  chat?: T;
+  lang?: T;
+  updatedAt?: T;
+  createdAt?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -1569,6 +1703,38 @@ export interface Store {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "integrations".
+ */
+export interface Integration {
+  id: number;
+  ga4Id?: string | null;
+  metricaId?: string | null;
+  metricaWebvisor?: boolean | null;
+  metaPixelId?: string | null;
+  googleVerification?: string | null;
+  yandexVerification?: string | null;
+  bingVerification?: string | null;
+  indexNowOn?: boolean | null;
+  indexNowKey?: string | null;
+  paymentsMode?: string | null;
+  cardProvider?: string | null;
+  clickServiceId?: string | null;
+  clickMerchantId?: string | null;
+  clickSecret?: string | null;
+  paymeMerchantId?: string | null;
+  paymeKey?: string | null;
+  paymeTest?: boolean | null;
+  smsMode?: string | null;
+  eskizEmail?: string | null;
+  eskizPassword?: string | null;
+  eskizFrom?: string | null;
+  telegramToken?: string | null;
+  telegramAdminIds?: string | null;
+  updatedAt?: string | null;
+  createdAt?: string | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "store_select".
  */
 export interface StoreSelect<T extends boolean = true> {
@@ -1613,6 +1779,38 @@ export interface StoreSelect<T extends boolean = true> {
       };
   cashOnDelivery?: T;
   homeRoutine?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  globalType?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "integrations_select".
+ */
+export interface IntegrationsSelect<T extends boolean = true> {
+  ga4Id?: T;
+  metricaId?: T;
+  metricaWebvisor?: T;
+  metaPixelId?: T;
+  googleVerification?: T;
+  yandexVerification?: T;
+  bingVerification?: T;
+  indexNowOn?: T;
+  indexNowKey?: T;
+  paymentsMode?: T;
+  cardProvider?: T;
+  clickServiceId?: T;
+  clickMerchantId?: T;
+  clickSecret?: T;
+  paymeMerchantId?: T;
+  paymeKey?: T;
+  paymeTest?: T;
+  smsMode?: T;
+  eskizEmail?: T;
+  eskizPassword?: T;
+  eskizFrom?: T;
+  telegramToken?: T;
+  telegramAdminIds?: T;
   updatedAt?: T;
   createdAt?: T;
   globalType?: T;

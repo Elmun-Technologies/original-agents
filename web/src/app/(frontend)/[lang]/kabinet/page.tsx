@@ -31,7 +31,7 @@ export default async function Page({ params }: { params: Promise<{ lang: string 
       addresses: (c.addresses ?? []).map((a) => ({ city: a.city ?? '', address: a.address })), routine: ((c.routine as { pick?: Record<string, string> } | null)?.pick) ?? null,
       orders: orders.docs.map((o) => ({ number: o.number, token: o.token, date: o.createdAt, status: o.status, paid: o.paymentStatus === 'paid', total: o.total,
         items: o.items.map((i) => ({ sku: i.sku, slug: i.slug ?? '', brand: i.brand ?? '', name: i.name, img: i.img ?? '', price: i.price, qty: i.qty })) })),
-      points: loyal.on ? { balance: loyal.balance, tier: loyal.tier?.name ?? null, percent: loyal.tier?.percent ?? 0 } : null,
+      points: loyal.on ? { balance: loyal.balance, tier: loyal.tier?.name ?? null, percent: loyal.tier?.percent ?? 0, expiresAt: loyal.expiresAt } : null,
       telegram: store.telegramBotUrl,
     }} />
   )

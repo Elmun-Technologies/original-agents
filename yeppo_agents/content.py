@@ -6,6 +6,7 @@ call to action and hashtags are added by code so they are always exact (CLAUDE.m
 import json
 import logging
 import re
+import shutil
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -45,8 +46,13 @@ def brand_name(p: dict) -> str:
     return b.get("name", "") if isinstance(b, dict) else ""
 
 
+def offer(p: dict) -> dict:
+    """The variant we advertise: cheapest in stock. Price and volume must come from the same variant."""
+    return min((v for v in p["variants"] if (v.get("stock") or 0) > 0), key=lambda v: int(v["price"]))
+
+
 def min_price(p: dict) -> int:
-    return min(int(v["price"]) for v in p["variants"] if (v.get("stock") or 0) > 0)
+    return int(offer(p)["price"])
 
 
 def eligible(p: dict) -> bool:
@@ -82,7 +88,7 @@ def pick(products: list[dict], demand: Demand, n: int, now: datetime | None = No
 
 
 def facts(p: dict, ru: dict | None) -> dict:
-    v = next((x for x in p["variants"] if (x.get("stock") or 0) > 0), p["variants"][0])
+    v = offer(p)
     return {
         "brand": brand_name(p), "name": p["name"], "volume": v.get("volume"),
         "type": {"uz": p.get("type"), "ru": (ru or {}).get("type")},
@@ -99,22 +105,26 @@ def problems(text: str) -> list[str]:
 
 
 def fallback_body(f: dict) -> dict:
-    """No LLM: the catalog's own words."""
+    """No LLM: the catalog's own words (cut to the same length limit as the LLM text)."""
+    limit = cfg()["content"]["max_body_chars"]
+
     def one(lang):
         parts = [f["need"][lang], f["summary"][lang]]
-        return " ".join(x.strip() for x in parts if x) or f"{f['brand']} {f['name']}."
+        text = " ".join(x.strip() for x in parts if x) or f"{f['brand']} {f['name']}."
+        return text if len(text) <= limit else text[:limit].rsplit(" ", 1)[0] + "…"
     return {"uz": one("uz"), "ru": one("ru")}
 
 
 def write_body(f: dict) -> tuple[dict, str]:
-    """-> ({uz, ru}, source) where source is 'llm' or 'catalog'."""
+    """-> ({uz, ru}, source) where source is 'llm' or 'catalog'. Any LLM trouble ends in the catalog text."""
     system = PROMPT.read_text(encoding="utf-8")
     for attempt in range(2):
         try:
             raw = llm.complete("caption", system, json.dumps(f, ensure_ascii=False))
             m = re.search(r"\{.*\}", raw, re.S)
             body = json.loads(m.group(0)) if m else {}
-            uz, ru = (body.get("uz") or "").strip(), (body.get("ru") or "").strip()
+            body = body if isinstance(body, dict) else {}
+            uz, ru = (body[k].strip() if isinstance(body.get(k), str) else "" for k in ("uz", "ru"))
             bad = problems(uz + "\n" + ru)
             limit = cfg()["content"]["max_body_chars"]
             if uz and ru and not bad and len(uz) <= limit and len(ru) <= limit:
@@ -169,6 +179,7 @@ class Package:
     files: list[Path] = field(default_factory=list)  # cards..., story, reel
     body_source: str = "llm"
     sample: bool = False
+    reel_error: str | None = None  # cards are still sent when the video could not be rendered
 
 
 def download(base: str, p: dict, limit: int = 3, client: httpx.Client | None = None) -> list[bytes]:
@@ -179,7 +190,7 @@ def download(base: str, p: dict, limit: int = 3, client: httpx.Client | None = N
         if not url:
             continue
         r = http.get(url if url.startswith("http") else base + url)
-        if r.status_code == 200:
+        if r.status_code == 200 and media.readable(r.content):  # an error page or SVG must not break the cards
             out.append(r.content)
     return out
 
@@ -211,17 +222,40 @@ def build(p: dict, ru: dict | None, st: dict, base: str, out_root: Path | None =
         files.append(out / f"{i}-photo.jpg")
     media.story(item).save(out / "story.jpg", quality=92)
     files.append(out / "story.jpg")
-    files.append(media.reels(item, out / "reels.mp4"))
+    reel_error = None
+    try:
+        files.append(media.reels(item, out / "reels.mp4"))
+    except Exception as e:  # ffmpeg missing / killed: the cards and the caption are still worth sending
+        log.exception("reels %s failed", p["slug"])
+        reel_error = str(e)[:200]
     cap = caption(p, body, st)
     (out / "caption.txt").write_text(cap + "\n\n" + link(p["slug"]) + "\n", encoding="utf-8")
-    return Package(p["slug"], f"{f['brand']} {p['name']}", cap, link(p["slug"]), files, source, bool(p.get("sample")))
+    return Package(p["slug"], f"{f['brand']} {p['name']}", cap, link(p["slug"]), files, source, bool(p.get("sample")),
+                   reel_error)
+
+
+def prune(root: Path | None = None, now: datetime | None = None) -> int:
+    """Delete rendered packages older than `keep_days` (they were already sent to Telegram)."""
+    root = root or DATA / "posts"
+    keep = (now or datetime.now(TZ)).date() - timedelta(days=cfg()["content"]["keep_days"])
+    n = 0
+    for d in root.iterdir() if root.exists() else ():
+        try:
+            old = datetime.strptime(d.name, "%Y-%m-%d").date() < keep
+        except ValueError:
+            continue  # not ours
+        if old and d.is_dir():
+            shutil.rmtree(d, ignore_errors=True)
+            n += 1
+    return n
 
 
 def daily(cat, demand: Demand) -> tuple[list[Package], list[str]]:
     """-> (packages, problems for the admin summary)."""
     n = cfg()["content"]["daily_posts"]
+    prune()
     uz = cat.products("uz")
-    ru = {p["id"]: p for p in cat.products("ru")}
+    ru = {p["id"]: p for p in cat.products("ru", fallback=False)}  # missing Russian must not come back as Uzbek
     st = cat.store()
     chosen = pick(uz, demand, n)
     pkgs, errs = [], []
@@ -232,5 +266,5 @@ def daily(cat, demand: Demand) -> tuple[list[Package], list[str]]:
             pkgs.append(build(p, ru.get(p["id"]), st, cat.base))
         except Exception as e:  # one product must not stop the rest
             log.exception("package %s failed", p["slug"])
-            errs.append(f"{p['name']}: {e}")
+            errs.append(f"{p['name']}: {e}"[:300])
     return pkgs, errs

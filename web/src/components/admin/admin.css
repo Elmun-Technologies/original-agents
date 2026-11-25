@@ -1,0 +1,56 @@
+/* Yeppo admin screens. Colours come from Payload's theme variables, so light and dark mode both work. */
+.yp { padding: 8px 0 64px; max-width: 1180px; }
+.yp-h1 { font-size: 30px; line-height: 1.15; margin: 16px 0 6px; }
+.yp-lead { margin: 0 0 24px; max-width: 760px; color: var(--theme-elevation-600); font-size: 15px; line-height: 1.55; }
+.yp-h2 { font-size: 19px; margin: 32px 0 12px; }
+.yp-h3 { font-size: 15px; margin: 0 0 8px; }
+.yp-muted { color: var(--theme-elevation-500); font-size: 13px; line-height: 1.5; }
+.yp-grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); }
+.yp-grid.wide { grid-template-columns: repeat(auto-fill, minmax(500px, 1fr)); }
+.yp-grid.kpi { grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px; }
+.yp-card { background: var(--theme-elevation-50); border: 1px solid var(--theme-elevation-100); border-radius: 10px; padding: 18px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.yp-card.pad0 { padding: 0; overflow: hidden; }
+.yp-kpi { gap: 2px; padding: 14px 16px; }
+.yp-kpi b { font-size: 26px; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.yp-kpi span { font-size: 12.5px; color: var(--theme-elevation-500); }
+.yp-kpi i { font-style: normal; font-size: 12px; }
+.yp-up { color: #2f7d32; } .yp-down { color: #c0392b; }
+.yp-head { display: flex; gap: 12px; align-items: center; }
+.yp-head img { width: 36px; height: 36px; border-radius: 8px; flex: none; object-fit: contain; }
+.yp-head b { font-size: 16px; }
+.yp-pill { margin-left: auto; font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 999px; white-space: nowrap; }
+.yp-pill.on { background: #dff1e0; color: #1d5e21; } .yp-pill.partial { background: #fdf0d0; color: #7a5200; } .yp-pill.off { background: var(--theme-elevation-100); color: var(--theme-elevation-600); }
+.yp-pill.bad { background: #fadbd8; color: #8e2318; }
+.yp label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; font-weight: 500; }
+.yp label.check { flex-direction: row; align-items: center; gap: 8px; font-weight: 400; }
+.yp input[type=text], .yp input[type=password], .yp input[type=email], .yp input[type=date], .yp input[type=search], .yp select, .yp textarea {
+  font: inherit; font-size: 14px; padding: 8px 10px; border-radius: 6px; border: 1px solid var(--theme-elevation-150); background: var(--theme-input-bg, var(--theme-bg)); color: var(--theme-text); width: 100%; box-sizing: border-box; }
+.yp input:focus, .yp select:focus, .yp textarea:focus { outline: 2px solid var(--theme-elevation-800); outline-offset: 0; }
+.yp-btn { font: inherit; font-size: 14px; font-weight: 600; padding: 8px 16px; border-radius: 6px; border: 1px solid var(--theme-elevation-800); background: var(--theme-elevation-800); color: var(--theme-elevation-0); cursor: pointer; text-decoration: none; display: inline-block; }
+.yp-btn.ghost { background: transparent; color: var(--theme-text); border-color: var(--theme-elevation-300); }
+.yp-btn[disabled] { opacity: .5; cursor: default; }
+.yp-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.yp-msg { font-size: 13px; padding: 8px 10px; border-radius: 6px; white-space: pre-line; }
+.yp-msg.ok { background: #dff1e0; color: #1d5e21; } .yp-msg.err { background: #fadbd8; color: #8e2318; } .yp-msg.warn { background: #fdf0d0; color: #7a5200; }
+.yp details summary { cursor: pointer; font-size: 13px; font-weight: 600; }
+.yp ol { margin: 8px 0 0; padding-left: 20px; font-size: 13px; line-height: 1.6; }
+.yp code, .yp-copy { font-size: 12.5px; background: var(--theme-elevation-100); border-radius: 4px; padding: 2px 6px; word-break: break-all; }
+.yp-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.yp-table th { text-align: left; font-weight: 600; font-size: 12px; color: var(--theme-elevation-500); padding: 8px 10px; border-bottom: 1px solid var(--theme-elevation-150); white-space: nowrap; }
+.yp-table td { padding: 8px 10px; border-bottom: 1px solid var(--theme-elevation-100); vertical-align: top; }
+.yp-table td.n, .yp-table th.n { text-align: right; font-variant-numeric: tabular-nums; }
+.yp-table tr:last-child td { border-bottom: 0; }
+.yp-tabs { display: flex; gap: 4px; flex-wrap: wrap; margin: 0 0 20px; border-bottom: 1px solid var(--theme-elevation-150); }
+.yp-tabs a { padding: 8px 14px; font-size: 14px; text-decoration: none; color: var(--theme-elevation-600); border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.yp-tabs a.on { color: var(--theme-text); font-weight: 600; border-bottom-color: var(--theme-elevation-800); }
+.yp-bar { height: 8px; border-radius: 4px; background: var(--theme-elevation-100); overflow: hidden; min-width: 60px; }
+.yp-bar > i { display: block; height: 100%; background: #a8475c; }
+.yp-todo { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.yp-todo li { display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px; border: 1px solid var(--theme-elevation-100); border-radius: 8px; background: var(--theme-elevation-50); font-size: 14px; }
+.yp-todo .dot { width: 20px; height: 20px; border-radius: 50%; flex: none; margin-top: 1px; display: grid; place-items: center; font-size: 12px; font-weight: 700; }
+.yp-todo .dot.ok { background: #2f7d32; color: #fff; } .yp-todo .dot.todo { background: #e0a100; color: #fff; } .yp-todo .dot.bad { background: #c0392b; color: #fff; }
+.yp-nav { display: flex; flex-direction: column; gap: 2px; padding: 12px 0; border-top: 1px solid var(--theme-elevation-100); margin-top: 12px; }
+.yp-nav b { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--theme-elevation-500); padding: 4px 0; }
+.yp-nav a { padding: 6px 8px; border-radius: 6px; font-size: 14px; text-decoration: none; color: var(--theme-elevation-800); }
+.yp-nav a:hover { background: var(--theme-elevation-100); } .yp-nav a.on { background: var(--theme-elevation-150); font-weight: 600; }
+@media (max-width: 700px) { .yp-grid, .yp-grid.wide { grid-template-columns: 1fr; } .yp-h1 { font-size: 24px; } }

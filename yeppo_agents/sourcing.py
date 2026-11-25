@@ -8,6 +8,8 @@ from collections import Counter
 from dataclasses import dataclass
 from decimal import Decimal
 
+import httpx
+
 from app.scraping.blocklist import find_terms
 from yeppo_agents import demand as dm
 from yeppo_agents import pricing, qdepot, store
@@ -16,6 +18,7 @@ from yeppo_agents.settings import cfg
 
 log = logging.getLogger(__name__)
 TOKEN = re.compile(r"[a-z0-9]+")
+MAX_NET_ERRORS = 3  # dead pages / timeouts tolerated per run
 STOP = {"ml", "g", "ea", "pcs", "the", "for", "and", "with", "of", "set", "new", "ver", "x"}
 
 
@@ -53,8 +56,9 @@ def demand_from_catalog(cat) -> dm.Demand:
     for sku, n in sold.items():
         p = by_sku.get(sku)
         if p:
-            by_cat[(p.get("category") or {}).get("slug", "")] += n
-            by_brand[(p.get("brand") or {}).get("name", "")] += n
+            c, b = p.get("category"), p.get("brand")  # a bare id when the relation was not populated
+            by_cat[c.get("slug", "") if isinstance(c, dict) else ""] += n
+            by_brand[b.get("name", "") if isinstance(b, dict) else ""] += n
     by_cat.pop("", None); by_brand.pop("", None); by_cat.pop("sertifikatlar", None); by_brand.pop("Yeppo", None)
     return dm.build(missed=cat.missed_searches(days), searches=cat.all_searches(days),
                     sold_by_cat=dict(by_cat), sold_brands=dict(by_brand),
@@ -73,6 +77,18 @@ def run(cat, fetcher: Fetcher | None = None, rate: Decimal | None = None, demand
     known = store.known_urls()
 
     found: dict[str, tuple[qdepot.Listed, bool]] = {}
+    net_errors = 0
+
+    def net_error(url: str, e: Exception) -> bool:
+        """One dead page (404, timeout) must not lose the run; repeated failures stop it."""
+        nonlocal net_errors
+        net_errors += 1
+        log.warning("source page failed: %s (%s)", url, type(e).__name__)
+        rep.skipped["sahifa ochilmadi"] += 1
+        if net_errors >= MAX_NET_ERRORS:
+            rep.blocked = f"sayt javob bermayapti ({net_errors} ta xato)"
+        return bool(rep.blocked)
+
     try:
         f.load_robots()
         for listing in s["listings"]:
@@ -83,14 +99,21 @@ def run(cat, fetcher: Fetcher | None = None, rate: Decimal | None = None, demand
                 except NotAllowed:
                     rep.skipped["robots.txt"] += 1
                     break
+                except httpx.HTTPError as e:
+                    net_error(url, e)
+                    break
                 for it in qdepot.parse_listing(page):
                     key = slug_key(it.url)
                     if key not in found:
                         found[key] = (it, listing == "best-sellers")
                 if n >= qdepot.page_count(page):
                     break
+            if rep.blocked:
+                break
     except Blocked as e:
         rep.blocked = str(e)
+    except httpx.HTTPError as e:  # robots.txt unreadable: do not crawl without it
+        rep.blocked = f"robots.txt o'qilmadi ({type(e).__name__})"
     rep.listed = len(found)
 
     scored = []
@@ -133,14 +156,26 @@ def run(cat, fetcher: Fetcher | None = None, rate: Decimal | None = None, demand
             except NotAllowed:
                 rep.skipped["robots.txt"] += 1
                 continue
+            except httpx.HTTPError as e:
+                if net_error(it.url, e):
+                    break
+                continue
             rep.opened += 1
             if not d or not d.in_stock:
                 rep.skipped["manbada yo'q (out of stock)"] += 1
                 continue
-            q = pricing.quote(d.price_usd, cat_slug, rate)
+            brand = d.brand or it.brand
+            if not brand:  # the site requires a brand; never guess one
+                rep.skipped["brend aniqlanmadi"] += 1
+                continue
+            price = d.price_usd if d.price_usd > 0 else it.price_usd  # page without a price: keep the listing's
+            q = pricing.quote(price, cat_slug, rate)
+            if not (p["min_sell_price_uzs"] <= q.sell_uzs <= p["max_sell_price_uzs"]):
+                rep.skipped["narx diapazondan tashqari"] += 1
+                continue
             store.upsert_candidate(
-                url=it.url, name=d.name or it.name, brand=d.brand or it.brand, model=d.model, category=cat_slug,
-                volume=qdepot.volume(d.name or it.name), img=(d.images or [it.img])[0], price_usd=d.price_usd,
+                url=it.url, name=(d.name or it.name)[:300], brand=brand[:120], model=d.model[:80], category=cat_slug,
+                volume=qdepot.volume(d.name or it.name), img=(d.images or [it.img])[0], price_usd=price,
                 sell_uzs=q.sell_uzs, profit_uzs=q.profit_uzs, score=round(score, 2), reasons=reasons,
             )
             rep.saved += 1

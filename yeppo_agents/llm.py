@@ -32,12 +32,19 @@ def complete(purpose: str, system: str, user: str) -> str:
         raise LlmError(f"{model}: narxi config/yeppo.yaml llm.prices_per_mtok da yo'q")
     if store.llm_spent_today() >= c["daily_budget_usd"]:
         raise LlmError(f"LLM kunlik limiti (${c['daily_budget_usd']}) tugadi")
-    resp = client().beta.messages.create(
-        model=model, max_tokens=c["max_tokens"],
-        system=[{"type": "text", "text": system, "cache_control": {"type": "ephemeral"}}],
-        messages=[{"role": "user", "content": user}],
-        output_config={"effort": c["effort"]},
-    )
+    try:
+        resp = client().beta.messages.create(
+            model=model, max_tokens=c["max_tokens"],
+            system=[{"type": "text", "text": system, "cache_control": {"type": "ephemeral"}}],
+            messages=[{"role": "user", "content": user}],
+            output_config={"effort": c["effort"]},
+        )
+    except anthropic.APIStatusError as e:  # bad key, rate limit, overload (the SDK already retried)
+        raise LlmError(f"Claude API {e.status_code} ({type(e).__name__})") from e
+    except anthropic.APIError as e:        # network / timeout
+        raise LlmError(f"Claude API ({type(e).__name__})") from e
+    except RuntimeError as e:              # ANTHROPIC_API_KEY is not set
+        raise LlmError(str(e)) from e
     u = resp.usage
     cw = getattr(u, "cache_creation_input_tokens", 0) or 0
     cr = getattr(u, "cache_read_input_tokens", 0) or 0
