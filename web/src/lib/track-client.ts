@@ -33,7 +33,7 @@ export function sourceOf(url: URL, referrer: string): Attr | null {
 const device = () => (innerWidth < 768 ? 'mobile' : innerWidth < 1100 ? 'tablet' : 'desktop')
 const attr = (): Attr => { try { return JSON.parse(decodeURIComponent(getCookie('yp_a') ?? '')) ?? {} } catch { return {} } }
 
-let queue: Ev[] = []
+const queue: Ev[] = []
 let timer: ReturnType<typeof setTimeout> | undefined
 let started = false
 let refHost: string | undefined

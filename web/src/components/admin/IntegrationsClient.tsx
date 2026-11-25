@@ -104,14 +104,16 @@ function Card({ s, data, reload }: { s: ServiceDef; data: Loaded; reload: () => 
 export function IntegrationsClient() {
   const [data, setData] = useState<Loaded | null>(null)
   const [err, setErr] = useState('')
-  const load = useCallback(async () => {
-    try {
-      const r = await fetch('/api/admin/integrations', { cache: 'no-store' })
-      if (!r.ok) throw new Error(String(r.status))
-      setData(await r.json())
-    } catch { setErr('Yuklab boʻlmadi. Sahifani yangilang yoki qayta kiring.') }
-  }, [])
-  useEffect(() => { void load() }, [load])
+  const [tick, setTick] = useState(0)
+  const reload = useCallback(() => setTick((t) => t + 1), [])
+  useEffect(() => {
+    let alive = true
+    fetch('/api/admin/integrations', { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+      .then((d) => { if (alive) { setData(d); setErr('') } })
+      .catch(() => { if (alive) setErr('Yuklab boʻlmadi. Sahifani yangilang yoki qayta kiring.') })
+    return () => { alive = false }
+  }, [tick])
   if (err) return <div className="yp-msg err">{err}</div>
   if (!data) return <p className="yp-muted">Yuklanmoqda…</p>
   return (
@@ -120,7 +122,7 @@ export function IntegrationsClient() {
       {(Object.keys(GROUPS) as (keyof typeof GROUPS)[]).map((g) => (
         <section key={g}>
           <h2 className="yp-h2">{GROUPS[g]}</h2>
-          <div className="yp-grid">{SERVICES.filter((s) => s.group === g).map((s) => <Card key={s.id} s={s} data={data} reload={load} />)}</div>
+          <div className="yp-grid">{SERVICES.filter((s) => s.group === g).map((s) => <Card key={s.id} s={s} data={data} reload={reload} />)}</div>
         </section>
       ))}
     </>

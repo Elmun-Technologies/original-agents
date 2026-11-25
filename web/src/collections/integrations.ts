@@ -37,6 +37,6 @@ export const Integrations: GlobalConfig = {
       if (errors.length) throw new APIError(errors.join('\n'), 400, undefined, true)
       return data
     }],
-    afterChange: [async () => { (await import('@/lib/integrations')).invalidateIntegrations() }],
+    afterChange: [async () => { try { (await import('@/lib/integrations')).invalidateIntegrations() } catch { /* a script outside the site has no cache to clear */ } }],
   },
 }

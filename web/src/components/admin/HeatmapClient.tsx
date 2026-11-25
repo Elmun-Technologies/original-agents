@@ -20,8 +20,11 @@ export function HeatmapClient({ pages, initial }: { pages: { path: string; click
   const [device, setDevice] = useState('desktop')
   const [range, setRange] = useState('30')
   const [lang, setLang] = useState('uz')
-  const [heat, setHeat] = useState<Heat | null>(null)
-  const [err, setErr] = useState('')
+  const [res, setRes] = useState<{ key: string; heat?: Heat; err?: boolean } | null>(null)
+  const key = `${path}|${device}|${range}`
+  const cur = res?.key === key ? res : null // an answer for an older choice is not shown
+  const heat = cur?.heat ?? null
+  const err = cur?.err ? 'Maʼlumotni yuklab boʻlmadi.' : ''
   const [docH, setDocH] = useState(1200)
   const frame = useRef<HTMLIFrameElement>(null)
   const canvas = useRef<HTMLCanvasElement>(null)
@@ -30,12 +33,13 @@ export function HeatmapClient({ pages, initial }: { pages: { path: string; click
   const width = DEVICES.find((d) => d[0] === device)![2]
 
   useEffect(() => {
-    setHeat(null); setErr('')
+    let alive = true
     fetch(`/api/admin/heat?path=${encodeURIComponent(path)}&device=${device}&r=${range}`, { cache: 'no-store' })
-      .then((r) => (r.ok ? r.json() : Promise.reject()))
-      .then((d) => setHeat(d))
-      .catch(() => setErr('Maʼlumotni yuklab boʻlmadi.'))
-  }, [path, device, range])
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error('heat'))))
+      .then((d) => { if (alive) setRes({ key, heat: d }) })
+      .catch(() => { if (alive) setRes({ key, err: true }) })
+    return () => { alive = false }
+  }, [path, device, range, key])
 
   // fit the page into the screen
   useEffect(() => {

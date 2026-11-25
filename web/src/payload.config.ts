@@ -20,7 +20,10 @@ import { Articles, Customers, GiftCards, Ingredients, LegalPages, LoginCodes, Or
 const INDEXED: Record<string, string> = { products: '/mahsulot', articles: '/jurnal' }
 const indexNow = <C extends CollectionConfig>(c: C): C => !INDEXED[c.slug] ? c : ({
   ...c,
-  hooks: { ...c.hooks, afterChange: [...(c.hooks?.afterChange ?? []), async ({ doc }: { doc: { slug?: string } }) => { if (doc.slug) (await import('@/lib/indexnow')).notifyChanged(`${INDEXED[c.slug]}/${doc.slug}`) }] },
+  hooks: { ...c.hooks, afterChange: [...(c.hooks?.afterChange ?? []), async ({ doc }: { doc: { slug?: string } }) => {
+    // best effort: a failed announcement (or a script running outside the site) must never fail the save
+    try { if (doc.slug) (await import('@/lib/indexnow')).notifyChanged(`${INDEXED[c.slug]}/${doc.slug}`) } catch { /* not announced */ }
+  }] },
 })
 
 const filename = fileURLToPath(import.meta.url)

@@ -8,15 +8,16 @@ import './admin.css'
 
 // The first thing the owner sees in the admin panel: today in numbers, what needs attention, shortcuts.
 // Rendered by Payload only for a logged-in admin (it sits on the dashboard).
+function Card({ label, value, d }: { label: string; value: string; d?: ReturnType<typeof delta> }) {
+  return <div className="yp-card yp-kpi"><span>{label}</span><b>{value}</b>{d && d.dir !== 'flat' && <i className={d.dir === 'up' ? 'yp-up' : 'yp-down'}>{d.text} kechagiga nisbatan</i>}</div>
+}
+
 export async function DashboardWidget() {
   const run = await runner()
   const [today, yday, week, list, ready] = await Promise.all([
     overview(run, rangeOf('1')), overview(run, previous(rangeOf('1'))), overview(run, rangeOf('7')), abandonedOrders().catch(() => []), loadChecklist().catch(() => null),
   ])
   const left = list.filter((r) => r.link)
-  const Card = ({ label, value, d }: { label: string; value: string; d?: ReturnType<typeof delta> }) => (
-    <div className="yp-card yp-kpi"><span>{label}</span><b>{value}</b>{d && d.dir !== 'flat' && <i className={d.dir === 'up' ? 'yp-up' : 'yp-down'}>{d.text} kechagiga nisbatan</i>}</div>
-  )
   return (
     <div className="yp" style={{ paddingBottom: 8 }}>
       <h1 className="yp-h1">Xush kelibsiz</h1>
