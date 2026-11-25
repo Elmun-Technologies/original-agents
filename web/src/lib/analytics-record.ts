@@ -40,3 +40,14 @@ export async function recordOrderEvent(name: 'order_created' | 'purchase', o: Or
     console.warn('analytics: order event not stored —', (e as Error).message.split('\n')[0]) // never breaks an order
   }
 }
+
+// Old rows are deleted so the table cannot grow without limit: clicks 90 days, scroll/speed samples 180 days,
+// everything else two years. Runs at most once an hour, started by the collector itself (no extra job to configure).
+export const RETENTION_SQL = `DELETE FROM analytics_events WHERE (name = 'click' AND created_at < now() - interval '90 days')
+  OR (name IN ('scroll', 'vitals') AND created_at < now() - interval '180 days') OR created_at < now() - interval '730 days'`
+let lastPurge = 0
+export async function purgeOldEvents(now = Date.now()) {
+  if (now - lastPurge < 3_600_000) return false
+  lastPurge = now
+  try { await ((await payload()).db as unknown as { pool: Pool }).pool.query(RETENTION_SQL, []); return true } catch (e) { console.warn('analytics: cleanup failed —', (e as Error).message.split('\n')[0]); return false }
+}

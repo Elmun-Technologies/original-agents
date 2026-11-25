@@ -6,7 +6,7 @@ vi.mock('next/headers', () => ({ cookies: async () => ({ get: () => undefined, s
 import config from '@/payload.config'
 import * as A from '@/lib/analytics'
 import { cleanPath, isBot, makeLimiter, parseBatch, readCookies } from '@/lib/analytics-ingest'
-import { recordEvents } from '@/lib/analytics-record'
+import { purgeOldEvents, recordEvents } from '@/lib/analytics-record'
 import { sourceOf } from '@/lib/track-client'
 
 const V = 'a'.repeat(16), S = 'b'.repeat(16)
@@ -180,6 +180,14 @@ describe('reports on real rows', () => {
     await put('pageview', { s: sess('1'), path: '/uz/katalog/serum' }); await put('pageview', { s: sess('2'), path: '/uz/katalog/serum' }); await put('pageview', { s: sess('3'), path: '/uz', when: at(1) })
     const r = await A.realtime(run)
     expect(r.visitors).toBe(2); expect(r.pages[0]).toEqual({ path: '/katalog/serum', visitors: 2 }); expect(r.last).toHaveLength(3)
+  })
+  it('old rows are deleted, recent ones stay, and it runs at most once an hour', async () => {
+    await put('click', { s: sess('1'), data: { x: 0.5, y: 1, w: 1440 }, when: at(100) }); await put('click', { s: sess('2'), data: { x: 0.5, y: 1, w: 1440 }, when: at(10) })
+    await put('vitals', { s: sess('3'), data: { lcp: 1 }, when: at(100) }); await put('pageview', { s: sess('4'), when: at(100) }); await put('pageview', { s: sess('5'), when: at(800) })
+    expect(await purgeOldEvents(Date.now() + 10 * 3_600_000)).toBe(true)
+    const left = await run("SELECT name, count(*) c FROM analytics_events GROUP BY 1 ORDER BY 1")
+    expect(left.map((r) => `${r.name}:${r.c}`)).toEqual(['click:1', 'pageview:1', 'vitals:1'])
+    expect(await purgeOldEvents(Date.now() + 10 * 3_600_000 + 60_000)).toBe(false)
   })
   it('ranges are cut at midnight Tashkent time', () => {
     const r = A.rangeOf('1', new Date('2026-06-10T22:30:00Z')) // 03:30 on 11 June in Tashkent

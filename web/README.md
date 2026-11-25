@@ -1,75 +1,74 @@
-# Yeppo — koreys kosmetikasi internet-do'koni (O'zbekiston)
+# Yeppo — koreys kosmetikasi internet-doʻkoni (Oʻzbekiston)
 
-Yeppo — O'zbekistondagi mijozlar uchun koreys kosmetikasi do'koni. Sahifalar **uz** va **ru** tillarda, mahsulotlar Q-Depot orqali olib kelinadi. Sayt serverda (Coolify / Hetzner) Docker Compose orqali ishlayapti.
+Yeppo — Oʻzbekistondagi mijozlar uchun koreys kosmetikasi doʻkoni. Sahifalar **uz** va **ru** tillarda. Sayt serverda (Coolify / Hetzner) Docker Compose orqali ishlaydi.
+
+- Egasi uchun qoʻllanma: [`../docs/EGASI_UCHUN.md`](../docs/EGASI_UCHUN.md)
+- Dasturchi uchun hisobot (arxitektura, testlar, ochiq ishlar): [`../docs/HANDOFF_YEPPO.md`](../docs/HANDOFF_YEPPO.md)
+- Serverga qoʻyish va zaxira nusxa: [`deploy/README.md`](deploy/README.md)
 
 ## Stack
 
-- Next.js 16 (App Router), React 19
-- Payload CMS 3 (Postgres)
-- Docker Compose (web, db, backup xizmatlari)
+Next.js 16 (App Router), React 19, Payload CMS 3 (Postgres), Docker Compose (web, db, backup).
 
-## Papka tuzilishi (`web/`)
+## Admin panel (`/admin`)
 
-```
-src/           — katalog, mahsulot, savat, buyurtma, kabinet va h.k. sahifalar; lib/catalog, lib/seo, lib/site
-payload.config.ts — Payload sozlamalari, koleksiyalar (products, media, categories, buyurtmalar…)
-src/migrations/  — Postgres migratsiyalari (server ishga tushganda avtomatik bajaradi)
-tests/int/     — vitest integratsiya testlari (72 ta)
-Dockerfile     — sayt image'i
-docker-compose.yml — web / db / backup xizmatlari (Coolify build pack, base dir /web)
-.env.example   — muhit o'zgaruvchila# Yeppo — koreys kosmetikasi internet-do'koni (O'zbekiston)
+Hammasi oʻzbekcha. Menyuning boshida:
 
-Yeppo ?i
-Yeppo — O'zbekistondagi mijozlar uchun koreys kosmetikasinte
-## Stack
+| Sahifa | Nima uchun |
+|---|---|
+| Ishga tushirishga tayyorlik | Sayt ochilishidan oldin nima qilish kerakligi (haqiqiy holatdan hisoblanadi) |
+| Integratsiyalar | Click, Payme, Eskiz SMS, Telegram, Google/Yandex/Meta/Bing kodlari, IndexNow — kalit kiritiladi, server qayta ishga tushirilmaydi |
+| Analitika | Tashrifchilar, manbalar, xarid yoʻli, mahsulotlar, auditoriya, tezlik, hozir kim saytda |
+| Heatmap | Sahifada qayerga bosishadi va qayergacha oʻqishadi |
+| Marketing | Tashlab ketilgan buyurtmalar, mijoz guruhlari (+CSV), reklama havolasi yasagich, promokod natijasi |
+| SEO audit | Qidiruv uchun nima yetishmaydi |
 
-- Next.js 16 (App Router), React 19
-- Payload CMS 3 (Postgres)
-- Docker Compose (web, db, backup xizmatlari)
-
-## Papka tuzilishi (`web/`)
+## Papka tuzilishi
 
 ```
-src/           — katalog, mahsulot, savat, buyurtma, kabin-de
-- Nex-mar- Payload CMS 3 (Postgres)
-- DockeTestlar va tekshiruvlar
-
-```b
-## Papka tuzilishi (`web/      # typelar teksh
+src/app/(frontend)/[lang]/   ochiq sayt sahifalari
+src/app/(payload)/           Payload admin va API
+src/app/api/                 savat/buyurtma, toʻlov (Click/Payme), SMS kirish, analitika kollektori, admin API
+src/collections/             maʼlumotlar modeli (+ labels.ts: admin matnlari)
+src/lib/                     biznes mantiq (narx, buyurtma, toʻlov, bonus, analitika, SEO, integratsiyalar)
+src/components/              sayt va admin komponentlari
+src/migrations/              Postgres migratsiyalari (server ishga tushganda oʻzi bajaradi)
+tests/int/                   vitest integratsiya testlari (haqiqiy Postgres)
+tests/e2e/                   Playwright (ochiq sayt + admin)
 ```
-src/           — ka   sr  payload.config.ts — Payload sozlamalari, koleksiyalar (products, media, categories, buyurtmalar…)
-src/migrasisrc/migrations/  — Postgres migratsiyalari (server ishga tushganda avtomatik bajaradi)
-tests/int/ 2etests/int/     — vitest integratsiya testlari (72 ta)
-Dockerfile     — sayt image'iloDockerfile     — sayt image'i
-docker-compose.yml — `docker-compose.yml — web / dng.env.example   — muhit o'zgaruvchila# Yeppo — koreys kosmetikasi internet-do'koni av
-Yeppo ?i
-Yeppo — O'zbekistondagi mijozlar uchun koreys kosmetikasinte
-## Stack
 
-- Next.js 16 chiYeppo ? |
-## Stack
+## Mahalliy ishga tushirish
 
-- Next.js 16 (App Router), React 19
-- Payload CMS 3en
-- Nexta q- Payload CMS 3 (Postgres)
-- DockeAD- Docker Compose (web, dber
-## Papka tuzilishi (`web/`)
-
+```bash
+cd web
+pnpm install
+cp .env.example .env     # DATABASE_URI, PAYLOAD_SECRET (kamida 16 belgi), SITE_URL; test uchun SMS_MODE=mock
+NODE_ENV=production pnpm payload migrate
+NODE_ENV=production pnpm seed --demo      # namuna maʼlumot (faqat test!)
+ADMIN_EMAIL=siz@misol.uz ADMIN_PASSWORD='uzun parol' pnpm admin:create
+pnpm dev                                  # http://localhost:3000
 ```
-src/      Say
+
+## Testlar
+
+```bash
+pnpm -s tsc --noEmit
+pnpm run lint
+TEST_DATABASE_URI=postgres://yeppo:yeppo@localhost:5432/yeppo_test pnpm run test:int
+pnpm run build && ADMIN_NOTIFY=off pnpm start -p 3100 &
+E2E_BASE=http://localhost:3100 E2E_ADMIN_EMAIL=… E2E_ADMIN_PASSWORD=… pnpm run test:e2e
 ```
-src/           — ka Cosrif- Nex-mar- Payload CMS 3 (Postgres)
-- DockeTestlar va tekshiruer- DockeTestlar va tekshiruvlar
 
-``i 
-```b
-## Papka tuzilishi (`wetik baja```
-src/           — ka   sr  payload.confibisrn src/migrasisrc/migrations/  — Postgres migratsiyalari (server ishga tushganda avtomatik bajaradi)
-tests/int/ 2etests/int/     qitests/int/ ul qilinmaydi).
-- `SMS_MODE=mock` — kirish kodi ekranda ko'rinadi (faqat test sayt).
-- Dockerfile     — sayt image'iloDockerfile     — sayt image'i
-do Bdocker-compose.yml — `docker-compose.yml — web / dng.eun saqlYeppo ?i
-Yeppo — O'zbekistondagi mijozlar uchun koreys kosmetikasinte
-## Stack
+## Rejimlar va sozlamalar
 
-- Next.jsmagan**.
+Kalitlar (Click, Payme, Eskiz, Telegram, Google/Yandex/Meta) **admin panelda** (Integratsiyalar) saqlanadi; shifrlangan. Server oʻzgaruvchilari zaxira sifatida oʻqiladi (`.env.example`).
+
+- **Yopiq test rejimi**: `SITE_PASSWORD` qoʻyilgan boʻlsa har sahifa parol soʻraydi (foydalanuvchi `yeppo`), `noindex` + `robots.txt` da `Disallow: /`, reklama teglari qoʻyilmaydi. Ochish: `SITE_PASSWORD` va `SITE_NOINDEX` ni olib tashlab qayta ishga tushirish.
+- **Toʻlov**: «Sinov» rejimida pul yechilmaydi. «Haqiqiy» rejim Click/Payme kalitlarisiz saqlanmaydi.
+- **SMS**: «Sinov» rejimida kod ekranda koʻrinadi (faqat test saytda!).
+- Selfie/biometrik tekshiruv oʻchiq (yuridik tekshiruvgacha).
+- Toʻlov holati: buyurtma 12 soat ichida toʻlanadi, undan keyin «muddat tugadi»; muvaffaqiyatsiz urinishdan keyin qayta toʻlash mumkin.
+
+## Backup
+
+Har kuni 03:00 (Toshkent) `pg_dump`, serverda saqlanadi; tashqi joyga koʻchirish `OFFSITE_*` bilan sozlanadi (`deploy/README.md`). Tiklash sinovi: `restore-test.sh`.

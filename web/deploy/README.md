@@ -1,5 +1,9 @@
 # Yeppo sayti — serverga qo'yish (Coolify)
 
+> **Kalitlar endi admin panelda.** Click, Payme, Eskiz (SMS), Telegram bot, Google/Yandex/Meta kodlari: `/admin` → **Integratsiyalar**. Server o'zgaruvchilari (`CLICK_*`, `PAYME_*`, `ESKIZ_*`, `TELEGRAM_*`) faqat zaxira sifatida o'qiladi — admin paneldagi qiymat ustun turadi. Server o'zgaruvchilarida qoladigan narsalar: ma'lumotlar bazasi, `SERVICE_BASE64_64_PAYLOAD` (**o'zgartirmang**: panelda saqlangan kalitlar shu bilan shifrlangan), `SITE_URL`, `SITE_PASSWORD`/`SITE_NOINDEX` (sayt yopiq/ochiq), zaxira nusxa `OFFSITE_*`.
+> Birinchi admin: `/admin` ni oching — foydalanuvchi yo'q bo'lsa, yaratish oynasi chiqadi.
+> Yangilanishdan keyin Redeploy qiling: migratsiyalar o'zi bajariladi.
+
 Fayllar:
 - `web/docker-compose.yml` — xizmatlar: `web` (sayt), `db` (Postgres), `backup` (kunlik nusxa).
 - `web/Dockerfile` — sayt image'i.
