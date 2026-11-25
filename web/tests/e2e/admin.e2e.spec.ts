@@ -74,7 +74,7 @@ test('integrations: save, refuse bad input, hide secrets, protect payments', asy
 const SCREENS = [
   '/admin', '/admin/tayyorlik', '/admin/integratsiyalar', '/admin/seo', '/admin/heatmap',
   ...['umumiy', 'manbalar', 'sahifalar', 'mahsulotlar', 'qidiruv', 'auditoriya', 'tezlik', 'hozir'].map((t) => `/admin/analitika?tab=${t}`),
-  ...['tashlab', 'mijozlar', 'havola', 'promokod'].map((t) => `/admin/marketing?tab=${t}`),
+  ...['tashlab', 'mijozlar', 'kutish', 'havola', 'promokod'].map((t) => `/admin/marketing?tab=${t}`),
 ]
 
 test('every admin screen opens, has its heading and no script errors', async ({ page }) => {
@@ -134,6 +134,11 @@ test('customer list is a spreadsheet that cannot run formulas, and needs a login
   expect(r.headers()['content-type']).toContain('text/csv')
   expect(r.headers()['content-disposition']).toContain('attachment')
   expect(await r.text()).toContain('Telefon,Ism,Buyurtmalar')
+})
+
+test('the Telegram webhook accepts nothing without Telegram\'s secret', async ({ request }) => {
+  expect((await request.post(`${BASE}/api/telegram`, { data: { message: { text: '/start', chat: { id: 1, type: 'private' } } } })).status()).toBe(401)
+  expect((await request.post(`${BASE}/api/telegram`, { headers: { 'x-telegram-bot-api-secret-token': 'guess' }, data: {} })).status()).toBe(401)
 })
 
 test('the key file of IndexNow is served only for the saved key', async ({ request }) => {

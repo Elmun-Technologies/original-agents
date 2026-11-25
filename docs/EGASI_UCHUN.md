@@ -16,7 +16,8 @@ Admin panel manzili: `https://<sayt manzili>/admin`
 | Adminga Telegramda buyurtma xabari | tayyor, bot kerak |
 | **Oʻz analitikamiz**: tashrifchilar, manbalar, xarid yoʻli, mahsulotlar, tezlik, hozir kim saytda | Admin → Analitika |
 | **Heatmap** (qayerga bosishadi, qayergacha oʻqishadi) | Admin → Heatmap |
-| **Marketing**: toʻlanmay qolgan buyurtmalar, mijoz guruhlari + jadval, reklama havolasi yasagich, promokod natijasi | Admin → Marketing |
+| **Marketing**: toʻlanmay qolgan buyurtmalar, mijoz guruhlari + jadval, **kelishini kutayotganlar** (qaysi tovarni qayta buyurtma qilish kerak), reklama havolasi yasagich, promokod natijasi | Admin → Marketing |
+| **Mijozlar uchun Telegram bot**: buyurtma holati (yigʻilmoqda → yoʻlda → yetkazildi) va «tovar kelganda xabar» avtomatik | Integratsiyalar → Telegram → «Webhook oʻrnatish» |
 | **SEO audit** va avtomatik SEO (sitemap, hreflang, sxemalar, IndexNow) | Admin → SEO audit |
 | **Integratsiyalar**: hamma kalitlar shu sahifadan kiritiladi, server qayta ishga tushirilmaydi | Admin → Integratsiyalar |
 | Ishga tushirishga tayyorlik roʻyxati | Admin → Ishga tushirishga tayyorlik |
@@ -58,7 +59,7 @@ Hammasini ochgach, kalitlarni **Admin → Integratsiyalar** ga kiritasiz. Har bi
 
 | # | Xizmat | Nima kerak | Qancha kutiladi |
 |---|---|---|---|
-| 1 | **Telegram bot** (adminga buyurtma xabari) | @BotFather orqali bot yarating, token oling; oʻz ID’ingizni @userinfobot dan biling. Integratsiyalar → Telegram → «Tekshirish». | 5 daqiqa |
+| 1 | **Telegram bot** (adminga xabar + mijozlar uchun) | @BotFather orqali bot yarating, token oling; oʻz ID’ingizni @userinfobot dan biling. Integratsiyalar → Telegram → «Tekshirish». **Domen ulangach «Webhook oʻrnatish»** ni bosing — shundan keyin bot mijozlarga buyurtma holatini yozadi va «Kelganda xabar berish» ni bajaradi. Doʻkon sozlamalarida «Telegram bot havolasi» ni `https://t.me/<bot nomi>` qiling. | 10 daqiqa |
 | 2 | **Eskiz** (SMS kodlar) | my.eskiz.uz da roʻyxatdan oʻting, hisobni toʻldiring, shablonni tasdiqlating: `Yeppo: kirish kodi XXXX`. Integratsiyalar → Eskiz → email/parol → «Tekshirish» → rejim «Haqiqiy SMS». | shablon tasdigʻi: 1–3 kun |
 | 3 | **Click** | Click Merchant shartnomasi, servis yaratish. Kartadagi «Prepare/Complete» manzilini kabinetga yozing. Service ID, Merchant ID, Secret key ni kiriting. | shartnoma: bir necha kun |
 | 4 | **Payme** | Payme Business shartnomasi, kassa. Endpoint URL va hisob maydoni `order_id` ni kabinetga yozing. Merchant ID va Key ni kiriting. Avval «Payme sinov kassasi» belgisini qoʻyib, Payme sinovlaridan oʻting. | shartnoma: bir necha kun |
@@ -124,7 +125,7 @@ Batafsil: `docs/yeppo_agents.md`.
 
 1. **Admin → boshqaruv paneli**: «Eʼtibor kerak» blokidagi narsalar.
 2. **Marketing → Tashlab ketilgan**: toʻlanmagan buyurtmalarga 1–2 soat ichida yozing («Xabar matni» tugmasi tayyor matnni nusxalaydi).
-3. **Analitika → Qidiruv**: «Topilmadi» deb belgilanganlar — mijoz izlagan, sizda yoʻq narsa. Eng koʻpini buyurtma qiling.
+3. **Analitika → Qidiruv** va **Marketing → Kelishini kutayotganlar**: mijoz izlagan yoki kutayotgan, sizda yoʻq narsa. Eng koʻpini buyurtma qiling.
 4. **Analitika → Manbalar**: qaysi reklama/post xarid keltirdi, qaysi biri faqat tashrif.
 5. **Analitika → Tezlik**: qizil boʻlsa, dasturchiga ayting.
 6. **Marketing → Mijozlar → «Qaytmagan»**: 45 kundan beri xarid qilmaganlarga eslatma.
@@ -140,7 +141,7 @@ Reklama yoki post joylashda **Marketing → Havola yasagich** da havola yasab, o
 |---|---|
 | Google Search Console / Yandex Vebmaster **maʼlumotlarini** admin ichiga olib kelish (qaysi soʻz bilan topishgani) | Qurilmagan. Buning uchun Google’dan xizmat akkaunti (JSON kalit) va Yandex OAuth token kerak. Kalitlar tayyor boʻlsa, ~1 kunlik ish. Hozircha ularning oʻz saytida koʻrasiz. |
 | Mijoz sessiyasini video kabi koʻrish (record) | Oʻzimizda yoʻq. Heatmap: bosishlar va scroll bor. Sessiya yozuvi kerak boʻlsa — Yandex Metrika «Vebvizor» (Integratsiyalarda belgisi bor). |
-| Avtomatik SMS/Telegram kampaniya yuborish | Qurilmagan. Mijoz guruhlari jadval (CSV) sifatida yuklanadi, xabarni oʻzingiz yuborasiz. Eskiz toʻplam SMS uchun alohida shablon tasdigʻini talab qiladi. |
+| Avtomatik SMS/Telegram **reklama** kampaniya yuborish | Qurilmagan (mijoz bot orqali faqat oʻz buyurtmasi va oʻzi kutgan mahsulot haqida xabar oladi — reklama emas). Mijoz guruhlari jadval (CSV) sifatida yuklanadi, xabarni oʻzingiz yuborasiz. Eskiz toʻplam SMS uchun alohida shablon tasdigʻini talab qiladi. |
 | Tashlab ketilgan buyurtmaga avtomatik xabar | Qoʻlda (tayyor matn tugmasi bor). Avtomatik yuborish uchun mijozdan xabar olishga rozilik va Eskiz/Telegram shablon kerak. |
 | Selfie orqali teri tahlili | Yuridik tekshiruvgacha oʻchiq (qasddan). |
 | Haqiqiy sharhlar | Sharh faqat tasdiqlangan xariddan keyin, admin tasdiqlagach chiqadi. Soxta sharh yoʻq. |

@@ -32,6 +32,7 @@ export const Orders: CollectionConfig = {
         { name: 'name', type: 'text', required: true },
         { name: 'phone', type: 'text', required: true, index: true },
         { name: 'telegramUpdates', type: 'checkbox', defaultValue: true },
+        { name: 'telegramChat', type: 'text', index: true, admin: { readOnly: true, description: 'Mijoz botga ulangan (u oʻzi tugmani bosgan). «/stop» yozsa tozalanadi.' } },
       ],
     },
     {

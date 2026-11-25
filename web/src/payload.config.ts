@@ -11,6 +11,7 @@ import { Users } from './collections/Users'
 import { Media } from './collections/Media'
 import { Banners, Brands, Categories, PriceHistory, Products, Reviews, Store } from './collections/catalog'
 import { AnalyticsEvents } from './collections/analytics'
+import { Waitlist } from './collections/waitlist'
 import { Integrations } from './collections/integrations'
 import { uz } from './collections/labels'
 import { en } from '@payloadcms/translations/languages/en'
@@ -25,6 +26,28 @@ const indexNow = <C extends CollectionConfig>(c: C): C => !INDEXED[c.slug] ? c :
     try { if (doc.slug) (await import('@/lib/indexnow')).notifyChanged(`${INDEXED[c.slug]}/${doc.slug}`) } catch { /* not announced */ }
   }] },
 })
+
+// Customer Telegram messages: an order's new status, and "back in stock". Registered here for the same reason:
+// best effort, server only, never fails a save.
+type Doc = Record<string, any>
+const telegramHooks = <C extends CollectionConfig>(c: C): C => {
+  if (c.slug === 'orders') {
+    return { ...c, hooks: { ...c.hooks, afterChange: [...(c.hooks?.afterChange ?? []), async ({ doc, previousDoc, operation }: { doc: Doc; previousDoc?: Doc; operation: string }) => {
+      try { if (operation === 'update' && previousDoc && doc.status !== previousDoc.status) await (await import('@/lib/telegram-bot')).notifyOrderStatus(doc as never) } catch { /* not sent */ }
+    }] } }
+  }
+  if (c.slug === 'products') {
+    return { ...c, hooks: { ...c.hooks, afterChange: [...(c.hooks?.afterChange ?? []), async ({ doc, previousDoc }: { doc: Doc; previousDoc?: Doc }) => {
+      try {
+        const before = new Map<string, number>(((previousDoc?.variants ?? []) as { sku: string; stock?: number }[]).map((v) => [v.sku, v.stock ?? 0]))
+        for (const v of (doc.variants ?? []) as { sku: string; stock?: number }[]) {
+          if ((v.stock ?? 0) > 0 && (before.get(v.sku) ?? 0) <= 0 && previousDoc) await (await import('@/lib/telegram-bot')).notifyBackInStock(v.sku, doc.name, doc.slug)
+        }
+      } catch { /* not sent */ }
+    }] } }
+  }
+  return c
+}
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -52,7 +75,7 @@ export default buildConfig({
   // order = order of the groups in the admin menu: Savdo, Katalog, Sayt, then settings
   // search engines hear about a new or changed product / article at once (Integratsiyalar → IndexNow).
   // Registered here, not in the collection files: those are also imported by browser code.
-  collections: ([Orders, Payments, PromoCodes, GiftCards, Customers, Products, Brands, Categories, Media, PriceHistory, Reviews, Banners, Segments, Articles, Ingredients, LegalPages, SearchLog, LoginCodes, AnalyticsEvents, Users].map(uz.collection)).map(indexNow),
+  collections: ([Orders, Payments, PromoCodes, GiftCards, Customers, Products, Brands, Categories, Media, PriceHistory, Reviews, Banners, Segments, Articles, Ingredients, LegalPages, SearchLog, LoginCodes, AnalyticsEvents, Waitlist, Users].map(uz.collection)).map(indexNow).map(telegramHooks),
   globals: [Store, Integrations].map(uz.global),
   localization: {
     locales: [

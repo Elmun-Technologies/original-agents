@@ -39,8 +39,8 @@ function Card({ s, data, reload }: { s: ServiceDef; data: Loaded; reload: () => 
     const r = await call('/api/admin/integrations', { method: 'PATCH', body: JSON.stringify({ values: draft, clear }) })
     if (r.ok) { setDraft({}); setMsg({ kind: 'ok', text: 'Saqlandi.' }); reload() } else setMsg({ kind: 'err', text: (r.errors ?? ['Saqlab boʻlmadi']).join('\n') })
   }
-  const test = async () => {
-    const r = await call('/api/admin/integrations/test', { method: 'POST', body: JSON.stringify({ service: s.id }) })
+  const test = async (service = s.id) => {
+    const r = await call('/api/admin/integrations/test', { method: 'POST', body: JSON.stringify({ service }) })
     setMsg({ kind: r.ok ? 'ok' : 'err', text: r.message ?? 'Xato' })
   }
   const fromEnv = s.fields.some((f) => data.sources[f.key] === 'env')
@@ -86,7 +86,8 @@ function Card({ s, data, reload }: { s: ServiceDef; data: Loaded; reload: () => 
       {s.id === 'mode' && data.closed && <div className="yp-msg warn">Sayt hozir parol bilan yopiq (test rejimi). Haqiqiy toʻlovlarga oʻtishdan oldin saytni ochish kerak.</div>}
       <div className="yp-row">
         <button type="button" className="yp-btn" disabled={busy || !dirty} onClick={() => save()}>Saqlash</button>
-        {s.test && <button type="button" className="yp-btn ghost" disabled={busy || dirty} onClick={test} title={dirty ? 'Avval saqlang' : ''}>Tekshirish</button>}
+        {s.test && <button type="button" className="yp-btn ghost" disabled={busy || dirty} onClick={() => test()} title={dirty ? 'Avval saqlang' : ''}>Tekshirish</button>}
+        {s.webhook && <button type="button" className="yp-btn ghost" disabled={busy || dirty} onClick={() => test('telegram-webhook')} title="Mijozlar uchun bot javoblarini yoqadi">Webhook oʻrnatish</button>}
         {s.fields.some((f) => f.kind === 'secret') && s.fields.filter((f) => f.kind === 'secret').some((f) => data.sources[f.key] === 'admin') && (
           <button type="button" className="yp-btn ghost" disabled={busy} onClick={() => { if (confirm('Saqlangan kalitlar oʻchirilsinmi?')) void save(s.fields.filter((f) => f.kind === 'secret').map((f) => f.key)) }}>Kalitni oʻchirish</button>
         )}

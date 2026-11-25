@@ -31,6 +31,8 @@ export type ServiceDef = {
   /** what to paste into the provider's cabinet (shown with the real domain, copyable) */
   callbacks?: { label: string; path: string }[]
   test?: boolean
+  /** a second button that registers this site's address at the provider (Telegram webhook) */
+  webhook?: boolean
 }
 
 const MODE = [{ value: 'mock', label: 'Sinov (pul yechilmaydi)' }, { value: 'live', label: 'Haqiqiy' }]
@@ -162,15 +164,16 @@ export const SERVICES: ServiceDef[] = [
   },
   {
     id: 'telegram', group: 'telegram', name: 'Telegram bot (adminga xabarlar)', logo: '/integrations/telegram.svg',
-    what: 'Har bir toʻlangan buyurtma haqida sizga Telegramda xabar keladi.',
+    what: 'Har bir toʻlangan buyurtma haqida sizga Telegramda xabar keladi. Shu bot mijozlar uchun ham ishlaydi: buyurtma holatini yozadi va «Kelganda xabar berish» ni bajaradi (domen ulangach «Webhook oʻrnatish» ni bosing).',
     where: { label: 't.me/BotFather', url: 'https://t.me/BotFather' },
-    steps: ['Telegramda @BotFather → /newbot → bot yarating, token oling', 'Botga oʻzingiz /start yozing', 'Oʻz Telegram ID’ingizni @userinfobot dan bilib oling', 'Token va ID’ni pastga qoʻying, «Tekshirish» ni bosing'],
+    steps: ['Telegramda @BotFather → /newbot → bot yarating, token oling', 'Botga oʻzingiz /start yozing', 'Oʻz Telegram ID’ingizni @userinfobot dan bilib oling', 'Token va ID’ni pastga qoʻying, «Tekshirish» ni bosing', 'Sayt domeniga ulangach «Webhook oʻrnatish» ni bosing — mijozlar botga yozsa, javob beradi'],
     fields: [
       { key: 'telegramToken', label: 'Bot token', kind: 'secret', env: 'TELEGRAM_BOT_TOKEN' },
       { key: 'telegramAdminIds', label: 'Admin Telegram ID’lari (vergul bilan)', placeholder: '123456789', env: 'TELEGRAM_ADMIN_IDS', pattern: /^\s*\d{4,15}(\s*,\s*\d{4,15})*\s*$/, patternError: 'Faqat raqamlar, vergul bilan' },
     ],
     required: ['telegramToken', 'telegramAdminIds'],
     test: true,
+    webhook: true,
   },
 ]
 

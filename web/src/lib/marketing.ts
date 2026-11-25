@@ -65,6 +65,14 @@ export const toCsv = (rows: Customer[]) =>
   '﻿' + ['Telefon,Ism,Buyurtmalar,Jami soʻm,Birinchi xarid,Oxirgi xarid,Guruhlar', ...rows.map((c) =>
     [c.phone, c.name, c.orders, c.spent, c.first.slice(0, 10), c.last.slice(0, 10), c.segments.map((s) => SEGMENTS[s].label).join(' / ')].map(csvCell).join(','))].join('\r\n')
 
+export type Waiting = { sku: string; name: string; volume: string; people: number; stock: number }
+/** what customers are waiting for (pressed "Kelganda xabar berish"): the clearest restock signal there is */
+export async function waitingDemand(run: Run): Promise<Waiting[]> {
+  const rows = await run(`SELECT w.sku, count(*) n, max(p.name) name, max(v.volume) volume, coalesce(max(v.stock), 0) stock FROM waitlist w
+    LEFT JOIN products_variants v ON v.sku = w.sku LEFT JOIN products p ON p.id = v._parent_id GROUP BY w.sku ORDER BY count(*) DESC LIMIT 100`)
+  return rows.map((r) => ({ sku: String(r.sku), name: String(r.name ?? r.sku), volume: String(r.volume ?? ''), people: Number(r.n), stock: Number(r.stock) }))
+}
+
 export type PromoRow = { code: string; orders: number; discount: number; revenue: number }
 export async function promoResults(run: Run, from: Date, to: Date): Promise<PromoRow[]> {
   const rows = await run(`SELECT discount_label l, count(*) n, sum(discount) d, sum(total) t FROM orders WHERE payment_status = 'paid' AND discount > 0

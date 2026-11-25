@@ -2,6 +2,7 @@ import * as migration_20261115_104003_initial from './20261115_104003_initial';
 import * as migration_20261124_233953_integrations from './20261124_233953_integrations';
 import * as migration_20261124_234805_analytics from './20261124_234805_analytics';
 import * as migration_20261125_000004_seo_fields from './20261125_000004_seo_fields';
+import * as migration_20261125_001753_telegram_bot from './20261125_001753_telegram_bot';
 
 export const migrations = [
   {
@@ -22,6 +23,11 @@ export const migrations = [
   {
     up: migration_20261125_000004_seo_fields.up,
     down: migration_20261125_000004_seo_fields.down,
-    name: '20261125_000004_seo_fields'
+    name: '20261125_000004_seo_fields',
+  },
+  {
+    up: migration_20261125_001753_telegram_bot.up,
+    down: migration_20261125_001753_telegram_bot.down,
+    name: '20261125_001753_telegram_bot'
   },
 ];

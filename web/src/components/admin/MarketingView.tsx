@@ -2,14 +2,14 @@ import Link from 'next/link'
 import type { AdminViewServerProps } from 'payload'
 
 import { rangeOf, runner, type Run } from '@/lib/analytics'
-import { abandonedOrders, customers, promoResults, SEGMENTS } from '@/lib/marketing'
+import { abandonedOrders, customers, promoResults, SEGMENTS, waitingDemand } from '@/lib/marketing'
 import { siteUrl } from '@/lib/site'
 import { AdminPage } from './AdminPage'
 import { CopyButton } from './CopyButton'
 import { int, ago, som } from './fmt'
 import { UtmBuilder } from './UtmBuilder'
 
-const TABS: [string, string][] = [['tashlab', 'Tashlab ketilgan buyurtmalar'], ['mijozlar', 'Mijozlar'], ['havola', 'Havola yasagich'], ['promokod', 'Promokodlar natijasi']]
+const TABS: [string, string][] = [['tashlab', 'Tashlab ketilgan buyurtmalar'], ['mijozlar', 'Mijozlar'], ['kutish', 'Kelishini kutayotganlar'], ['havola', 'Havola yasagich'], ['promokod', 'Promokodlar natijasi']]
 const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v)
 
 export function MarketingView(props: AdminViewServerProps) {
@@ -27,6 +27,7 @@ async function Data({ tab, seg }: { tab: string; seg?: string }) {
   const run = await runner()
   if (tab === 'mijozlar') return <Customers run={run} seg={seg && seg in SEGMENTS ? seg : ''} />
   if (tab === 'promokod') return <Promos run={run} />
+  if (tab === 'kutish') return <Waiting run={run} />
   return <Abandoned />
 }
 
@@ -115,6 +116,22 @@ async function Promos({ run }: { run: Run }) {
         </tbody>
       </table>
       <p className="yp-muted" style={{ padding: '0 18px 16px' }}>Oxirgi 30 kun. Promokodni qoʻshish yoki oʻchirish: <Link href="/admin/collections/promo-codes">Promokodlar</Link>.</p>
+    </div>
+  )
+}
+
+async function Waiting({ run }: { run: Run }) {
+  const rows = await waitingDemand(run)
+  return (
+    <div className="yp-card pad0">
+      <table className="yp-table">
+        <thead><tr><th>Mahsulot</th><th className="n">Kutayotganlar</th><th className="n">Hozir omborda</th></tr></thead>
+        <tbody>
+          {rows.map((w) => <tr key={w.sku}><td><b>{w.name}</b><div className="yp-muted">{w.volume} · {w.sku}</div></td><td className="n"><b>{int(w.people)}</b></td><td className="n">{w.stock > 0 ? int(w.stock) : <span className="yp-pill bad" style={{ marginLeft: 0 }}>tugagan</span>}</td></tr>)}
+          {!rows.length && <tr><td colSpan={3}><div className="yp-msg warn">Hozir hech kim kutmayapti. Mijoz tugagan mahsulotda «Kelganda xabar berish» ni bossa (Telegram bot ulangan boʻlsa), shu yerda koʻrinadi.</div></td></tr>}
+        </tbody>
+      </table>
+      <p className="yp-muted" style={{ padding: '0 18px 16px' }}>Eng koʻp kutilayotgan va omborda yoʻq tovarni birinchi buyurtma qiling: mijoz allaqachon xohlayapti. Tovar kelib, adminda qoldiq kiritilganda kutganlarga Telegramda xabar avtomatik ketadi.</p>
     </div>
   )
 }

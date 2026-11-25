@@ -86,6 +86,7 @@ export interface Config {
     'search-log': SearchLog;
     'login-codes': LoginCode;
     'analytics-events': AnalyticsEvent;
+    waitlist: Waitlist;
     users: User;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
@@ -113,6 +114,7 @@ export interface Config {
     'search-log': SearchLogSelect<false> | SearchLogSelect<true>;
     'login-codes': LoginCodesSelect<false> | LoginCodesSelect<true>;
     'analytics-events': AnalyticsEventsSelect<false> | AnalyticsEventsSelect<true>;
+    waitlist: WaitlistSelect<false> | WaitlistSelect<true>;
     users: UsersSelect<false> | UsersSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
@@ -175,6 +177,10 @@ export interface Order {
   name: string;
   phone: string;
   telegramUpdates?: boolean | null;
+  /**
+   * Mijoz botga ulangan (u oʻzi tugmani bosgan). «/stop» yozsa tozalanadi.
+   */
+  telegramChat?: string | null;
   delivery: 'tashkent' | 'region';
   city?: string | null;
   address: string;
@@ -867,6 +873,18 @@ export interface AnalyticsEvent {
   createdAt: string;
 }
 /**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "waitlist".
+ */
+export interface Waitlist {
+  id: number;
+  sku: string;
+  chat: string;
+  lang?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
  * Admin panelga kira oladigan odamlar. Yangi admin qoʻshish: «Create new». Parolni kuchli qiling.
  *
  * This interface was referenced by `Config`'s JSON-Schema
@@ -995,6 +1013,10 @@ export interface PayloadLockedDocument {
         value: number | AnalyticsEvent;
       } | null)
     | ({
+        relationTo: 'waitlist';
+        value: number | Waitlist;
+      } | null)
+    | ({
         relationTo: 'users';
         value: number | User;
       } | null);
@@ -1055,6 +1077,7 @@ export interface OrdersSelect<T extends boolean = true> {
   name?: T;
   phone?: T;
   telegramUpdates?: T;
+  telegramChat?: T;
   delivery?: T;
   city?: T;
   address?: T;
@@ -1493,6 +1516,17 @@ export interface AnalyticsEventsSelect<T extends boolean = true> {
   med?: T;
   cmp?: T;
   data?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "waitlist_select".
+ */
+export interface WaitlistSelect<T extends boolean = true> {
+  sku?: T;
+  chat?: T;
+  lang?: T;
   updatedAt?: T;
   createdAt?: T;
 }

@@ -41,7 +41,7 @@ export default async function OrderPage({ params, searchParams }: { params: Prom
   const provider = await providerOf(o.payment)
   const payHref = await payUrl(o)
   const canPay = payable(o)
-  const tgLink = `${store.telegramBotUrl}${store.telegramBotUrl.includes('?') ? '&' : '?'}start=order_${o.number}`
+  const tgLink = `${store.telegramBotUrl}${store.telegramBotUrl.includes('?') ? '&' : '?'}start=o_${o.number}_${o.token}`
 
   return (
     <div className="wrap" style={{ marginTop: '20px' }}>
