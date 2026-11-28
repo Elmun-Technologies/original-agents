@@ -110,7 +110,7 @@ export async function quoteCart(req: CartRequest, lang: Lang) {
 }
 
 export type OrderRequest = CartRequest & {
-  lang: Lang; name: string; phone: string; telegramUpdates?: boolean; city?: string; address: string; slot?: string; comment?: string
+  lang: Lang; name: string; phone: string; telegramUpdates?: boolean; marketingConsent?: boolean; city?: string; address: string; slot?: string; comment?: string
   payment: 'click' | 'payme' | 'card'; consent: boolean
   /** where the customer came from (first-party cookies, see readCookies in lib/analytics-ingest.ts) */
   attribution?: Pick<ReturnType<typeof readCookies>, 'visitor' | 'session' | 'src' | 'med' | 'cmp' | 'landing'>
@@ -124,6 +124,8 @@ const clean = (s: unknown, max = 300) => (typeof s === 'string' ? s.replace(/[\u
 
 /** Validates, prices on the server and stores the order (status new, payment pending). */
 export async function createOrder(req: OrderRequest): Promise<{ order: Order; quote: Quote }> {
+  // the owner can stop taking orders (admin → Sayt holati) while the site stays open
+  if (!(await (await import('@/lib/site-state')).siteState()).ordersEnabled) throw new OrderError('closed')
   const name = clean(req.name, 80)
   const phone = normalizePhone(clean(req.phone, 30))
   const address = clean(req.address, 300)
@@ -138,13 +140,19 @@ export async function createOrder(req: OrderRequest): Promise<{ order: Order; qu
   if (req.promo && quote.promoError) throw new OrderError(`promo_${quote.promoError}`)
   const p = await payload()
   const token = crypto.randomBytes(16).toString('hex')
+  // purchase price at the moment of sale (finance report); admin-only field, read straight from the table
+  const costs = new Map<string, number>()
+  try {
+    const pool = (p.db as unknown as { pool: { query: (s: string, v: unknown[]) => Promise<{ rows: { sku: string; cost: number | null }[] }> } }).pool
+    for (const r of (await pool.query('SELECT sku, cost FROM products_variants WHERE sku = ANY($1)', [quote.lines.map((l) => l.sku)])).rows) if (r.cost != null) costs.set(r.sku, Number(r.cost))
+  } catch { /* no cost column yet: the report falls back to today's cost */ }
   const draft = await p.create({
     collection: 'orders', overrideAccess: true,
     data: {
       number: `T${crypto.randomBytes(4).toString('hex')}`, token, lang: req.lang, status: 'new', paymentStatus: 'pending', payment: req.payment,
-      name, phone, telegramUpdates: req.telegramUpdates !== false, delivery: quote.delivery, city: clean(req.city, 80), address,
+      name, phone, telegramUpdates: req.telegramUpdates !== false, marketingConsent: req.marketingConsent === true, delivery: quote.delivery, city: clean(req.city, 80), address,
       slot: clean(req.slot, 20), comment: clean(req.comment, 500), gift: !!req.gift,
-      items: quote.lines.map((l) => ({ sku: l.sku, slug: l.slug, brand: l.brand, name: l.name, volume: l.volume, img: l.img, price: l.price, qty: l.qty })),
+      items: quote.lines.map((l) => ({ sku: l.sku, slug: l.slug, brand: l.brand, name: l.name, volume: l.volume, img: l.img, price: l.price, qty: l.qty, cost: costs.get(l.sku) })),
       src: req.attribution?.src ?? undefined, med: req.attribution?.med ?? undefined, cmp: req.attribution?.cmp ?? undefined,
       landing: req.attribution?.landing ?? undefined, visitor: req.attribution?.visitor ?? undefined, session: req.attribution?.session ?? undefined,
       subtotal: quote.subtotal, discount: quote.discount, discountLabel: quote.discountLabel, deliveryFee: quote.deliveryFee, giftFee: quote.giftFee, total: quote.total, pointsUsed: quote.pointsUsed,

@@ -3,13 +3,16 @@ import type { AdminViewServerProps } from 'payload'
 
 import { rangeOf, runner, type Run } from '@/lib/analytics'
 import { abandonedOrders, customers, promoResults, SEGMENTS, waitingDemand } from '@/lib/marketing'
+import { candidates, channelFor, loadSettings } from '@/lib/reminders'
+import { smsMock } from '@/lib/sms'
 import { siteUrl } from '@/lib/site'
 import { AdminPage } from './AdminPage'
 import { CopyButton } from './CopyButton'
 import { int, ago, som } from './fmt'
+import { RunRemindersButton } from './RunRemindersButton'
 import { UtmBuilder } from './UtmBuilder'
 
-const TABS: [string, string][] = [['tashlab', 'Tashlab ketilgan buyurtmalar'], ['mijozlar', 'Mijozlar'], ['kutish', 'Kelishini kutayotganlar'], ['havola', 'Havola yasagich'], ['promokod', 'Promokodlar natijasi']]
+const TABS: [string, string][] = [['tashlab', 'Tashlab ketilgan buyurtmalar'], ['eslatmalar', 'Avtomatik eslatmalar'], ['mijozlar', 'Mijozlar'], ['kutish', 'Kelishini kutayotganlar'], ['havola', 'Havola yasagich'], ['promokod', 'Promokodlar natijasi']]
 const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v)
 
 export function MarketingView(props: AdminViewServerProps) {
@@ -28,6 +31,7 @@ async function Data({ tab, seg }: { tab: string; seg?: string }) {
   if (tab === 'mijozlar') return <Customers run={run} seg={seg && seg in SEGMENTS ? seg : ''} />
   if (tab === 'promokod') return <Promos run={run} />
   if (tab === 'kutish') return <Waiting run={run} />
+  if (tab === 'eslatmalar') return <Reminders run={run} />
   return <Abandoned />
 }
 
@@ -133,5 +137,58 @@ async function Waiting({ run }: { run: Run }) {
       </table>
       <p className="yp-muted" style={{ padding: '0 18px 16px' }}>Eng koʻp kutilayotgan va omborda yoʻq tovarni birinchi buyurtma qiling: mijoz allaqachon xohlayapti. Tovar kelib, adminda qoldiq kiritilganda kutganlarga Telegramda xabar avtomatik ketadi.</p>
     </div>
+  )
+}
+
+const KIND: Record<string, string> = { abandoned: 'Toʻlanmagan buyurtma', lapsed: 'Qaytmagan mijoz' }
+const STATUS: Record<string, string> = { sent: 'Yuborildi', failed: 'Yuborilmadi', skipped: 'Oʻtkazildi' }
+
+async function Reminders({ run }: { run: Run }) {
+  const s = await loadSettings()
+  const smsReady = !(await smsMock())
+  const next = await candidates(run, s)
+  const log = await run(`SELECT kind, phone, order_number, channel, status, note, created_at FROM reminder_log ORDER BY created_at DESC LIMIT 50`)
+  const [week] = await run(`SELECT count(*) FILTER (WHERE status = 'sent') sent, count(*) FILTER (WHERE status = 'failed') failed,
+    count(*) FILTER (WHERE kind = 'abandoned' AND status = 'sent') ab FROM reminder_log WHERE created_at > now() - interval '7 days'`)
+  const [back] = await run(`SELECT count(DISTINCT o.id) n, coalesce(sum(o.total), 0) t FROM reminder_log r JOIN orders o ON o.number = r.order_number
+    WHERE r.kind = 'abandoned' AND r.status = 'sent' AND o.payment_status = 'paid' AND r.created_at > now() - interval '30 days'`)
+  const state = (on: boolean) => <span className={`yp-pill ${on ? 'on' : 'off'}`} style={{ marginLeft: 0 }}>{on ? 'Yoqilgan' : 'Oʻchiq'}</span>
+  return (
+    <>
+      <div className="yp-msg warn" style={{ marginBottom: 12 }}>Sayt oʻzi yozadi: toʻlanmay qolgan buyurtma egasiga bitta eslatma va uzoq vaqt xarid qilmagan, xabarga rozi boʻlgan mijozga bitta eslatma. Har 10 daqiqada tekshiriladi, faqat 10:00–20:00 da yuboriladi. Telegram — mijoz botga ulangan boʻlsa (bepul); SMS — Eskiz haqiqiy rejimda boʻlsa{smsReady ? '' : ' (hozir SMS sinov rejimida, shuning uchun SMS ketmaydi)'}. Eskiz SMS matnini oldindan tasdiqlaydi: sozlamalardagi matnni Eskiz kabinetida shablon sifatida tasdiqlating.</div>
+      <div className="yp-grid kpi" style={{ marginBottom: 16 }}>
+        <div className="yp-card yp-kpi"><span>Toʻlanmagan buyurtma eslatmasi</span><b>{state(s.abandonedOn)}</b><i className="yp-muted">{s.abandonedAfterMin} daqiqadan keyin</i></div>
+        <div className="yp-card yp-kpi"><span>Qaytmagan mijoz eslatmasi</span><b>{state(s.lapsedOn)}</b><i className="yp-muted">{s.lapsedDays} kundan keyin</i></div>
+        <div className="yp-card yp-kpi"><span>7 kunda yuborildi</span><b>{int(Number(week?.sent ?? 0))}</b><i className="yp-muted">{int(Number(week?.failed ?? 0))} ta yuborilmadi</i></div>
+        <div className="yp-card yp-kpi" title="Eslatma olgandan keyin toʻlangan buyurtmalar, 30 kun"><span>Eslatmadan keyin toʻlandi</span><b>{int(Number(back?.n ?? 0))}</b><i className="yp-muted">{som(Number(back?.t ?? 0))}</i></div>
+      </div>
+      <div className="yp-row" style={{ marginBottom: 16 }}>
+        <Link className="yp-btn ghost" href="/admin/globals/reminders">Sozlamalar va matnlar</Link>
+        <RunRemindersButton />
+      </div>
+      <h2 className="yp-h2">Navbatdagilar (hozir tekshirilsa yuboriladi)</h2>
+      <div className="yp-card pad0">
+        <table className="yp-table">
+          <thead><tr><th>Turi</th><th>Mijoz</th><th>Kanal</th><th>Matn</th></tr></thead>
+          <tbody>
+            {next.map((c) => {
+              const via = channelFor(c.kind === 'abandoned' ? s.abandonedChannel : s.lapsedChannel, c.chat, smsReady)
+              return <tr key={c.key}><td>{KIND[c.kind]}{c.orderNumber ? <div className="yp-muted">№ {c.orderNumber}</div> : null}</td><td>{c.name}<div className="yp-muted">+{c.phone}</div></td><td>{via === 'telegram' ? 'Telegram' : via === 'sms' ? 'SMS' : <span className="yp-muted">yoʻq (oʻtkaziladi)</span>}</td><td className="yp-muted" style={{ maxWidth: 420 }}>{c.text}</td></tr>
+            })}
+            {!next.length && <tr><td colSpan={4}><div className="yp-muted">{s.abandonedOn || s.lapsedOn ? 'Hozir hech kimga yuboriladigan eslatma yoʻq.' : 'Eslatmalar oʻchiq.'}</div></td></tr>}
+          </tbody>
+        </table>
+      </div>
+      <h2 className="yp-h2">Oxirgi 50 ta</h2>
+      <div className="yp-card pad0">
+        <table className="yp-table">
+          <thead><tr><th>Qachon</th><th>Turi</th><th>Telefon</th><th>Kanal</th><th>Natija</th></tr></thead>
+          <tbody>
+            {log.map((r, i) => <tr key={i}><td>{new Date(r.created_at).toLocaleString('ru-RU', { timeZone: 'Asia/Tashkent' })}</td><td>{KIND[r.kind] ?? r.kind}{r.order_number ? <div className="yp-muted">№ {r.order_number}</div> : null}</td><td>+{r.phone}</td><td>{r.channel === 'none' ? '—' : r.channel === 'sms' ? 'SMS' : 'Telegram'}</td><td>{STATUS[r.status] ?? r.status}{r.note ? <div className="yp-muted">{r.note}</div> : null}</td></tr>)}
+            {!log.length && <tr><td colSpan={5}><div className="yp-muted">Hali eslatma yuborilmagan.</div></td></tr>}
+          </tbody>
+        </table>
+      </div>
+    </>
   )
 }

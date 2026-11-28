@@ -3,6 +3,7 @@ import crypto from 'node:crypto'
 import { cookies } from 'next/headers'
 
 import { payload } from '@/lib/catalog'
+import { siteUrl } from '@/lib/site'
 import { sendSms, smsMock } from '@/lib/sms'
 
 // Customer session: httpOnly cookie "<phone>.<expires>.<hmac>" signed with PAYLOAD_SECRET. No password.
@@ -38,7 +39,11 @@ export async function signIn(phone: string) {
 export async function signOut() { (await cookies()).delete(COOKIE) }
 
 /** Sends a 4-digit code: one per minute and at most MAX_CODES_PER_DAY per phone. Mock mode returns the code instead of sending it. */
-export async function requestCode(phone: string): Promise<{ ok: true; mock?: string } | { ok: false; error: 'too_soon' | 'too_many' | 'sms_failed' }> {
+export async function requestCode(phone: string): Promise<{ ok: true; mock?: string } | { ok: false; error: 'too_soon' | 'too_many' | 'sms_failed' | 'sms_off' }> {
+  // Sinov SMS (the code shown on screen) lets anyone sign in as any phone: allowed only while the site is closed
+  // with a password, or on a developer's own computer (http, not https). On an open public site, sign-in waits for
+  // real SMS (Integratsiyalar → Eskiz → Haqiqiy SMS).
+  if ((await smsMock()) && siteUrl().startsWith('https://') && !(await (await import('@/lib/site-state')).siteState()).locked) return { ok: false, error: 'sms_off' }
   const p = await payload()
   const dayAgo = new Date(Date.now() - 86_400_000).toISOString()
   await p.delete({ collection: 'login-codes', where: { createdAt: { less_than: dayAgo } }, overrideAccess: true })

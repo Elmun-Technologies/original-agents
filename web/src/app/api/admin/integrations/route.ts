@@ -5,6 +5,7 @@ import { payload } from '@/lib/catalog'
 import { ALL_FIELDS, CHECKBOX_KEYS, SECRET_KEYS, SERVICES, statusOf } from '@/lib/integrations-def'
 import { ensureIndexNowKey, invalidateIntegrations, loadIntegrations } from '@/lib/integrations'
 import { mask } from '@/lib/secrets'
+import { isSiteClosed } from '@/lib/site-state'
 import { siteUrl } from '@/lib/site'
 
 // The "Integratsiyalar" screen reads and saves here. Admin only. A saved secret is never sent back:
@@ -26,7 +27,7 @@ export async function GET() {
   return NextResponse.json({
     siteUrl: siteUrl(), values: shown, sources: l.sources, unreadable: l.unreadable,
     status: Object.fromEntries(SERVICES.map((s) => [s.id, statusOf(s, l.values)])),
-    closed: process.env.SITE_NOINDEX === '1' || !!process.env.SITE_PASSWORD,
+    closed: await isSiteClosed(),
   })
 }
 

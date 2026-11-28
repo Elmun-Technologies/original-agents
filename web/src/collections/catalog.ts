@@ -1,5 +1,7 @@
 import type { CollectionConfig, GlobalConfig } from 'payload'
 
+import { costField } from './finance'
+
 // Shared option lists (keys are stable; labels uz/ru).
 export const SKIN = [
   { value: 'dry', label: { uz: 'Quruq', ru: 'Сухая' } },
@@ -103,6 +105,7 @@ export const Products: CollectionConfig = {
         { name: 'sku', type: 'text', required: true },
         { name: 'price', type: 'number', required: true, min: 0, admin: { description: 'soʻm' } },
         { name: 'stock', type: 'number', defaultValue: 0 },
+        costField('Bir donasi sizga necha soʻmga tushadi (xarid + kargo + bojxona). Faqat admin koʻradi; moliya hisobotida foyda shundan hisoblanadi.'),
       ],
     },
     {

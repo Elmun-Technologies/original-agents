@@ -29,6 +29,8 @@ import { MarketingView as MarketingView_de230318d9875b9873cd7df5cb6faaff } from 
 import { SeoView as SeoView_8d458d29cf3127296f41937b4a5b0fcf } from '../../../components/admin/SeoView'
 import { ReadinessView as ReadinessView_06b4ae2697c5d5bb4690d819972f9a62 } from '../../../components/admin/ReadinessView'
 import { IntegrationsView as IntegrationsView_cb34f93266309ea6114810034bf566c3 } from '../../../components/admin/IntegrationsView'
+import { SearchView as SearchView_933897f12ea61bc0c45a34fafc3fd98d } from '../../../components/admin/SearchView'
+import { FinanceView as FinanceView_ff4735c4b1abe86b88ca2d33cbf41f2d } from '../../../components/admin/FinanceView'
 import { CollectionCards as CollectionCards_f9c02e79a4aed9a3924487c0cd4cafb1 } from '@payloadcms/next/rsc'
 
 /** @type import('payload').ImportMap */
@@ -64,5 +66,7 @@ export const importMap = {
   "/components/admin/SeoView#SeoView": SeoView_8d458d29cf3127296f41937b4a5b0fcf,
   "/components/admin/ReadinessView#ReadinessView": ReadinessView_06b4ae2697c5d5bb4690d819972f9a62,
   "/components/admin/IntegrationsView#IntegrationsView": IntegrationsView_cb34f93266309ea6114810034bf566c3,
+  "/components/admin/SearchView#SearchView": SearchView_933897f12ea61bc0c45a34fafc3fd98d,
+  "/components/admin/FinanceView#FinanceView": FinanceView_ff4735c4b1abe86b88ca2d33cbf41f2d,
   "@payloadcms/next/rsc#CollectionCards": CollectionCards_f9c02e79a4aed9a3924487c0cd4cafb1
 }

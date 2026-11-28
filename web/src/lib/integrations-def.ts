@@ -77,19 +77,35 @@ export const SERVICES: ServiceDef[] = [
     id: 'gsc', group: 'search', name: 'Google Search Console', logo: '/integrations/google-search-console.svg',
     what: 'Google qidiruvida sayt qanday koʻrinayotganini va qaysi soʻrovlar olib kelayotganini koʻrasiz.',
     where: { label: 'search.google.com/search-console', url: 'https://search.google.com/search-console' },
-    steps: ['search.google.com/search-console → Add property → URL prefix', 'Tasdiqlash usuli: «HTML tag»', 'content="…" ichidagi uzun kodni pastga qoʻying (butun teg emas, faqat kod)', 'Saqlang, keyin Search Console’da «Verify» ni bosing', 'Sitemaps boʻlimiga pastdagi sitemap manzilini qoʻshing'],
-    fields: [{ key: 'googleVerification', label: 'Tasdiqlash kodi', placeholder: 'abcDEF123…', pattern: /^[A-Za-z0-9_-]{20,100}$/, patternError: 'Faqat content="…" ichidagi kod' }],
+    steps: ['search.google.com/search-console → Add property → URL prefix', 'Tasdiqlash usuli: «HTML tag»', 'content="…" ichidagi uzun kodni pastga qoʻying (butun teg emas, faqat kod)', 'Saqlang, keyin Search Console’da «Verify» ni bosing', 'Sitemaps boʻlimiga pastdagi sitemap manzilini qoʻshing',
+      'Statistikani admin ichida koʻrish uchun (ixtiyoriy): console.cloud.google.com → yangi loyiha → «Google Search Console API» ni yoqing (Enable)',
+      'IAM → Service accounts → Create → Keys → Add key → JSON. Yuklangan fayl ichidagi hamma matnni pastdagi «Xizmat akkaunti kaliti» ga qoʻying',
+      'Search Console → Settings → Users and permissions → Add user: xizmat akkauntining emaili (…@….iam.gserviceaccount.com), ruxsat «Restricted»',
+      'Saqlang va «Tekshirish» ni bosing. Natija: Admin → Qidiruv tizimlari'],
+    fields: [
+      { key: 'googleVerification', label: 'Tasdiqlash kodi', placeholder: 'abcDEF123…', pattern: /^[A-Za-z0-9_-]{20,100}$/, patternError: 'Faqat content="…" ichidagi kod' },
+      { key: 'gscServiceAccount', label: 'Xizmat akkaunti kaliti (JSON fayl matni) — statistika uchun, ixtiyoriy', kind: 'secret', placeholder: '{"type": "service_account", …}' },
+      { key: 'gscProperty', label: 'Search Console’dagi sayt (boʻsh = sayt manzili)', placeholder: 'sc-domain:yeppy.uz', pattern: /^(sc-domain:[a-z0-9.-]+|https?:\/\/[^\s<>"]+\/)$/, patternError: 'sc-domain:yeppy.uz yoki https://yeppy.uz/ koʻrinishida' },
+    ],
     required: ['googleVerification'],
     callbacks: [{ label: 'Sitemap manzili', path: '/sitemap.xml' }],
+    test: true,
   },
   {
     id: 'ywm', group: 'search', name: 'Yandex Vebmaster', logo: '/integrations/yandex-webmaster.svg',
     what: 'Yandex qidiruvi uchun: indekslash, xatolar va soʻrovlar.',
     where: { label: 'webmaster.yandex.ru', url: 'https://webmaster.yandex.ru' },
-    steps: ['webmaster.yandex.ru → «Добавить сайт»', 'Tasdiqlash: «Meta-тег»', 'content="…" ichidagi kodni pastga qoʻying', 'Saqlang, keyin Vebmaster’da «Проверить» ni bosing', 'Indexing → Sitemap boʻlimiga pastdagi manzilni qoʻshing'],
-    fields: [{ key: 'yandexVerification', label: 'Tasdiqlash kodi', placeholder: '1a2b3c4d5e6f7a8b', pattern: /^[A-Za-z0-9]{8,64}$/, patternError: 'Faqat content="…" ichidagi kod' }],
+    steps: ['webmaster.yandex.ru → «Добавить сайт»', 'Tasdiqlash: «Meta-тег»', 'content="…" ichidagi kodni pastga qoʻying', 'Saqlang, keyin Vebmaster’da «Проверить» ni bosing', 'Indexing → Sitemap boʻlimiga pastdagi manzilni qoʻshing',
+      'Statistikani admin ichida koʻrish uchun (ixtiyoriy): oauth.yandex.ru → «Создать приложение» → «Веб-сервисы», Redirect URI: https://oauth.yandex.ru/verification_code, huquq: «Яндекс.Вебмастер → webmaster:hostinfo»',
+      'Brauzerda oching: https://oauth.yandex.ru/authorize?response_type=token&client_id=<ilova ClientID> → «Разрешить» → chiqqan tokenni pastga qoʻying (1 yil amal qiladi)',
+      'Saqlang va «Tekshirish» ni bosing. Natija: Admin → Qidiruv tizimlari'],
+    fields: [
+      { key: 'yandexVerification', label: 'Tasdiqlash kodi', placeholder: '1a2b3c4d5e6f7a8b', pattern: /^[A-Za-z0-9]{8,64}$/, patternError: 'Faqat content="…" ichidagi kod' },
+      { key: 'yandexOAuth', label: 'OAuth token — statistika uchun, ixtiyoriy', kind: 'secret', placeholder: 'y0_…' },
+    ],
     required: ['yandexVerification'],
     callbacks: [{ label: 'Sitemap manzili', path: '/sitemap.xml' }],
+    test: true,
   },
   {
     id: 'bing', group: 'search', name: 'Bing Webmaster', logo: '/integrations/bing.svg',
@@ -212,6 +228,9 @@ export function validate(v: Values, changed?: string[]): string[] {
     if ((v.cardProvider ?? 'payme') === 'click' && !ready('click')) out.push('Uzcard/Humo Click orqali tanlangan, lekin Click kalitlari toʻliq emas.')
     if ((v.cardProvider ?? 'payme') !== 'click' && !ready('payme')) out.push('Uzcard/Humo Payme orqali tanlangan, lekin Payme kalitlari toʻliq emas.')
   }
+  if (touched('gscServiceAccount') && typeof v.gscServiceAccount === 'string' && v.gscServiceAccount.trim() && !serviceAccountOf(v.gscServiceAccount)) {
+    out.push('Xizmat akkaunti kaliti: Google’dan yuklangan JSON faylning toʻliq matnini qoʻying (ichida client_email va private_key boʻlishi kerak).')
+  }
   // SMS: only when the owner switches the mode itself (an untouched site defaults to "live", see the launch checklist)
   if (v.smsMode === 'live' && changed && changed.includes('smsMode') && !ready('eskiz')) out.push('Haqiqiy SMS: Eskiz email va parolini kiriting.')
   return out
@@ -243,4 +262,17 @@ export function sourcesOf(db: Values, env: Env): Record<string, 'admin' | 'env' 
     out[f.key] = own ? 'admin' : f.env && filled(env[f.env]) ? 'env' : 'none'
   }
   return out
+}
+
+/** the two things a Google service-account key file must have; null when the pasted text is not one */
+export function serviceAccountOf(text: unknown): { email: string; key: string } | null {
+  if (typeof text !== 'string') return null
+  try {
+    const j = JSON.parse(text.trim()) as { client_email?: unknown; private_key?: unknown }
+    if (typeof j.client_email !== 'string' || !/@.+\.iam\.gserviceaccount\.com$/.test(j.client_email)) return null
+    if (typeof j.private_key !== 'string' || !j.private_key.includes('PRIVATE KEY')) return null
+    return { email: j.client_email, key: j.private_key }
+  } catch {
+    return null
+  }
 }

@@ -13,6 +13,19 @@ Holat sanasi: 2026-11-25. Kod `master`'da (PR #1 qoʻshilgan). Egasi bajaradigan
 - Lekin `https://web-k0dffhjims7lucm6ytxly88v.2.29.137.243.sslip.io/uz` 2026-11-25 05:46 (Toshkent) da egasida Basic-auth soʻradi, yaʼni Yeppo konteynerlari serverda **ishlayapti** (yoki ishlagan). Taxmin (tekshirilmagan): Coolify bazasi qayta oʻrnatilgan/tozalangan, konteynerlar boshqaruvsiz (yetim) qolgan.
 - 2026-11-25 ~06:03 (Toshkent) egasi adashib **Poizon resursini** Redeploy qildi: commit `6e03401`, «Manual», 2 daq 1 s, «Finished». Poizon kodi (`app/`, root `Dockerfile`, root `docker-compose.yml`) men tomondan oʻzgartirilmagan, shuning uchun xatti-harakati oʻzgarmasligi kerak. Baribir tekshiring: u resursning Environment Variables’ida `BOT_HOLD=true` boʻlishi kerak (bot «pauzada» degani shu, konteyner oʻchirilgani emas).
 
+## 0a. 2026-11-28: qoʻshilganlar (branch `claude/admin-google-launch`)
+
+| Nima | Qayerda | Esda tuting |
+|---|---|---|
+| **Sayt holati** (ochiq / yopiq / server env) va **buyurtmani yoqish-oʻchirish** | `collections/site-state.ts`, `lib/site-state(-def).ts`, `app/api/site-state`, `proxy.ts` | Admin → Sozlamalar → Sayt holati. Proxy `/api/site-state` ni 10 s keshlaydi; parol hamon `SITE_PASSWORD` (Coolify). «Ochiq» compose’dagi `SITE_PASSWORD`/`SITE_NOINDEX` ni bekor qiladi — Coolify’ga tegmasdan Google’ga ochiladi. Oʻchiq buyurtma: `OrderError('closed')`, rasmiylashtirishda xabar |
+| **Sinov SMS himoyasi** | `lib/customer.ts` | Ochiq https saytda sinov SMS (kod ekranda) oʻchadi: `sms_off`. Lokal http’da ishlaydi |
+| **Qidiruv statistikasi** (Search Console xizmat akkaunti JWT, Yandex Vebmaster OAuth) | `lib/search-stats.ts`, `components/admin/SearchView.tsx` → `/admin/qidiruv` | Kalitlar Integratsiyalarda (`gscServiceAccount`, `gscProperty`, `yandexOAuth`), «Tekshirish» bor. Natija 1 soat xotirada |
+| **Avtomatik eslatmalar** | `collections/reminders.ts`, `lib/reminders.ts`, `instrumentation.ts`, Marketing → «Avtomatik eslatmalar» | Default oʻchiq; 10 daqiqada bir, 10:00–20:00; `reminder-log.key` unikal — ikki marta ketmaydi. «Qaytmagan mijoz» faqat checkout’dagi `marketingConsent` bilan. `REMINDERS=off` — oʻchiradi |
+| **Moliya hisoboti** | `collections/finance.ts` (Xarajatlar, Moliya sozlamalari, `costField`), `lib/finance.ts`, `/admin/moliya`, CSV `/api/admin/finance` | Tannarx variantda va buyurtma satrida (sotuv paytidagi). Public API’da koʻrinmaydi (field access); sayt kodi butun hujjatni brauzerga bermasin |
+| Skriptlar (`seed`, `e2e-reset`, `admin:create`) | `YEPPO_SCRIPT=1` | server-only hook’lar skriptda ishlamaydi (oldin seed yiqilardi) |
+
+Migratsiya: `20261128_170424_admin_launch_tools`. Tekshiruv: tsc toza, lint 0 xato, integratsiya 193/193, e2e 135/135.
+
 ### Birinchi vazifalar (ketma-ket)
 
 1. **Faqat oʻqish diagnostikasi** (Coolify → Servers → localhost → Terminal, yoki Hetzner Console, yoki `ssh root@2.29.137.243`). Hech narsa oʻzgartirilmaydi:

@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server'
 import { adminUser, denied } from '@/lib/admin-auth'
 import { testEskiz, testTelegram } from '@/lib/integration-tests'
 import { loadIntegrations } from '@/lib/integrations'
+import { testGoogle, testYandex } from '@/lib/search-stats'
 import { registerWebhook } from '@/lib/telegram'
 
 export const dynamic = 'force-dynamic'
@@ -14,5 +15,7 @@ export async function POST(req: Request) {
   if (service === 'telegram') return NextResponse.json(await testTelegram(values))
   if (service === 'telegram-webhook') return NextResponse.json(await registerWebhook())
   if (service === 'eskiz') return NextResponse.json(await testEskiz(values))
+  if (service === 'gsc') return NextResponse.json(await testGoogle(values))
+  if (service === 'ywm') return NextResponse.json(await testYandex(values))
   return NextResponse.json({ ok: false, message: 'Bu xizmat uchun tekshiruv yoʻq.' }, { status: 400 })
 }

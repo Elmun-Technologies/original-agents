@@ -2,7 +2,7 @@ import 'server-only'
 
 import { payload } from '@/lib/catalog'
 import { loadIntegrations } from '@/lib/integrations'
-import { closedSite } from '@/lib/seo'
+import { isSiteClosed } from '@/lib/site-state'
 import { siteUrl } from '@/lib/site'
 import { buildAudit } from './seo-audit'
 
@@ -40,7 +40,7 @@ export async function loadAudit() {
     articles: arts.docs.map((a) => ({ id: a.id, title: a.title, hasExcerpt: !!a.excerpt?.trim(), hasCover: !!a.cover, hasRuTitle: !!ruArt.get(a.id)?.title?.trim() })),
     brands: brands.docs.map((b) => ({ id: b.id, name: b.name, hasAbout: !!b.about?.trim() })),
     site: {
-      closed: closedSite(), https: site.startsWith('https://'), ownDomain: site.startsWith('https://') && !/localhost|sslip\.io|traefik\.me|nip\.io/.test(site),
+      closed: await isSiteClosed(), https: site.startsWith('https://'), ownDomain: site.startsWith('https://') && !/localhost|sslip\.io|traefik\.me|nip\.io/.test(site),
       google: !!v.googleVerification, yandex: !!v.yandexVerification, analytics: !!(v.ga4Id || v.metricaId), indexNow: v.indexNowOn === true && !!v.indexNowKey,
     },
   })

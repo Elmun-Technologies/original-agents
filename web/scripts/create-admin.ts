@@ -5,6 +5,8 @@ import { getPayload } from 'payload'
 
 import config from '../src/payload.config'
 
+process.env.YEPPO_SCRIPT = '1' // the site's server-only hooks stay quiet (payload.config.ts)
+
 const email = process.env.ADMIN_EMAIL?.trim().toLowerCase()
 const password = process.env.ADMIN_PASSWORD
 if (!email || !password || password.length < 10) {

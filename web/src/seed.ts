@@ -11,6 +11,8 @@ import { getPayload } from 'payload'
 
 import config from './payload.config'
 
+process.env.YEPPO_SCRIPT = '1' // the site's server-only hooks stay quiet (payload.config.ts)
+
 // Sample data: the design package (design/yeppo-handoff, not in git) when it is on disk, otherwise the copy in
 // src/seed-data so a fresh clone can seed and run the e2e tests.
 const DESIGN = path.resolve(process.cwd(), '..', 'design', 'yeppo-handoff', 'data')
