@@ -1,3 +1,4 @@
+import * as migration_20261129_010000_soft_hero from './20261129_010000_soft_hero';
 import * as migration_20261129_000000_new_faces from './20261129_000000_new_faces';
 import * as migration_20261115_104003_initial from './20261115_104003_initial';
 import * as migration_20261124_233953_integrations from './20261124_233953_integrations';
@@ -41,5 +42,10 @@ export const migrations = [
     up: migration_20261129_000000_new_faces.up,
     down: migration_20261129_000000_new_faces.down,
     name: '20261129_000000_new_faces'
+  },
+  {
+    up: migration_20261129_010000_soft_hero.up,
+    down: migration_20261129_010000_soft_hero.down,
+    name: '20261129_010000_soft_hero'
   },
 ];
