@@ -201,7 +201,7 @@ export function ProductInfo({ lang, info, summary, expertNote, certificateUrl, b
       )}
       {expertNote && (
         <aside className="card pad-m" style={{ flex: '1 1 360px', padding: '28px', background: '#2A211E', color: '#FBFAF7', display: 'flex', flexDirection: 'column', gap: '14px' }}>
-          <span style={{ display: 'flex', gap: '10px', alignItems: 'center' }}><span style={{ width: '40px', height: '40px', borderRadius: '50%', overflow: 'hidden' }}><img className="ph" src="/img/face-touch.jpg" alt="" style={{ objectPosition: '50% 25%' }} /></span><b style={{ fontWeight: 600 }}>{tr('Maslahatchi aytadi')}</b></span>
+          <span style={{ display: 'flex', gap: '10px', alignItems: 'center' }}><span style={{ width: '40px', height: '40px', borderRadius: '50%', overflow: 'hidden' }}><img className="ph" src="/img/face-product.jpg" alt="" style={{ objectPosition: '50% 25%' }} /></span><b style={{ fontWeight: 600 }}>{tr('Maslahatchi aytadi')}</b></span>
           <p style={{ margin: 0, fontSize: '16px', lineHeight: 1.6, color: '#E9E1DC' }}>«{expertNote}»</p>
           <Link href={href(lang, '/maslahatchi')} className="pill" style={{ borderColor: 'rgba(251,250,247,.3)', color: '#FBFAF7', alignSelf: 'flex-start', marginTop: 'auto' }}>{tr('Savolim bor')}</Link>
         </aside>

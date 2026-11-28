@@ -77,7 +77,7 @@ export function ConsultantPage({ lang, products, brands, telegram, hours, signed
       <section className="card no-phone-hdr" data-g="ai" style={{ flex: '999 1 760px', minWidth: 0, display: 'flex', flexDirection: 'column', minHeight: '760px' }} aria-label={tr('Maslahatchi bilan suhbat')}>
         <div style={{ display: 'flex', gap: '12px', alignItems: 'center', padding: '18px 24px', borderBottom: '1px solid #EFE9E3' }}>
           <button className="ib phone-only" aria-label={tr('Orqaga')} onClick={() => (history.length > 1 ? history.back() : location.assign(href(lang, '/')))}>‹</button>
-          <span style={{ width: '44px', height: '44px', borderRadius: '50%', overflow: 'hidden' }}><img className="ph" src="/img/face-white.jpg" alt="" style={{ objectPosition: '50% 25%' }} /></span>
+          <span style={{ width: '44px', height: '44px', borderRadius: '50%', overflow: 'hidden' }}><img className="ph" src="/img/face-consult.jpg" alt="" style={{ objectPosition: '50% 25%' }} /></span>
           <span style={{ flex: 1 }}><h1 style={{ fontWeight: 600, fontSize: 'inherit', margin: 0, display: 'inline' }}>{tr('Yeppo maslahatchisi')}</h1><br /><span className="muted" style={{ fontSize: '13px' }}>{tr('Avtomatik tanlovchi · tibbiy tashxis qoʻymaydi')}</span></span>
           <button className="pill ghost" style={{ minHeight: '40px' }} onClick={restart} aria-label={tr('Boshidan')}>↺<span className="hide-m">{tr('Boshidan')}</span></button>
         </div>

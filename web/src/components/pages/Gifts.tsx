@@ -77,7 +77,7 @@ export function GiftsPage({ lang, products, certSkus }: { lang: Lang; products: 
       <section style={{ marginTop: '32px' }} aria-labelledby="oc-h">
         <h2 id="oc-h" className="h h2" style={{ fontSize: '30px', marginBottom: '16px' }}>{tr('Bayramlar uchun')}</h2>
         <div data-g="3" style={{ display: 'grid', gap: '12px' }}>
-          {([['8-mart', 'Onaga, opa-singilga, hamkasbga', 'face-flower', 0], ['Tugʻilgan kun', 'Dugonaga tayyor toʻplamlar', 'pink-3', 1], ['Yangi yil', 'Qishki parvarish qutilari', 'flatlay', 0]] as const).map(([h, d, img, w]) => (
+          {([['8-mart', 'Onaga, opa-singilga, hamkasbga', 'face-gifts', 0], ['Tugʻilgan kun', 'Dugonaga tayyor toʻplamlar', 'pink-3', 1], ['Yangi yil', 'Qishki parvarish qutilari', 'flatlay', 0]] as const).map(([h, d, img, w]) => (
             <a key={h} href="#gf-h" onClick={() => setWho(w)} className="card zoom" style={{ textDecoration: 'none', overflow: 'hidden' }}>
               <span style={{ display: 'block', aspectRatio: '16/10', overflow: 'hidden' }}><img loading="lazy" decoding="async" className="ph" src={`/img/${img}.jpg`} alt="" style={{ objectPosition: '50% 25%' }} /></span>
               <span style={{ display: 'block', padding: '18px' }}><b style={{ fontWeight: 600, fontSize: '17px' }}>{tr(h)}</b><br /><span className="muted" style={{ fontSize: '14px' }}>{tr(d)}</span></span>

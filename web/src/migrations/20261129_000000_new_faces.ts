@@ -4,7 +4,7 @@ import { MigrateUpArgs, MigrateDownArgs } from '@payloadcms/db-postgres'
 
 // New, warmer people photos (Unsplash License). The files in public/img are already replaced;
 // this swaps the copies the shop keeps in the media library, so banners and galleries change too.
-const FILES = ['hero-dewy.jpg', 'face-serum.jpg', 'face-flower.jpg', 'face-white.jpg', 'face-touch.jpg', 'face-glow.jpg', 'face-leaf.jpg', 'face-peach.jpg']
+const FILES = ['hero-dewy.jpg', 'face-serum.jpg', 'face-white.jpg', 'face-touch.jpg', 'face-glow.jpg', 'face-peach.jpg']
 
 export async function up({ payload, req }: MigrateUpArgs): Promise<void> {
   const dir = path.resolve(process.cwd(), 'public', 'img')
