@@ -26,7 +26,7 @@ export function LoyaltyPage({ lang, d }: { lang: Lang; d: LoyaltyData }) {
           {on && <Link href={L(d.me ? '/kabinet' : '/kirish')} className="pill" style={{ alignSelf: 'flex-start', background: '#F2D6D0', borderColor: '#F2D6D0', color: '#2A211E' }}>{d.me ? tn(lang, 'Sizda [N] ball', fmt(d.me.balance)) : tr('Qoʻshilish')}</Link>}
           {on && d.me?.expiresAt && <span style={{ fontSize: '14px', color: '#E9E1DC' }}>{tn(lang, 'Ballar [N] gacha amal qiladi', new Date(d.me.expiresAt).toLocaleDateString(lang === 'ru' ? 'ru-RU' : 'uz-UZ', { timeZone: 'Asia/Tashkent' }))}</span>}
         </div>
-        <div style={{ flex: '1 1 420px', minHeight: '340px', position: 'relative' }}><img className="ph" src="/img/face-white.jpg" alt="" style={{ position: 'absolute', inset: 0, objectPosition: '50% 25%' }} /></div>
+        <div style={{ flex: '1 1 420px', minHeight: '340px', position: 'relative' }}><img className="ph" src="/img/face-loyalty.jpg" alt="" style={{ position: 'absolute', inset: 0, objectPosition: '50% 25%' }} /></div>
       </section>
 
       {on && (

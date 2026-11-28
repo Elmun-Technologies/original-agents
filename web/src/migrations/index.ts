@@ -1,3 +1,4 @@
+import * as migration_20261129_000000_new_faces from './20261129_000000_new_faces';
 import * as migration_20261115_104003_initial from './20261115_104003_initial';
 import * as migration_20261124_233953_integrations from './20261124_233953_integrations';
 import * as migration_20261124_234805_analytics from './20261124_234805_analytics';
@@ -35,5 +36,10 @@ export const migrations = [
     up: migration_20261128_170424_admin_launch_tools.up,
     down: migration_20261128_170424_admin_launch_tools.down,
     name: '20261128_170424_admin_launch_tools'
+  },
+  {
+    up: migration_20261129_000000_new_faces.up,
+    down: migration_20261129_000000_new_faces.down,
+    name: '20261129_000000_new_faces'
   },
 ];

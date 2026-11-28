@@ -156,7 +156,7 @@ function MegaMenu({ lang, cats }: { lang: Lang; cats: CatCounts }) {
           </div>
         ))}
         <Link href={href(lang, '/maslahatchi')} className="card zoom" style={{ textDecoration: 'none', minHeight: '280px', display: 'flex', alignItems: 'flex-end', color: '#FBFAF7' }}>
-          <img className="ph" src="/img/face-flower.jpg" alt="" style={{ position: 'absolute', inset: 0, objectPosition: '50% 25%' }} />
+          <img className="ph" src="/img/face-menu.jpg" alt="" style={{ position: 'absolute', inset: 0, objectPosition: '50% 25%' }} />
           <span style={{ position: 'absolute', inset: 0, background: 'linear-gradient(transparent 35%, rgba(42,33,30,.75))' }} />
           <span style={{ position: 'relative', padding: '20px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
             <b className="h" style={{ fontSize: '22px', lineHeight: 1.15 }}>{tr('Nima kerakligini bilmayapsizmi?')}</b>

@@ -77,7 +77,7 @@ export default async function Catalog({ params, searchParams }: Props) {
               {shown.slice(0, 3).map((p) => <ProductCard key={p.slug} p={p} lang={lang} />)}
               {shown.length > 3 && (
                 <Link href={L('/maslahatchi')} className="card zoom" style={{ gridColumn: 'span 2', minHeight: '380px', textDecoration: 'none', background: '#2A211E', color: '#FBFAF7', borderRadius: '20px' }}>
-                  <img loading="lazy" decoding="async" src="/img/face-white.jpg" alt="" style={{ position: 'absolute', right: 0, top: 0, width: '50%', height: '100%', objectFit: 'cover', objectPosition: '50% 30%' }} />
+                  <img loading="lazy" decoding="async" src="/img/face-cat.jpg" alt="" style={{ position: 'absolute', right: 0, top: 0, width: '50%', height: '100%', objectFit: 'cover', objectPosition: '50% 30%' }} />
                   <span style={{ position: 'relative', width: '54%', height: '100%', padding: '28px', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '16px', minHeight: '380px' }}>
                     <span style={{ display: 'inline-flex', gap: '6px', alignItems: 'center', color: '#F2D6D0', fontSize: '13px' }}><Icon name="spark" size={15} /> {tr('AI maslahatchi')}</span>
                     <span className="h" style={{ fontSize: '30px', lineHeight: 1.1 }}>{tr('Serumlar koʻp, teringiz bitta. Qaysi biri sizniki — 1 daqiqada aytib beraman.')}</span>
