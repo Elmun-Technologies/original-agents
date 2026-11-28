@@ -5,7 +5,6 @@ import type { Metadata } from 'next'
 import { t, type Lang } from '@/lib/i18n'
 
 export const SITE_NAME = 'Yeppo'
-export const closedSite = () => process.env.SITE_NOINDEX === '1' || !!process.env.SITE_PASSWORD
 export const DEFAULT_IMAGE = '/img/hero-dewy.jpg'
 
 const clip = (s: string | null | undefined, n = 160) => {
@@ -31,7 +30,8 @@ export function meta(lang: Lang, path: string, o: {
     alternates: { canonical: `/${lang}${p}`, languages: { uz: `/uz${p}`, ru: `/ru${p}`, 'x-default': `/uz${p}` } },
     openGraph: { title, description, url: `/${lang}${p}`, siteName: SITE_NAME, locale: lang === 'ru' ? 'ru_RU' : 'uz_UZ', alternateLocale: lang === 'ru' ? 'uz_UZ' : 'ru_RU', type: o.type ?? 'website', images },
     twitter: { card: 'summary_large_image', title, description, images: images.map((i) => i.url) },
-    // closed test site (SITE_PASSWORD / SITE_NOINDEX): nothing is indexed; key left out otherwise (no override)
-    ...(closedSite() ? { robots: { index: false, follow: false } } : o.noindex ? { robots: { index: false, follow: o.follow ?? false } } : {}),
+    // personal / transactional pages. The closed test site is handled once, in the [lang] layout (lib/site-state):
+    // pages that set no robots of their own inherit its noindex.
+    ...(o.noindex ? { robots: { index: false, follow: o.follow ?? false } } : {}),
   }
 }

@@ -12,6 +12,7 @@ import { categoryCounts, getStore } from '@/lib/catalog'
 import { isLang, t } from '@/lib/i18n'
 import { integrations } from '@/lib/integrations'
 import { siteUrl } from '@/lib/site'
+import { isSiteClosed } from '@/lib/site-state'
 
 // Pages are rendered on first request (no DB during the Docker build) and refreshed every minute,
 // so admin price/stock changes show up without a rebuild.
@@ -31,7 +32,8 @@ export async function generateMetadata({ params }: { params: Promise<{ lang: str
     title: t(lang, 'Yeppo — koreys kosmetikasi internet doʻkoni'),
     applicationName: 'Yeppo',
     formatDetection: { telephone: false },
-    ...(process.env.SITE_NOINDEX === '1' || process.env.SITE_PASSWORD ? { robots: { index: false, follow: false } } : {}),
+    // closed test site (admin → Sayt holati): nothing is indexed. Pages without their own robots inherit this.
+    ...((await isSiteClosed()) ? { robots: { index: false, follow: false } } : {}),
   }
 }
 

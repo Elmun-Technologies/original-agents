@@ -36,7 +36,7 @@ export function buildAudit(d: { products: Product[]; articles: Article[]; catego
   const s = d.site
   const site = (id: string, severity: Finding['severity'], bad: boolean, title: string, why: string, fix: string, link: string) =>
     out.push({ id, severity, title, why, fix, items: bad ? [{ label: 'Hozir: tayyor emas', href: link }] : [], total: 1, site: true, link })
-  site('closed', 'high', s.closed, 'Sayt qidiruv tizimlariga yopiq', 'Hozir sayt parol bilan yopiq yoki «noindex» qilingan: Google va Yandex uni umuman koʻrmaydi. Test uchun toʻgʻri, lekin sotuv boshlanganda ochish shart.', 'Coolify’da SITE_PASSWORD va SITE_NOINDEX ni oʻchirib, qayta ishga tushiring.', '/admin/tayyorlik')
+  site('closed', 'high', s.closed, 'Sayt qidiruv tizimlariga yopiq', 'Hozir sayt parol bilan yopiq yoki «noindex» qilingan: Google va Yandex uni umuman koʻrmaydi. Test uchun toʻgʻri, lekin sotuv boshlanganda ochish shart.', 'Admin → Sozlamalar → Sayt holati → «Ochiq».', '/admin/globals/site-state')
   site('https', 'high', !s.https, 'Sayt https emas', 'Google https’siz saytni past baholaydi, brauzer «xavfsiz emas» deydi.', 'Domenni ulang (Coolify avtomatik sertifikat beradi).', '/admin/tayyorlik')
   site('domain', 'mid', !s.ownDomain, 'Oʻz domeni ulanmagan', 'Vaqtinchalik manzil (sslip.io) bilan Google’da brend yigʻib boʻlmaydi.', 'yeppo.uz kabi domen oling va Coolify’da ulang.', '/admin/tayyorlik')
   site('google', 'mid', !s.google, 'Google Search Console ulanmagan', 'Google qaysi soʻrovlar saytga olib kelayotganini va xatolarni faqat shu orqali koʻrsatadi.', 'Integratsiyalar → Google Search Console.', '/admin/integratsiyalar#gsc')

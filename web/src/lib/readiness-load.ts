@@ -4,7 +4,7 @@ import { loadIntegrations } from '@/lib/integrations'
 import { SERVICES, statusOf } from '@/lib/integrations-def'
 import { payload } from '@/lib/catalog'
 import { hasText } from '@/lib/seo-audit-load'
-import { closedSite } from '@/lib/seo'
+import { isSiteClosed } from '@/lib/site-state'
 import { siteUrl } from '@/lib/site'
 import { buildChecklist } from './readiness'
 
@@ -24,7 +24,7 @@ export async function loadChecklist() {
   const real = prods.docs.filter((x) => !x.sample)
   const body = (slug: string) => hasText(legal.docs.find((d) => d.slug === slug)?.body)
   return buildChecklist({
-    closed: closedSite(), https: site.startsWith('https://'), ownDomain: site.startsWith('https://') && !/localhost|sslip\.io|traefik\.me|nip\.io/.test(site),
+    closed: await isSiteClosed(), https: site.startsWith('https://'), ownDomain: site.startsWith('https://') && !/localhost|sslip\.io|traefik\.me|nip\.io/.test(site),
     paymentsLive: v.paymentsMode === 'live', clickReady: ready('click'), paymeReady: ready('payme'), cardProvider: v.cardProvider === 'click' ? 'click' : 'payme',
     smsLive: v.smsMode === 'live', eskizReady: ready('eskiz'), telegramReady: ready('telegram'), secretsUnreadable: ig.unreadable.length,
     google: !!v.googleVerification, yandex: !!v.yandexVerification, ga4: !!v.ga4Id, metrica: !!v.metricaId, meta: !!v.metaPixelId, indexNow: v.indexNowOn === true,

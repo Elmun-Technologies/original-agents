@@ -1,6 +1,6 @@
 import 'server-only'
 
-import { closedSite } from '@/lib/seo'
+import { isSiteClosed } from '@/lib/site-state'
 import { integrations } from '@/lib/integrations'
 import { siteUrl } from '@/lib/site'
 
@@ -20,7 +20,7 @@ export async function submitIndexNow(paths: string[], fetchFn: typeof fetch = fe
   const site = siteUrl()
   if (v.indexNowOn !== true) return { sent: false, reason: 'off' }
   if (!v.indexNowKey || !/^[a-f0-9]{16,64}$/.test(String(v.indexNowKey))) return { sent: false, reason: 'no key' }
-  if (closedSite() || !site.startsWith('https://') || /localhost|127\.0\.0\.1/.test(site)) return { sent: false, reason: 'site not public' }
+  if ((await isSiteClosed()) || !site.startsWith('https://') || /localhost|127\.0\.0\.1/.test(site)) return { sent: false, reason: 'site not public' }
   const key = String(v.indexNowKey)
   try {
     const r = await fetchFn('https://api.indexnow.org/indexnow', {

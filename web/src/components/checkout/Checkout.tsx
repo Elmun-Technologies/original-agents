@@ -31,7 +31,7 @@ function maskPhone(raw: string) {
 
 const ERR: Record<string, string> = {
   name: 'Ismingizni yozing', phone: 'Telefon raqamini toʻliq yozing', address: 'Manzilni yozing', empty: 'Savat boʻsh',
-  missing: 'Baʼzi mahsulotlar tugadi — savatni tekshiring', network: 'Internet bilan bogʻlanib boʻlmadi. Qayta urinib koʻring.',
+  missing: 'Baʼzi mahsulotlar tugadi — savatni tekshiring', closed: 'Buyurtma qabul qilish vaqtincha toʻxtatilgan. Tez orada qayta ochamiz.', network: 'Internet bilan bogʻlanib boʻlmadi. Qayta urinib koʻring.',
 }
 
 export function CheckoutView({ lang, store }: { lang: Lang; store: CheckoutStore }) {
@@ -42,6 +42,7 @@ export function CheckoutView({ lang, store }: { lang: Lang; store: CheckoutStore
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
   const [tg, setTg] = useState(true)
+  const [news, setNews] = useState(false) // marketing messages: opt-in, never pre-ticked
   const [delivery, setDelivery] = useState<'tashkent' | 'region'>('tashkent')
   const [city, setCity] = useState(TASHKENT[0])
   const [address, setAddress] = useState('')
@@ -74,7 +75,7 @@ export function CheckoutView({ lang, store }: { lang: Lang; store: CheckoutStore
       const r = await fetch('/api/shop/orders', {
         method: 'POST', headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
-          lang, lines: shop.lines.map((l) => ({ sku: l.sku, qty: l.qty })), promo: shop.promo || undefined, name, phone, telegramUpdates: tg,
+          lang, lines: shop.lines.map((l) => ({ sku: l.sku, qty: l.qty })), promo: shop.promo || undefined, name, phone, telegramUpdates: tg, marketingConsent: news,
           delivery, city: delivery === 'tashkent' ? `Toshkent, ${city}` : city, address, slot: delivery === 'tashkent' ? SLOTS[slot] : undefined,
           comment, payment: pay, gift, usePoints, consent: true, // the button text states the offer is accepted (design)
         }),
@@ -103,6 +104,7 @@ export function CheckoutView({ lang, store }: { lang: Lang; store: CheckoutStore
     name: <label className="lbl">{tr('Ismingiz')}<input className="inp" autoComplete="name" placeholder={tr('Masalan, Malika')} value={name} onChange={(e) => setName(e.target.value)} aria-invalid={!!errors.name} />{err('name')}</label>,
     phone: <label className="lbl">{tr('Telefon raqam')}<input className="inp" type="tel" autoComplete="tel" inputMode="tel" placeholder="+998 __ ___ __ __" value={phone} onFocus={() => !phone && setPhone('+998 ')} onChange={(e) => setPhone(maskPhone(e.target.value))} aria-invalid={!!errors.phone} />{err('phone')}</label>,
     tg: <label style={{ display: 'flex', gap: '10px', alignItems: 'center', fontSize: '14px', cursor: 'pointer' }}><input type="checkbox" checked={tg} onChange={() => setTg(!tg)} style={{ width: '18px', height: '18px', accentColor: '#2A211E', margin: 0 }} />{tr('Buyurtma holatini Telegram orqali yuboring')}</label>,
+    news: <label style={{ display: 'flex', gap: '10px', alignItems: 'center', fontSize: '14px', cursor: 'pointer' }}><input type="checkbox" checked={news} onChange={() => setNews(!news)} style={{ width: '18px', height: '18px', accentColor: '#2A211E', margin: 0 }} />{tr('Aksiyalar va eslatmalar haqida xabar olishni xohlayman')}</label>,
     city: <label className="lbl">{tr('Shahar / tuman')}<select className="inp" value={city} onChange={(e) => setCity(e.target.value)}>{(delivery === 'tashkent' ? TASHKENT.map((d) => [d, `Toshkent, ${d}`]) : REGIONS.map((r) => [r, r])).map(([v, l]) => <option key={v} value={v}>{tr(l)}</option>)}</select></label>,
     address: <label className="lbl">{tr('Manzil')}<input className="inp" autoComplete="street-address" placeholder={tr('Koʻcha, uy, xonadon, moʻljal')} value={address} onChange={(e) => setAddress(e.target.value)} aria-invalid={!!errors.address} />{err('address')}</label>,
     comment: <label className="lbl">{tr('Kuryerga izoh (ixtiyoriy)')}<input className="inp" placeholder={tr('Masalan: domofon ishlamaydi, qoʻngʻiroq qiling')} value={comment} onChange={(e) => setComment(e.target.value)} /></label>,
@@ -162,7 +164,7 @@ export function CheckoutView({ lang, store }: { lang: Lang; store: CheckoutStore
   )
 
   const phoneSteps = [
-    <div key="c" style={{ padding: '18px', borderRadius: '22px', background: '#FBFAF7', display: 'flex', flexDirection: 'column', gap: '12px' }}><b className="h" style={{ fontSize: '20px' }}>{tr('Siz bilan qanday bogʻlanamiz?')}</b>{fields.name}{fields.phone}{fields.tg}</div>,
+    <div key="c" style={{ padding: '18px', borderRadius: '22px', background: '#FBFAF7', display: 'flex', flexDirection: 'column', gap: '12px' }}><b className="h" style={{ fontSize: '20px' }}>{tr('Siz bilan qanday bogʻlanamiz?')}</b>{fields.name}{fields.phone}{fields.tg}{fields.news}</div>,
     <div key="a" style={{ padding: '18px', borderRadius: '22px', background: '#FBFAF7', display: 'flex', flexDirection: 'column', gap: '12px' }}><b className="h" style={{ fontSize: '20px' }}>{tr('Qayerga va qachon?')}</b>
       {deliveryRadios}{fields.city}{fields.address}
       {delivery === 'tashkent' && <><span className="lbl">{tr('Ertaga, qulay vaqt')}</span>
@@ -223,6 +225,7 @@ export function CheckoutView({ lang, store }: { lang: Lang; store: CheckoutStore
               <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>{num(1)}<h2 className="h" style={{ fontSize: '24px' }}>{tr('Siz bilan qanday bogʻlanamiz?')}</h2></div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px' }}>{fields.name}{fields.phone}</div>
               {fields.tg}
+              {fields.news}
             </section>
             <section className="card pad-m" style={{ padding: '26px', display: 'flex', flexDirection: 'column', gap: '16px' }} aria-label={tr('Yetkazish')}>
               <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>{num(2)}<h2 className="h" style={{ fontSize: '24px' }}>{tr('Qayerga va qachon olib boraylik?')}</h2></div>

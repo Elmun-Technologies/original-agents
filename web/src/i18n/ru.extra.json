@@ -464,5 +464,8 @@
  "«[N]» darajasigacha": "До уровня «[N]»",
  "— shunga mos [N] ta mahsulot topdim": "— нашёл {n1, plural, one {# подходящий товар} few {# подходящих товара} many {# подходящих товаров} other {# подходящего товара}}",
  "[N] oy xarid qilmasangiz — ha. Muddat kabinetingizda koʻrinadi.": "Да, если не делать покупок {n1, plural, one {# месяц} few {# месяца} many {# месяцев} other {# месяца}}. Срок действия виден в вашем кабинете.",
- "Ballar [N] gacha amal qiladi": "Баллы действуют до [N]"
+ "Ballar [N] gacha amal qiladi": "Баллы действуют до [N]",
+ "Buyurtma qabul qilish vaqtincha toʻxtatilgan. Tez orada qayta ochamiz.": "Приём заказов временно приостановлен. Скоро откроемся снова.",
+ "Kabinetga kirish tez orada ishga tushadi. Buyurtma berish uchun kirish shart emas.": "Вход в кабинет скоро заработает. Для заказа входить не нужно.",
+ "Aksiyalar va eslatmalar haqida xabar olishni xohlayman": "Хочу получать сообщения об акциях и напоминания"
 }

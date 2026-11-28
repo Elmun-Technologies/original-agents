@@ -2,7 +2,7 @@ import Script from 'next/script'
 
 import { ALL_FIELDS } from '@/lib/integrations-def'
 import { integrations } from '@/lib/integrations'
-import { closedSite } from '@/lib/seo'
+import { isSiteClosed } from '@/lib/site-state'
 
 // Google Analytics 4, Yandex Metrika and Meta Pixel: put on every page when the owner has connected them in the
 // admin panel (Integratsiyalar) AND the site is open. On the closed test site nothing is added, so test visits never
@@ -13,7 +13,7 @@ const ok = (key: string, v: unknown) => {
 }
 
 export async function ThirdPartyTags() {
-  if (closedSite()) return null
+  if (await isSiteClosed()) return null
   const v = await integrations()
   const ga = ok('ga4Id', v.ga4Id), ym = ok('metricaId', v.metricaId), fb = ok('metaPixelId', v.metaPixelId)
   return (

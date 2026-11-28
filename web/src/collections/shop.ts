@@ -1,4 +1,5 @@
 import type { CollectionConfig } from 'payload'
+import { costField } from './finance'
 
 // Orders, payment transactions, promo codes. Personal data (name, phone, address) is admin-only:
 // no public read; the order page reads one order server-side by number + secret token.
@@ -32,6 +33,7 @@ export const Orders: CollectionConfig = {
         { name: 'name', type: 'text', required: true },
         { name: 'phone', type: 'text', required: true, index: true },
         { name: 'telegramUpdates', type: 'checkbox', defaultValue: true },
+        { name: 'marketingConsent', label: 'Aksiya va eslatmalarga rozi', type: 'checkbox', defaultValue: false, admin: { description: 'Mijoz oʻzi belgilagan. Faqat rozilar «Qaytmagan mijozlar» eslatmasini oladi.' } },
         { name: 'telegramChat', type: 'text', index: true, admin: { readOnly: true, description: 'Mijoz botga ulangan (u oʻzi tugmani bosgan). «/stop» yozsa tozalanadi.' } },
       ],
     },
@@ -52,6 +54,7 @@ export const Orders: CollectionConfig = {
         { name: 'sku', type: 'text', required: true }, { name: 'slug', type: 'text' }, { name: 'brand', type: 'text' },
         { name: 'name', type: 'text', required: true }, { name: 'volume', type: 'text' }, { name: 'img', type: 'text' },
         { name: 'price', type: 'number', required: true }, { name: 'qty', type: 'number', required: true },
+        costField('Buyurtma paytidagi tannarx (moliya hisoboti uchun). Faqat admin koʻradi.'),
       ],
     },
     { name: 'subtotal', type: 'number', required: true },

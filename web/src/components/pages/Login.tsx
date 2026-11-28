@@ -24,7 +24,7 @@ export function LoginPage({ lang, next }: { lang: Lang; next: string }) {
     e.preventDefault(); setErr(''); setBusy(true)
     const r = await post('/api/auth/code', { phone }).then((x) => x.json()).catch(() => ({ ok: false }))
     setBusy(false)
-    if (r.ok) { setStep('code'); setMock(r.mock ?? '') } else setErr(tr(r.error === 'phone' ? 'Raqamni toʻliq kiriting: +998 XX XXX XX XX' : r.error === 'too_soon' ? 'Kod yuborildi. Yangisini 1 daqiqadan keyin soʻrang.' : r.error === 'too_many' ? 'Bugun kodlar soni tugadi. Ertaga urinib koʻring yoki Telegramda yozing.' : 'SMS yuborilmadi. Birozdan keyin urinib koʻring.'))
+    if (r.ok) { setStep('code'); setMock(r.mock ?? '') } else setErr(tr(r.error === 'phone' ? 'Raqamni toʻliq kiriting: +998 XX XXX XX XX' : r.error === 'too_soon' ? 'Kod yuborildi. Yangisini 1 daqiqadan keyin soʻrang.' : r.error === 'too_many' ? 'Bugun kodlar soni tugadi. Ertaga urinib koʻring yoki Telegramda yozing.' : r.error === 'sms_off' ? 'Kabinetga kirish tez orada ishga tushadi. Buyurtma berish uchun kirish shart emas.' : 'SMS yuborilmadi. Birozdan keyin urinib koʻring.'))
   }
   const verify = async (e: React.FormEvent) => {
     e.preventDefault(); setErr(''); setBusy(true)

@@ -24,7 +24,7 @@ export function buildChecklist(f: Facts): { checks: Check[]; done: number; total
     steps: ['Domen sotib oling (uz domenlari uchun uz.uz yoki registrator)', 'DNS’da A yozuvini server IP’siga yoʻnaltiring', 'Coolify → resurs → Domains ga domenni yozing (https avtomatik)', 'Coolify → Environment Variables → SITE_URL ni https://yeppo.uz qiling va qayta ishga tushiring'] })
   add({ id: 'https', must: true, ok: f.https, title: 'Sayt https orqali ochiladi', detail: f.https ? 'Xavfsiz ulanish ishlayapti.' : 'Sayt manzili https bilan boshlanmaydi.', steps: ['Domen ulangach Coolify sertifikatni oʻzi beradi'] })
   add({ id: 'open', must: true, ok: !f.closed, title: 'Sayt hamma uchun ochiq (parol olib tashlangan)', detail: f.closed ? 'Sayt hozir parol bilan yopiq va qidiruv tizimlariga koʻrinmaydi. Bu test uchun toʻgʻri; sotuvdan oldin ochiladi.' : 'Sayt ochiq.',
-    steps: ['Coolify → Environment Variables’dan SITE_PASSWORD va SITE_NOINDEX ni oʻchiring', 'Qayta ishga tushiring (Redeploy)', 'Ochilgach: Integratsiyalar → IndexNow ni yoqing va Google/Yandex’ga sitemap’ni yuboring'] })
+    steps: ['Admin → Sozlamalar → Sayt holati → «Ochiq» ni tanlang va saqlang (15 soniyada kuchga kiradi)', 'Ochilgach: Integratsiyalar → IndexNow ni yoqing va Google/Yandex’ga sitemap’ni yuboring'] })
 
   const payKeys = f.cardProvider === 'click' ? f.clickReady : f.paymeReady
   add({ id: 'pay-keys', must: true, ok: payKeys && (f.clickReady || f.paymeReady), title: `Toʻlov tizimi kalitlari kiritilgan (${f.cardProvider === 'click' ? 'Click' : 'Payme'})`, link: '/admin/integratsiyalar#' + (f.cardProvider === 'click' ? 'click' : 'payme'),

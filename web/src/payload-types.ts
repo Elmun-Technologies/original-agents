@@ -72,6 +72,8 @@ export interface Config {
     'promo-codes': PromoCode;
     'gift-cards': GiftCard;
     customers: Customer;
+    'reminder-log': ReminderLog;
+    expenses: Expense;
     products: Product;
     brands: Brand;
     categories: Category;
@@ -100,6 +102,8 @@ export interface Config {
     'promo-codes': PromoCodesSelect<false> | PromoCodesSelect<true>;
     'gift-cards': GiftCardsSelect<false> | GiftCardsSelect<true>;
     customers: CustomersSelect<false> | CustomersSelect<true>;
+    'reminder-log': ReminderLogSelect<false> | ReminderLogSelect<true>;
+    expenses: ExpensesSelect<false> | ExpensesSelect<true>;
     products: ProductsSelect<false> | ProductsSelect<true>;
     brands: BrandsSelect<false> | BrandsSelect<true>;
     categories: CategoriesSelect<false> | CategoriesSelect<true>;
@@ -126,11 +130,17 @@ export interface Config {
   };
   fallbackLocale: ('false' | 'none' | 'null') | false | null | ('uz' | 'ru') | ('uz' | 'ru')[];
   globals: {
+    'site-state': SiteState;
     store: Store;
+    reminders: Reminder;
+    finance: Finance;
     integrations: Integration;
   };
   globalsSelect: {
+    'site-state': SiteStateSelect<false> | SiteStateSelect<true>;
     store: StoreSelect<false> | StoreSelect<true>;
+    reminders: RemindersSelect<false> | RemindersSelect<true>;
+    finance: FinanceSelect<false> | FinanceSelect<true>;
     integrations: IntegrationsSelect<false> | IntegrationsSelect<true>;
   };
   locale: 'uz' | 'ru';
@@ -178,6 +188,10 @@ export interface Order {
   phone: string;
   telegramUpdates?: boolean | null;
   /**
+   * Mijoz oʻzi belgilagan. Faqat rozilar «Qaytmagan mijozlar» eslatmasini oladi.
+   */
+  marketingConsent?: boolean | null;
+  /**
    * Mijoz botga ulangan (u oʻzi tugmani bosgan). «/stop» yozsa tozalanadi.
    */
   telegramChat?: string | null;
@@ -196,6 +210,10 @@ export interface Order {
     img?: string | null;
     price: number;
     qty: number;
+    /**
+     * Buyurtma paytidagi tannarx (moliya hisoboti uchun). Faqat admin koʻradi.
+     */
+    cost?: number | null;
     id?: string | null;
   }[];
   subtotal: number;
@@ -341,6 +359,47 @@ export interface Customer {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "reminder-log".
+ */
+export interface ReminderLog {
+  id: number;
+  kind: 'abandoned' | 'lapsed';
+  /**
+   * Bir xil eslatma ikki marta ketmasligi uchun
+   */
+  key: string;
+  phone: string;
+  orderNumber?: string | null;
+  channel?: ('telegram' | 'sms' | 'none') | null;
+  status: 'sent' | 'failed' | 'skipped';
+  note?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Doʻkon uchun qilingan har bir xarajatni yozing. Tovar sotib olish puli bu yerga yozilmaydi: sotilgan tovar tannarxi mahsulot kartasidagi «Tannarx» dan olinadi.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "expenses".
+ */
+export interface Expense {
+  id: number;
+  date: string;
+  category: 'ads' | 'delivery' | 'packing' | 'salary' | 'rent' | 'services' | 'tax' | 'other';
+  amount: number;
+  /**
+   * Havola yasagichdagi «manba» bilan bir xil yozing (masalan instagram, telegram, google). Shunda hisobotda shu manbadan kelgan pul yonida koʻrinadi.
+   */
+  channel?: string | null;
+  /**
+   * Masalan: «Instagram reklama, 1–7 dekabr»
+   */
+  note?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "products".
  */
 export interface Product {
@@ -422,6 +481,10 @@ export interface Product {
      */
     price: number;
     stock?: number | null;
+    /**
+     * Bir donasi sizga necha soʻmga tushadi (xarid + kargo + bojxona). Faqat admin koʻradi; moliya hisobotida foyda shundan hisoblanadi.
+     */
+    cost?: number | null;
     id?: string | null;
   }[];
   batch?: string | null;
@@ -957,6 +1020,14 @@ export interface PayloadLockedDocument {
         value: number | Customer;
       } | null)
     | ({
+        relationTo: 'reminder-log';
+        value: number | ReminderLog;
+      } | null)
+    | ({
+        relationTo: 'expenses';
+        value: number | Expense;
+      } | null)
+    | ({
         relationTo: 'products';
         value: number | Product;
       } | null)
@@ -1077,6 +1148,7 @@ export interface OrdersSelect<T extends boolean = true> {
   name?: T;
   phone?: T;
   telegramUpdates?: T;
+  marketingConsent?: T;
   telegramChat?: T;
   delivery?: T;
   city?: T;
@@ -1095,6 +1167,7 @@ export interface OrdersSelect<T extends boolean = true> {
         img?: T;
         price?: T;
         qty?: T;
+        cost?: T;
         id?: T;
       };
   subtotal?: T;
@@ -1184,6 +1257,34 @@ export interface CustomersSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "reminder-log_select".
+ */
+export interface ReminderLogSelect<T extends boolean = true> {
+  kind?: T;
+  key?: T;
+  phone?: T;
+  orderNumber?: T;
+  channel?: T;
+  status?: T;
+  note?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "expenses_select".
+ */
+export interface ExpensesSelect<T extends boolean = true> {
+  date?: T;
+  category?: T;
+  amount?: T;
+  channel?: T;
+  note?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "products_select".
  */
 export interface ProductsSelect<T extends boolean = true> {
@@ -1209,6 +1310,7 @@ export interface ProductsSelect<T extends boolean = true> {
         sku?: T;
         price?: T;
         stock?: T;
+        cost?: T;
         id?: T;
       };
   batch?: T;
@@ -1594,6 +1696,29 @@ export interface PayloadMigrationsSelect<T extends boolean = true> {
   createdAt?: T;
 }
 /**
+ * Saytni ochish yoki yopish va buyurtma qabul qilishni yoqish/oʻchirish. Saqlangandan keyin 15 soniya ichida kuchga kiradi, serverni qayta ishga tushirish shart emas.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "site-state".
+ */
+export interface SiteState {
+  id: number;
+  /**
+   * «Ochiq» tanlansa sayt parolsiz ochiladi va Google’ga koʻrinadi. «Yopiq» — test rejimi: kirish uchun parol soʻraladi (foydalanuvchi: yeppo, parol Coolify’dagi SERVICE_PASSWORD_SITE).
+   */
+  mode?: ('open' | 'closed' | 'env') | null;
+  /**
+   * Oʻchirilsa sayt ishlayveradi, mahsulotlar koʻrinadi, lekin rasmiylashtirish sahifasida pastdagi xabar chiqadi va yangi buyurtma qabul qilinmaydi.
+   */
+  ordersEnabled?: boolean | null;
+  /**
+   * Boʻsh boʻlsa: «Buyurtma qabul qilish vaqtincha toʻxtatilgan. Tez orada qayta ochamiz.»
+   */
+  ordersOffText?: string | null;
+  updatedAt?: string | null;
+  createdAt?: string | null;
+}
+/**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "store".
  */
@@ -1702,6 +1827,55 @@ export interface Store {
   createdAt?: string | null;
 }
 /**
+ * Ikkalasi ham oʻchiq turadi, siz yoqmaguningizcha hech kimga xabar ketmaydi. Xabarlar faqat 10:00–20:00 (Toshkent) oraligʻida yuboriladi. Natija: Admin → Marketing → Eslatmalar.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "reminders".
+ */
+export interface Reminder {
+  id: number;
+  abandonedOn?: boolean | null;
+  /**
+   * Buyurtma berilgandan keyin. Toʻlov havolasi 12 soat ishlaydi, shuning uchun 15–600 daqiqa.
+   */
+  abandonedAfterMin?: number | null;
+  abandonedChannel?: ('telegram_sms' | 'telegram' | 'sms') | null;
+  /**
+   * Boʻsh = standart matn. Oʻrniga qoʻyiladi: {ism}, {buyurtma}, {havola}. Standart: «Assalomu alaykum, {ism}! Yeppo’dagi buyurtmangiz №{buyurtma} toʻlanmay qoldi. Toʻlash uchun: {havola}»
+   */
+  abandonedText?: string | null;
+  lapsedOn?: boolean | null;
+  lapsedDays?: number | null;
+  lapsedChannel?: ('telegram_sms' | 'telegram' | 'sms') | null;
+  /**
+   * Matnda {promokod} oʻrniga qoʻyiladi. Avval Promokodlar boʻlimida yarating.
+   */
+  lapsedPromo?: string | null;
+  /**
+   * Boʻsh = standart matn. Oʻrniga qoʻyiladi: {ism}, {sayt}, {promokod}. Standart: «Assalomu alaykum, {ism}! Yeppo’da sizni sogʻindik. Sevimli parvarishingiz tugayotgan boʻlsa, yangilarini koʻring: {sayt}»
+   */
+  lapsedText?: string | null;
+  updatedAt?: string | null;
+  createdAt?: string | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "finance".
+ */
+export interface Finance {
+  id: number;
+  /**
+   * Shartnomangizdagi foiz, masalan 1.5. Boʻsh boʻlsa hisobotda komissiya hisoblanmaydi.
+   */
+  clickFeePct?: number | null;
+  /**
+   * Uzcard/Humo toʻlovlari ham shu tizim orqali oʻtsa, shu foiz olinadi.
+   */
+  paymeFeePct?: number | null;
+  updatedAt?: string | null;
+  createdAt?: string | null;
+}
+/**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "integrations".
  */
@@ -1712,7 +1886,10 @@ export interface Integration {
   metricaWebvisor?: boolean | null;
   metaPixelId?: string | null;
   googleVerification?: string | null;
+  gscServiceAccount?: string | null;
+  gscProperty?: string | null;
   yandexVerification?: string | null;
+  yandexOAuth?: string | null;
   bingVerification?: string | null;
   indexNowOn?: boolean | null;
   indexNowKey?: string | null;
@@ -1732,6 +1909,18 @@ export interface Integration {
   telegramAdminIds?: string | null;
   updatedAt?: string | null;
   createdAt?: string | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "site-state_select".
+ */
+export interface SiteStateSelect<T extends boolean = true> {
+  mode?: T;
+  ordersEnabled?: T;
+  ordersOffText?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  globalType?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -1785,6 +1974,35 @@ export interface StoreSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "reminders_select".
+ */
+export interface RemindersSelect<T extends boolean = true> {
+  abandonedOn?: T;
+  abandonedAfterMin?: T;
+  abandonedChannel?: T;
+  abandonedText?: T;
+  lapsedOn?: T;
+  lapsedDays?: T;
+  lapsedChannel?: T;
+  lapsedPromo?: T;
+  lapsedText?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  globalType?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "finance_select".
+ */
+export interface FinanceSelect<T extends boolean = true> {
+  clickFeePct?: T;
+  paymeFeePct?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  globalType?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "integrations_select".
  */
 export interface IntegrationsSelect<T extends boolean = true> {
@@ -1793,7 +2011,10 @@ export interface IntegrationsSelect<T extends boolean = true> {
   metricaWebvisor?: T;
   metaPixelId?: T;
   googleVerification?: T;
+  gscServiceAccount?: T;
+  gscProperty?: T;
   yandexVerification?: T;
+  yandexOAuth?: T;
   bingVerification?: T;
   indexNowOn?: T;
   indexNowKey?: T;

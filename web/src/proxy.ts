@@ -1,7 +1,10 @@
 import { NextResponse, type NextRequest } from 'next/server'
 
-// 1) Closed test site (SITE_PASSWORD set): every page asks for a password (HTTP Basic, user "yeppo") and tells
-//    search engines not to index anything. /api stays open (payment callbacks, the agents; Payload access rules apply)
+import { resolveSite } from '@/lib/site-state-def'
+
+// 1) Closed test site: every page asks for a password (HTTP Basic, user "yeppo", password SITE_PASSWORD) and tells
+//    search engines not to index anything. Open or closed is decided in the admin panel (Sayt holati), read through
+//    /api/site-state and kept for 10 s; when that cannot be read, the server environment decides (as before). /api stays open (payment callbacks, the agents; Payload access rules apply)
 //    and robots.txt stays open so crawlers read "Disallow: /".
 // 2) Remembers the language (HANDOFF §5.8): "/" -> the last chosen "/uz" | "/ru"; visiting a language saves it.
 const OPEN = /^\/(api\/|robots\.txt$|indexnow\/)/
@@ -24,9 +27,30 @@ function authorized(req: NextRequest, password: string) {
   }
 }
 
-export function proxy(req: NextRequest) {
+type Flags = { locked: boolean; noindex: boolean }
+let flags: { at: number; v: Flags } | null = null
+const TTL = 10_000
+const fromEnv = (): Flags => resolveSite('env', true, process.env)
+
+async function siteFlags(req: NextRequest): Promise<Flags> {
+  if (flags && Date.now() - flags.at < TTL) return flags.v
+  let v = fromEnv()
+  // the site itself, inside the container (no round trip through the internet); the request's own origin as a fallback
+  for (const base of [`http://127.0.0.1:${process.env.PORT || 3000}`, req.nextUrl.origin]) {
+    try {
+      const r = await fetch(`${base}/api/site-state`, { cache: 'no-store', signal: AbortSignal.timeout(2_000) })
+      if (r.ok) { const j = await r.json(); v = { locked: !!j.locked, noindex: !!j.noindex }; break }
+    } catch { /* try the next address */ }
+  }
+  flags = { at: Date.now(), v }
+  return v
+}
+
+export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl
-  const password = process.env.SITE_PASSWORD
+  // /api and the IndexNow key never need the state (and /api/site-state must not ask itself)
+  const site = OPEN.test(pathname) && pathname !== '/robots.txt' ? fromEnv() : await siteFlags(req)
+  const password = site.locked ? process.env.SITE_PASSWORD : undefined
   if (password && !OPEN.test(pathname) && !authorized(req, password)) {
     return new NextResponse('Yeppo — test sayt. / Тестовый сайт.', {
       status: 401,
@@ -44,7 +68,7 @@ export function proxy(req: NextRequest) {
       res.cookies.set('lang', lang, { path: '/', maxAge: 365 * 86400, sameSite: 'lax' })
     }
   }
-  if (process.env.SITE_NOINDEX === '1' || password) res.headers.set('X-Robots-Tag', 'noindex, nofollow')
+  if (site.noindex) res.headers.set('X-Robots-Tag', 'noindex, nofollow')
   return res
 }
 

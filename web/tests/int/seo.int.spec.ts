@@ -6,6 +6,7 @@ vi.mock('next/headers', () => ({ cookies: async () => ({ get: () => undefined, s
 import config from '@/payload.config'
 import { indexNowUrls, submitIndexNow } from '@/lib/indexnow'
 import { invalidateIntegrations } from '@/lib/integrations'
+import { invalidateSiteState } from '@/lib/site-state'
 
 describe('IndexNow', () => {
   it('both languages of every changed page, no duplicates, at most 100', () => {
@@ -24,15 +25,15 @@ describe('IndexNow', () => {
 
     it('does nothing unless the owner switched it on, with a key, on an open https site', async () => {
       const fetchFn = vi.fn(async () => new Response('', { status: 200 }))
-      process.env.SITE_URL = 'https://yeppo.uz'; delete process.env.SITE_PASSWORD; delete process.env.SITE_NOINDEX
+      process.env.SITE_URL = 'https://yeppo.uz'; delete process.env.SITE_PASSWORD; delete process.env.SITE_NOINDEX; invalidateSiteState()
       try {
         expect(await submitIndexNow(['/a'], fetchFn)).toEqual({ sent: false, reason: 'off' })
         await save({ indexNowOn: true })
         expect(await submitIndexNow(['/a'], fetchFn)).toEqual({ sent: false, reason: 'no key' })
         await save({ indexNowKey: KEY })
-        process.env.SITE_PASSWORD = 'x' // closed test site
+        process.env.SITE_PASSWORD = 'x'; invalidateSiteState() // closed test site
         expect((await submitIndexNow(['/a'], fetchFn)).reason).toBe('site not public')
-        delete process.env.SITE_PASSWORD; process.env.SITE_URL = 'http://localhost:3000'
+        delete process.env.SITE_PASSWORD; invalidateSiteState(); process.env.SITE_URL = 'http://localhost:3000'
         expect((await submitIndexNow(['/a'], fetchFn)).reason).toBe('site not public')
         expect(fetchFn).not.toHaveBeenCalled()
 
@@ -41,15 +42,15 @@ describe('IndexNow', () => {
         const [url, init] = fetchFn.mock.calls[0] as unknown as [string, RequestInit]
         expect(url).toBe('https://api.indexnow.org/indexnow')
         expect(JSON.parse(String(init.body))).toEqual({ host: 'yeppo.uz', key: KEY, keyLocation: `https://yeppo.uz/indexnow/${KEY}`, urlList: ['https://yeppo.uz/uz/mahsulot/a', 'https://yeppo.uz/ru/mahsulot/a'] })
-      } finally { restore() }
+      } finally { restore(); invalidateSiteState() }
     })
 
     it('a network failure never throws', async () => {
-      process.env.SITE_URL = 'https://yeppo.uz'; delete process.env.SITE_PASSWORD; delete process.env.SITE_NOINDEX
+      process.env.SITE_URL = 'https://yeppo.uz'; delete process.env.SITE_PASSWORD; delete process.env.SITE_NOINDEX; invalidateSiteState()
       try {
         await save({ indexNowOn: true, indexNowKey: KEY })
         expect(await submitIndexNow(['/a'], (async () => { throw new Error('down') }) as unknown as typeof fetch)).toEqual({ sent: false, reason: 'network' })
-      } finally { restore() }
+      } finally { restore(); invalidateSiteState() }
     })
   })
 })
