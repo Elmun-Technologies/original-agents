@@ -2,7 +2,9 @@
 # - Coolify fills SERVICE_* variables itself: the temporary https address (SERVICE_FQDN_WEB) and random secrets
 #   (SERVICE_PASSWORD_*, SERVICE_BASE64_*). They are visible only in Coolify's Environment Variables tab.
 # - Separate from other projects on the server: no published ports, own volumes, memory limits on every service.
-# - Closed test site while SITE_PASSWORD is set: password (user "yeppo") + noindex everywhere.
+# - Open test site: no password by default. To close it again, add SITE_PASSWORD in Coolify (user "yeppo"),
+#   or switch Admin → Sozlamalar → Sayt holati to «Yopiq».
+# - SITE_NOINDEX=1 keeps the temporary sslip address out of Google; remove it when yeppy.uz is connected.
 # - Payments stay in mock mode: no real money is accepted.
 services:
   web:
@@ -16,10 +18,10 @@ services:
       - SITE_URL=${SERVICE_URL_WEB}
       - DATABASE_URI=postgres://yeppo:${SERVICE_PASSWORD_POSTGRES}@db:5432/yeppo
       - PAYLOAD_SECRET=${SERVICE_BASE64_64_PAYLOAD}
-      - SITE_PASSWORD=${SERVICE_PASSWORD_SITE}
+      - SITE_PASSWORD=${SITE_PASSWORD:-}
       - SITE_NOINDEX=1
       - PAYMENTS_MODE=mock
-      - SMS_MODE=mock # closed test site only: the login code is shown on screen
+      - SMS_MODE=mock # on an open https site the shop refuses mock SMS login until a real SMS provider is set
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
       - TELEGRAM_ADMIN_IDS=${TELEGRAM_ADMIN_IDS:-}
     volumes:
